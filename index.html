@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <!-- PWA Meta Tags -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Pegasus">
+    <meta name="theme-color" content="#1a1a1a">
+    <link rel="apple-touch-icon" href="/icons/Icon-192.png">
+    <link rel="manifest" href="/manifest.json">
+
+    <title>Pegasus - Sistema de Gestão</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta name="description" content="Sistema de gestão premium para Barbearias e Salões de Beleza.">
+  </head>
+  <body>
+    <!-- PWA Install Prompt Banner -->
+    <div id="install-banner" style="display: none; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); width: auto; max-width: 90%; background: #1a1a1a; color: white; padding: 10px 20px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.6); z-index: 9999; font-family: 'Inter', sans-serif; align-items: center; gap: 20px; white-space: nowrap; border: 1px solid #333;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="background: linear-gradient(135deg, #b8860b 0%, #aa7a05 100%); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
+                ⚡
+            </div>
+            <div style="font-weight: 500; font-size: 14px; letter-spacing: 0.5px;">Baixar Aplicativo</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <button onclick="goToLanding()" style="background: linear-gradient(135deg, #b8860b 0%, #aa7a05 100%); color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; text-transform: uppercase;">
+                Instalar
+            </button>
+            <button onclick="dismissInstall()" style="background: rgba(255,255,255,0.1); color: #ccc; border: none; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer;">
+                &times;
+            </button>
+        </div>
+    </div>
+
+    <script>
+        function goToLanding() { window.location.href = '/landing.html'; }
+        function dismissInstall() {
+            document.getElementById('install-banner').style.display = 'none';
+            sessionStorage.setItem('install_banner_dismissed', 'true');
+        }
+
+        function updateBannerState() {
+            const banner = document.getElementById('install-banner');
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+            const isDismissed = sessionStorage.getItem('install_banner_dismissed') === 'true';
+            
+            // Mostrar apenas em Mobile
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (isStandalone || isDismissed || !isMobile) {
+                if (banner.style.display !== 'none') {
+                    banner.style.opacity = '0';
+                    setTimeout(() => banner.style.display = 'none', 500);
+                }
+            } else {
+                if (banner.style.display === 'none') {
+                    banner.style.display = 'flex';
+                    banner.style.opacity = '0';
+                    requestAnimationFrame(() => {
+                        banner.style.transition = 'opacity 0.5s';
+                        banner.style.opacity = '1';
+                    });
+                }
+            }
+        }
+
+        setInterval(updateBannerState, 2000);
+        window.addEventListener('load', () => { setTimeout(updateBannerState, 1000); });
+    </script>
+
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

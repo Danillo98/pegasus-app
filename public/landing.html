@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Pegasus - Sistema de Gestão Premium">
+    <title>Pegasus - Instalar Aplicativo</title>
+    <link rel="manifest" href="manifest.json">
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #121212 0%, #1a1a1a 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 50px 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        .logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 20px;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        h1 {
+            color: #1a1a1a;
+            font-family: 'Cinzel', serif;
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 40px;
+            line-height: 1.6;
+            font-weight: 300;
+        }
+        .features {
+            text-align: left;
+            margin: 30px 0;
+            padding: 20px;
+            background: #fdfdfd;
+            border: 1px solid #eaeaea;
+            border-radius: 8px;
+        }
+        .feature {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            color: #333;
+        }
+        .feature-icon {
+            font-size: 20px;
+            margin-right: 15px;
+            min-width: 30px;
+            color: #b8860b;
+        }
+        .feature-text {
+            font-size: 15px;
+            line-height: 1.5;
+            font-weight: 400;
+        }
+        .install-button {
+            background: linear-gradient(135deg, #b8860b 0%, #aa7a05 100%);
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(184, 134, 11, 0.3);
+            margin: 20px 0;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .install-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(184, 134, 11, 0.4);
+        }
+        .install-button:active {
+            transform: translateY(0);
+        }
+        .instructions {
+            margin-top: 30px;
+            padding: 20px;
+            background: #fffdf5;
+            border-left: 4px solid #b8860b;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .instructions h3 {
+            color: #1a1a1a;
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .instructions ol {
+            margin-left: 20px;
+            color: #555;
+            line-height: 1.8;
+            font-size: 14px;
+        }
+        .instructions li { margin: 10px 0; }
+        .device-specific { display: none; }
+        .note {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            color: #495057;
+            font-size: 13px;
+        }
+        .admin-badge {
+            display: inline-block;
+            background: #1a1a1a;
+            color: #b8860b;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 12px;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        @media (max-width: 600px) {
+            .container { padding: 30px 20px; }
+            h1 { font-size: 26px; }
+            .subtitle { font-size: 14px; }
+            .logo { width: 100px; height: 100px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <img src="icons/Icon-192.png" alt="Pegasus Logo">
+        </div>
+
+        <div class="admin-badge">⚡ Pegasus System</div>
+        <h1>Instalar o Sistema</h1>
+        <p class="subtitle">
+            Tenha a melhor experiência! Instale o sistema gratuitamente no seu celular como um app nativo para acesso rápido à sua agenda, clientes e gestão financeira.
+        </p>
+
+        <div class="features">
+            <div class="feature">
+                <span class="feature-icon">🚀</span>
+                <span class="feature-text">Acesso instantâneo sem precisar abrir o navegador</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">📱</span>
+                <span class="feature-text">Funciona de forma otimizada no seu celular</span>
+            </div>
+            <div class="feature">
+                <span class="feature-icon">📅</span>
+                <span class="feature-text">Notificações e gestão rápida de agendamentos</span>
+            </div>
+        </div>
+
+        <button id="accessSystemBtn" class="install-button">
+            ⬇️ Instalar Agora
+        </button>
+
+        <p style="font-size: 12px; color: #888; margin-top: 10px; line-height: 1.4;">
+            * A instalação funciona melhor no <strong>Chrome</strong> (Android) ou <strong>Safari</strong> (iOS).
+        </p>
+
+        <div class="instructions">
+            <h3>📱 Siga os passos:</h3>
+            <div id="android-instructions" class="device-specific" style="display:block;">
+                <ol>
+                    <li>Clique no botão <strong>"Instalar Agora"</strong> acima.</li>
+                    <li>O navegador pedirá para confirmar a instalação, clique em <strong>Instalar</strong>.</li>
+                    <li>Pronto! O Pegasus agora está na tela inicial do seu celular.</li>
+                </ol>
+            </div>
+            <div id="ios-instructions" class="device-specific">
+                <ol>
+                    <li>Clique no ícone de <strong>Compartilhar</strong> do Safari no menu inferior.</li>
+                    <li>Role para baixo e toque em <strong>'Adicionar à Tela de Início'</strong>.</li>
+                    <li>Confirme em <strong>'Adicionar'</strong> no canto superior direito.</li>
+                    <li>Pronto! O aplicativo será adicionado a sua tela inicial.</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="note">
+            💡 <strong>Dica:</strong> Após instalar, feche o navegador e abra o sistema direto pelo ícone na tela inicial para a melhor experiência.
+        </div>
+    </div>
+
+    <script>
+        let deferredPrompt;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log("PWA Ready");
+        });
+
+        document.getElementById('accessSystemBtn').addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                deferredPrompt = null;
+            } else {
+                const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+                if(isIos) {
+                    alert("No iPhone/iPad, clique no botão de 'Compartilhar' e depois 'Adicionar à Tela de Início'.");
+                } else {
+                    alert("A instalação automática não está disponível no momento. Tente usar a opção 'Adicionar à tela inicial' no menu do seu navegador.");
+                }
+            }
+        });
+
+        const userAgent = navigator.userAgent.toLowerCase();
+        if (/iphone|ipad|ipod/.test(userAgent)) {
+            document.getElementById('android-instructions').style.display = 'none';
+            document.getElementById('ios-instructions').style.display = 'block';
+        }
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js');
+            });
+        }
+    </script>
+</body>
+</html>
