@@ -647,7 +647,7 @@ function renderLogin() {
   return `
     <div class="login-container flex flex-col items-center min-h-screen animate-fade-in" style="min-height: 100vh; justify-content: center; padding-top: 0;">
       <div class="login-logo-container" style="text-align: center; margin-bottom: 1rem;">
-        <img src="/src/assets/logo_pegasus.png" alt="Pegasus Logo" class="login-logo-img" style="width: 11vw; min-width: 176px; max-width: 264px; height: auto; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.1));">
+        <img src="/logo_pegasus.png" alt="Pegasus Logo" class="login-logo-img" style="width: 11vw; min-width: 176px; max-width: 264px; height: auto; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.1));">
         <p class="login-tagline" style="margin-top: 0.5rem; color: var(--text-secondary); font-weight: 600; font-style: italic; font-family: var(--font-alt); font-size: 0.8rem;">O sistema de gestão que decola seu negócio!</p>
       </div>
       <div class="login-card-container" style="max-width: 32rem;">
@@ -678,7 +678,7 @@ function renderDashboard() {
     <div class="dashboard-container min-h-screen animate-fade-in">
       <header class="flex justify-between items-center" style="padding: 1.25rem var(--spacing-lg) 1.25rem 0; border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100;">
         <div class="flex items-center">
-           <img src="/src/assets/logo_pegasus_sem_nome.png" alt="Pegasus Logo" style="height: 4.5rem; width: auto; object-fit: contain; margin-right: 0.5rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));">
+           <img src="/logo_pegasus_sem_nome.png" alt="Pegasus Logo" style="height: 4.5rem; width: auto; object-fit: contain; margin-right: 0.5rem; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));">
            <span style="font-size: 0.75rem; background: var(--primary); padding: 0.25rem 0.8rem; border-radius: 2rem; color: var(--on-primary); font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">
             ${appState.theme === 'salao' ? 'Salão' : appState.theme}
            </span>
