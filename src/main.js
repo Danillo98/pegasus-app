@@ -2612,12 +2612,14 @@ async function criarAgendamentoComPix({ clienteNome, servicoId, servicoNome, dat
 // Initial boot: splash screen logic
 function showSplashScreen() {
   document.body.innerHTML = `
-    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:white; font-family:system-ui;">
-      <img src="/logo_pegasus.png" alt="Pegasus Logo" style="width: 22vw; min-width: 352px; max-width: 528px; height: auto; animation: pulse 2s ease-in-out infinite;">
+    <div id="pwa-splash-container" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:white; z-index:9999999;">
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <img src="/logo_pegasus.png" alt="Pegasus Logo" style="width: 22vw; min-width: 352px; max-width: 528px; height: auto; animation: pulse 2s ease-in-out infinite;">
+      </div>
       <style>
         @keyframes pulse { 
           0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.05); opacity: 0.8; }
+          50% { transform: scale(1.05); opacity: 0.9; }
         }
       </style>
     </div>`
@@ -2625,7 +2627,11 @@ function showSplashScreen() {
 
 showSplashScreen()
 handleMpCallback().then(() => {
-  // Add a small delay for the splash feel
-  setTimeout(render, 1500)
+  // Splash feel
+  setTimeout(() => {
+    const splash = document.getElementById('pwa-splash-container');
+    if (splash) splash.style.display = 'none';
+    render();
+  }, 1800);
 })
 
