@@ -2609,6 +2609,42 @@ async function criarAgendamentoComPix({ clienteNome, servicoId, servicoNome, dat
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// Initial boot: check for MP OAuth callback first, then render
-handleMpCallback().then(() => render())
+// Initial boot: splash screen logic
+function showSplashScreen() {
+  const splash = document.createElement('div');
+  splash.id = 'pwa-splash-container';
+  splash.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    background: white; z-index: 9999999; margin: 0; padding: 0; gap: 2rem;
+  `;
+  splash.innerHTML = `
+    <img src="/logo_pegasus_full.png" alt="Pegasus" style="width: 75vw; max-width: 500px; height: auto;">
+    <div class="pwa-spinner"></div>
+    <style>
+      .pwa-spinner {
+        width: 40px; height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #b8860b;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+  `;
+  document.body.appendChild(splash);
+}
+
+showSplashScreen()
+handleMpCallback().then(() => {
+  render();
+  setTimeout(() => {
+    const splash = document.getElementById('pwa-splash-container');
+    if (splash) {
+      splash.style.transition = 'opacity 0.5s ease-out';
+      splash.style.opacity = '0';
+      setTimeout(() => splash.remove(), 500);
+    }
+  }, 1000); // Tempo mínimo para garantir que o usuário veja a logo carregando
+})
 
