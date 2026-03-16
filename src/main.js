@@ -2609,6 +2609,23 @@ async function criarAgendamentoComPix({ clienteNome, servicoId, servicoNome, dat
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// Initial boot: check for MP OAuth callback first, then render
-handleMpCallback().then(() => render())
+// Initial boot: splash screen logic
+function showSplashScreen() {
+  document.body.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:center; height:100vh; background:white; font-family:system-ui;">
+      <img src="/logo_pegasus.png" alt="Pegasus Logo" style="width: 22vw; min-width: 352px; max-width: 528px; height: auto; animation: pulse 2s ease-in-out infinite;">
+      <style>
+        @keyframes pulse { 
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+        }
+      </style>
+    </div>`
+}
+
+showSplashScreen()
+handleMpCallback().then(() => {
+  // Add a small delay for the splash feel
+  setTimeout(render, 1500)
+})
 

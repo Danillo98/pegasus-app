@@ -13,7 +13,7 @@ async function processIcon() {
 
     const bg512 = new Jimp({ width: 512, height: 512, color: '#ffffff' });
     
-    logo.contain({ w: 470, h: 470 });
+    logo.contain({ w: 452, h: 452 });
     
     const x = Math.floor((512 - logo.bitmap.width) / 2);
     const y = Math.floor((512 - logo.bitmap.height) / 2); 
