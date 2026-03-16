@@ -2611,19 +2611,34 @@ async function criarAgendamentoComPix({ clienteNome, servicoId, servicoNome, dat
 
 // Initial boot: splash screen logic
 function showSplashScreen() {
-  document.body.innerHTML = `
-    <div id="pwa-splash-container" style="position:fixed; top:0; left:0; width:100%; height:100%; display:flex; align-items:center; justify-content:center; background:white; z-index:9999999; margin:0; padding:0;">
-      <img src="/logo_pegasus_full.png" alt="Splash Pegasus" style="width: 80vw; max-width: 600px; height: auto; display: block;">
-    </div>`
+  const splash = document.createElement('div');
+  splash.id = 'pwa-splash-container';
+  splash.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    z-index: 9999999;
+    transition: opacity 0.5s ease-out;
+  `;
+  splash.innerHTML = `<img src="/logo_pegasus_full.png" alt="Splash Pegasus" style="width: 80vw; max-width: 600px; height: auto;">`;
+  document.body.appendChild(splash);
 }
 
 showSplashScreen()
 handleMpCallback().then(() => {
-  // Splash feel
+  render(); // Garante que o app renderiza por baixo
   setTimeout(() => {
     const splash = document.getElementById('pwa-splash-container');
-    if (splash) splash.style.display = 'none';
-    render();
-  }, 1800);
+    if (splash) {
+      splash.style.opacity = '0';
+      setTimeout(() => splash.remove(), 500);
+    }
+  }, 1200);
 })
 
