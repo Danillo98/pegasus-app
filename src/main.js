@@ -2609,36 +2609,6 @@ async function criarAgendamentoComPix({ clienteNome, servicoId, servicoNome, dat
 }
 // ──────────────────────────────────────────────────────────────────────────────
 
-// Initial boot: splash screen logic
-function showSplashScreen() {
-  const splash = document.createElement('div');
-  splash.id = 'pwa-splash-container';
-  splash.style.cssText = `
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    z-index: 9999999;
-    transition: opacity 0.5s ease-out;
-  `;
-  splash.innerHTML = `<img src="/logo_pegasus_full.png" alt="Splash Pegasus" style="width: 80vw; max-width: 600px; height: auto;">`;
-  document.body.appendChild(splash);
-}
-
-showSplashScreen()
-handleMpCallback().then(() => {
-  render(); // Garante que o app renderiza por baixo
-  setTimeout(() => {
-    const splash = document.getElementById('pwa-splash-container');
-    if (splash) {
-      splash.style.opacity = '0';
-      setTimeout(() => splash.remove(), 500);
-    }
-  }, 1200);
-})
+// Initial boot: check for MP OAuth callback first, then render
+handleMpCallback().then(() => render())
 
