@@ -7,16 +7,18 @@ async function processIcon() {
     const outputPath192 = 'public/icons/Icon-192.png';
 
     console.log('Reading image:', inputPath);
-    const logo = await Jimp.read(inputPath);
+    let logo = await Jimp.read(inputPath);
     
-    // Resize the logo to fit nicely within a padded 512x512 space
-    // and composite to a new white background
+    logo = logo.autocrop({ tolerance: 0.05 }); 
+
     const bg512 = new Jimp({ width: 512, height: 512, color: '#ffffff' });
     
-    // make logo size max 440 or so
-    logo.contain({ w: 450, h: 450 });
+    logo.contain({ w: 420, h: 420 });
     
-    bg512.composite(logo, 31, 46); // shifted down
+    const x = Math.floor((512 - logo.bitmap.width) / 2);
+    const y = Math.floor((512 - logo.bitmap.height) / 2) + 10; 
+
+    bg512.composite(logo, x, y);
 
     await bg512.write(outputPath512);
 
