@@ -2613,13 +2613,13 @@ async function criarAgendamentoComPix({ clienteNome, servicoId, servicoNome, dat
 function showSplashScreen() {
   document.body.innerHTML = `
     <div id="pwa-splash-container" style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:white; z-index:9999999;">
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <img src="/logo_pegasus.png" alt="Pegasus Logo" style="width: 22vw; min-width: 352px; max-width: 528px; height: auto; animation: pulse 2s ease-in-out infinite;">
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; width: 100%; height: 100%;">
+        <img src="/logo_pegasus_full.png" alt="Pegasus Logo" style="width: 70vw; min-width: 400px; max-width: 800px; height: auto; animation: pulse 2s ease-in-out infinite;">
       </div>
       <style>
         @keyframes pulse { 
           0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.05); opacity: 0.9; }
+          50% { transform: scale(1.02); opacity: 0.95; }
         }
       </style>
     </div>`
