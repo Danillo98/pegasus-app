@@ -25,7 +25,7 @@
             <div style="background: linear-gradient(135deg, #b8860b 0%, #aa7a05 100%); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px;">
                 ⚡
             </div>
-            <div style="font-weight: 500; font-size: 14px; letter-spacing: 0.5px;">Baixar Aplicativo</div>
+            <div id="install-banner-label" style="font-weight: 500; font-size: 14px; letter-spacing: 0.5px;">Baixar Aplicativo</div>
         </div>
         <div style="display: flex; align-items: center; gap: 10px;">
             <button onclick="goToLanding()" style="background: linear-gradient(135deg, #b8860b 0%, #aa7a05 100%); color: white; border: none; padding: 8px 18px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; text-transform: uppercase;">
@@ -46,13 +46,19 @@
 
         function updateBannerState() {
             const banner = document.getElementById('install-banner');
+            const installLabel = document.getElementById('install-banner-label');
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
             const isDismissed = sessionStorage.getItem('install_banner_dismissed') === 'true';
             
-            // Mostrar apenas em Mobile
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            
+            if (installLabel) {
+                installLabel.textContent = isMobile ? 'Baixar Aplicativo' : 'Baixar no Computador';
+            }
+            
+            const isLoginScreen = window.appState && window.appState.screen === 'login';
 
-            if (isStandalone || isDismissed || !isMobile) {
+            if (isStandalone || isDismissed || !isLoginScreen) {
                 if (banner.style.display !== 'none') {
                     banner.style.opacity = '0';
                     setTimeout(() => banner.style.display = 'none', 500);

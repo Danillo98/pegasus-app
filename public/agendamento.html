@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agendamento – Pegasus</title>
+  <meta name="description" content="Agende seu serviço de forma rápida e fácil." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      /* Default to Barbearia Theme (Light) */
+      --bg: #ffffff;
+      --surface: #f9f9f9;
+      --surface2: #f0f0f0;
+      --border: #e5e5e5;
+      --primary: #000000;
+      --primary-h: #333333;
+      --accent: #555555;
+      --text: #1d1d1f;
+      --muted: #6e6e73;
+      --radius: 1rem;
+      --shadow: 0 8px 32px rgba(0,0,0,.08);
+      
+      /* Base colors */
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+    }
+
+    body.theme-salao {
+      --bg: #ffffff;
+      --surface: #FFF5F8;
+      --surface2: #FFEBF2;
+      --border: #FFD6E5;
+      --primary: #FF4D94;
+      --primary-h: #e64585;
+      --accent: #FF85B3;
+      --text: #2D1B22;
+      --muted: #8B6B77;
+      --shadow: 0 8px 32px rgba(255, 77, 148, 0.15);
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.5rem 1rem 4rem;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      text-align: center;
+      width: 100%;
+    }
+    .logo-container {
+      width: 140px;
+      margin-bottom: 0.5rem;
+    }
+    .logo-container img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .estab-name {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -.5px;
+    }
+    .estab-type {
+      font-size: .8rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      max-width: 480px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      box-shadow: var(--shadow);
+      margin-bottom: 1rem;
+      transition: background-color 0.3s ease, border-color 0.3s ease;
+    }
+
+    /* ── Steps indicator ── */
+    .steps {
+      display: flex;
+      gap: .5rem;
+      margin-bottom: 2rem;
+      width: 100%;
+      max-width: 480px;
+    }
+    .step-dot {
+      flex: 1;
+      height: 4px;
+      border-radius: 4px;
+      background: var(--border);
+      transition: background .3s;
+    }
+    .step-dot.active { background: var(--primary); }
+    .step-dot.done   { background: var(--primary); }
+
+    /* ── Section title ── */
+    .section-title {
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--primary);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Input ── */
+    .input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: .75rem;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 1rem;
+      padding: .85rem 1rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .input:focus { border-color: var(--primary); }
+    .input::placeholder { color: var(--muted); }
+
+    /* ── Service item ── */
+    .service-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: .9rem 1rem;
+      border: 1.5px solid var(--border);
+      border-radius: .85rem;
+      margin-bottom: .6rem;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      user-select: none;
+    }
+    .service-item:hover    { border-color: var(--primary); }
+    .service-item.selected { border-color: var(--primary); background: var(--surface2); }
+
+    .service-check {
+      width: 22px; height: 22px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background .2s, border-color .2s;
+      font-size: .8rem;
+    }
+    .service-item.selected .service-check {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--surface); /* Contrast checkmark */
+    }
+
+    .service-info { flex: 1; min-width: 0; }
+    .service-info .s-name  { font-size: .95rem; font-weight: 600; }
+    .service-info .s-dur   { font-size: .75rem; color: var(--muted); margin-top: 2px; }
+    .service-price { font-size: .95rem; font-weight: 700; color: var(--primary); }
+
+    /* ── Total ── */
+    .total-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface2);
+      border-radius: .85rem;
+      padding: .9rem 1.1rem;
+      margin-top: .5rem;
+      border: 1.5px solid var(--border);
+    }
+    .total-label { font-size: .85rem; color: var(--muted); }
+    .total-value { font-size: 1.3rem; font-weight: 800; color: var(--text); }
+
+    /* ── Slot ── */
+    .slot-item {
+      display: flex; align-items: center; gap: 1rem;
+      padding: 1rem 1.1rem;
+      border: 1.5px solid var(--border);
+      border-radius: .85rem;
+      margin-bottom: .6rem;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      user-select: none;
+    }
+    .slot-item:hover    { border-color: var(--primary); }
+    .slot-item.selected { border-color: var(--primary); background: var(--surface2); }
+
+    .slot-icon {
+      width: 40px; height: 40px;
+      background: var(--primary);
+      color: var(--surface);
+      border-radius: .65rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .slot-info .s-date { font-size: .95rem; font-weight: 600; }
+    .slot-info .s-time { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── PIX section ── */
+    .pix-box {
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: .85rem;
+      padding: 1.2rem;
+      margin-top: .5rem;
+    }
+    .pix-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--primary); margin-bottom: .75rem; }
+    .pix-value {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--surface);
+      border-radius: .6rem;
+      padding: .75rem 1rem;
+      font-size: .95rem; font-weight: 600;
+      border: 1px solid var(--border);
+    }
+    .copy-btn {
+      background: var(--primary);
+      color: var(--surface); /* Contrast text */
+      border: none;
+      border-radius: .5rem;
+      padding: .35rem .75rem;
+      font-size: .78rem; font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+    }
+    .copy-btn:hover { background: var(--primary-h); }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%;
+      padding: 1rem;
+      background: var(--primary);
+      color: var(--surface); /* Deep contrast */
+      border: none;
+      border-radius: .85rem;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s, transform .1s;
+      margin-top: .75rem;
+      letter-spacing: .2px;
+    }
+    .btn:hover    { opacity: .9; }
+    .btn:active   { transform: scale(.98); }
+    .btn:disabled { opacity: .5; cursor: default; }
+    .btn.outline {
+      background: transparent;
+      border: 1.5px solid var(--border);
+      color: var(--muted);
+      margin-top: .4rem;
+    }
+    .btn.outline:hover { border-color: var(--primary); color: var(--text); }
+
+    /* ── Success screen ── */
+    .success-icon {
+      width: 72px; height: 72px;
+      background: var(--green);
+      color: #fff;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 1.25rem;
+      box-shadow: 0 0 32px rgba(16,185,129,.4);
+      animation: pop .4s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes pop {
+      from { transform: scale(0); opacity: 0; }
+      to   { transform: scale(1); opacity: 1; }
+    }
+    .summary-row {
+      display: flex; justify-content: space-between;
+      padding: .55rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: .9rem;
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row .label { color: var(--muted); }
+    .summary-row .value { font-weight: 600; text-align: right; max-width: 60%; }
+
+    /* ── Loading / error ── */
+    .loading-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 1rem;
+      padding: 3rem;
+      color: var(--muted);
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-msg {
+      text-align: center;
+      padding: 2rem;
+      color: var(--red);
+    }
+    .chip-tag {
+      display: inline-block;
+      background: rgba(16,185,129,.15);
+      color: var(--green);
+      border-radius: 2rem;
+      padding: .2rem .65rem;
+      font-size: .75rem;
+      font-weight: 600;
+      margin-left: .4rem;
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="logo-container">
+      <img src="logo_pegasus.png" alt="Pegasus Logo" />
+    </div>
+    <div id="estab-name" class="estab-name">Carregando...</div>
+    <div id="estab-type" class="estab-type"></div>
+  </header>
+
+  <!-- Steps -->
+  <div class="steps" id="steps-bar">
+    <div class="step-dot" id="s1"></div>
+    <div class="step-dot" id="s2"></div>
+    <div class="step-dot" id="s3"></div>
+    <div class="step-dot" id="s4"></div>
+  </div>
+
+  <main id="main" style="width:100%;max-width:480px"></main>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    const SUPABASE_URL = 'https://fdoecadsyvbhjgasdbxk.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZkb2VjYWRzeXZiaGpnYXNkYnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzgyNDMsImV4cCI6MjA4ODgxNDI0M30.2XcUlosPv-j1JfTC7OjN7gt5zjd5jlq0p7-cpDujTZ8';
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    /* ── State ── */
+    const state = {
+      step: 1,
+      estabId: null,
+      estab: null,
+      servicos: [],
+      selectedIds: new Set(),
+      slots: [],
+      selectedSlot: null,
+      clienteName: '',
+      clientePhone: '',
+    };
+
+    function formatPhone(value) {
+      if (!value) return ""
+      value = value.replace(/\D/g, '')
+      value = value.slice(0, 11)
+      if (value.length > 10) {
+        return value.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
+      } else if (value.length > 6) {
+        return value.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3")
+      } else if (value.length > 2) {
+        return value.replace(/(\d{2})(\d{0,5})/, "($1) $2")
+      } else if (value.length > 0) {
+        return value.replace(/(\d{0,2})/, "($1")
+      }
+      return value
+    }
+
+    /* ── Init ── */
+    const params = new URLSearchParams(location.search);
+    state.estabId = params.get('estab');
+
+    if (!state.estabId) {
+      document.getElementById('main').innerHTML = `
+        <div class="error-msg">❌ Link inválido. Solicite o link correto ao estabelecimento.</div>`;
+    } else {
+      bootstrap();
+    }
+
+    async function bootstrap() {
+      showLoading();
+      try {
+        const [estabRes, servicosRes] = await Promise.all([
+          sb.from('estabelecimentos').select('nome_completo, tipo, chave_pix, dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao').eq('id', state.estabId).single(),
+          sb.from('servicos').select('id, nome, preco, duracao_minutos, cobra_reserva, taxa_reserva').eq('estabelecimento_id', state.estabId).order('nome')
+        ]);
+        if (estabRes.error) throw estabRes.error;
+        state.estab = estabRes.data;
+        state.servicos = servicosRes.data || [];
+
+        // Applica a estilização (themes: default to dark/barbearia, if 'salao' it changes to light/pink)
+        if (state.estab.tipo?.toLowerCase() === 'salao') {
+           document.body.classList.add('theme-salao');
+        }
+
+        document.getElementById('estab-name').textContent = state.estab.nome_completo;
+        document.getElementById('estab-type').textContent = state.estab.tipo || 'Estabelecimento';
+
+        renderStep1();
+      } catch (e) {
+        document.getElementById('main').innerHTML = `<div class="error-msg">❌ Não foi possível carregar. Tente novamente.</div>`;
+        console.error(e);
+      }
+    }
+
+    /* ── Step indicators ── */
+    function updateStepBar() {
+      for (let i = 1; i <= 4; i++) {
+        const el = document.getElementById('s' + i);
+        el.className = 'step-dot' + (i < state.step ? ' done' : i === state.step ? ' active' : '');
+      }
+    }
+
+    function showLoading() {
+      document.getElementById('main').innerHTML = `
+        <div class="loading-wrap">
+          <div class="spinner"></div>
+          <span>Carregando...</span>
+        </div>`;
+    }
+
+    /* ═══════════════════════════════════════
+       STEP 1 — Nome do cliente
+    ═══════════════════════════════════════ */
+    function renderStep1() {
+      state.step = 1;
+      updateStepBar();
+      document.getElementById('main').innerHTML = `
+        <div class="card">
+          <div class="section-title">👋 Seu nome</div>
+          <p style="font-size:.9rem;color:var(--muted);margin-bottom:1.1rem;">
+            Como podemos te chamar?
+          </p>
+          <input id="nome-input" class="input" type="text" placeholder="Seu nome completo" maxlength="50" autocomplete="given-name" autofocus />
+          <input id="phone-input" class="input" type="tel" placeholder="Seu WhatsApp (Opcional)" maxlength="15" style="margin-top:0.7rem;" />
+          <button class="btn" id="btn-step1" style="margin-top:1rem;">Próximo →</button>
+        </div>`;
+
+      const input = document.getElementById('nome-input');
+      const btn = document.getElementById('btn-step1');
+      if (state.clienteName) input.value = state.clienteName;
+      if (state.clientePhone) phone.value = state.clientePhone;
+
+      phone.addEventListener('input', (e) => {
+        e.target.value = formatPhone(e.target.value);
+      });
+
+      input.addEventListener('keydown', e => { if (e.key === 'Enter') next1(); });
+      btn.addEventListener('click', next1);
+
+      function next1() {
+        const v = input.value.trim();
+        const ph = document.getElementById('phone-input').value.trim();
+        if (!v || v.length < 2) { input.style.borderColor = 'var(--red)'; return; }
+        state.clienteName = v;
+        state.clientePhone = ph;
+        renderStep2();
+      }
+    }
+
+    /* ═══════════════════════════════════════
+       STEP 2 — Seleção de serviços
+    ═══════════════════════════════════════ */
+    function renderStep2() {
+      state.step = 2;
+      updateStepBar();
+
+      const html = `
+        <div class="card">
+          <div class="section-title">⭐ Escolha os serviços</div>
+          <div id="service-list">
+            ${state.servicos.length === 0
+              ? '<p style="color:var(--muted);text-align:center;padding:1rem 0">Nenhum serviço disponível.</p>'
+              : state.servicos.map(s => `
+                <div class="service-item ${state.selectedIds.has(s.id) ? 'selected' : ''}" data-id="${s.id}">
+                  <div class="service-check">${state.selectedIds.has(s.id) ? '✓' : ''}</div>
+                  <div class="service-info">
+                    <div class="s-name">${s.nome}</div>
+                    ${s.duracao_minutos ? `<div class="s-dur">⏱ ${s.duracao_minutos} min</div>` : ''}
+                  </div>
+                  <div class="service-price">R$${Number(s.preco).toFixed(2).replace('.', ',')}</div>
+                </div>`).join('')}
+          </div>
+          <div class="total-bar" style="margin-top:.8rem">
+            <span class="total-label">Total</span>
+            <span class="total-value" id="total-val">R$ 0,00</span>
+          </div>
+          <button class="btn" id="btn-step2" disabled>Escolher horário →</button>
+          <button class="btn outline" onclick="renderStep1()">← Voltar</button>
+        </div>`;
+
+      document.getElementById('main').innerHTML = html;
+      updateTotal();
+
+      document.querySelectorAll('.service-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.dataset.id;
+          if (state.selectedIds.has(id)) { state.selectedIds.delete(id); el.classList.remove('selected'); el.querySelector('.service-check').textContent = ''; }
+          else { state.selectedIds.add(id); el.classList.add('selected'); el.querySelector('.service-check').textContent = '✓'; }
+          updateTotal();
+        });
+      });
+    }
+
+    function updateTotal() {
+      const selected = state.servicos.filter(s => state.selectedIds.has(s.id));
+      const total = selected.reduce((acc, s) => acc + Number(s.preco), 0);
+      const totalEl = document.getElementById('total-val');
+      if (totalEl) totalEl.textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+      const btn = document.getElementById('btn-step2');
+      if (btn) {
+        btn.disabled = selected.length === 0;
+        btn.onclick = selected.length > 0 ? goToStep3 : null;
+      }
+    }
+
+    async function goToStep3() {
+      showLoading();
+      await loadSlots();
+      renderStep3();
+    }
+
+    /* ═══════════════════════════════════════
+       STEP 3 — Horários disponíveis
+    ═══════════════════════════════════════ */
+    async function loadSlots() {
+      const now = new Date();
+      const end = new Date(now); end.setDate(end.getDate() + 21);
+
+      // Working schedule from DB (fallback to defaults if not configured)
+      const diasFunc = state.estab.dias_funcionamento || [1,2,3,4,5,6]; // Mon-Sat default
+      const [aberH, aberM] = (state.estab.horario_abertura || '09:00').split(':').map(Number);
+      const [fechH, fechM] = (state.estab.horario_fechamento || '18:00').split(':').map(Number);
+      const WORK_START_MIN = aberH * 60 + aberM; // working start in minutes from midnight
+      const WORK_END_MIN   = fechH * 60 + fechM;
+      const pausasPadrao   = state.estab.pausas_padrao || [];
+
+      // Fetch existing bookings
+      const { data: bookings } = await sb
+        .from('agendamentos')
+        .select('data_agendamento, hora_agendamento, status')
+        .eq('estabelecimento_id', state.estabId)
+        .not('status', 'in', '(cancelado,recusado)');
+      const bookedSet = new Set((bookings || []).map(b => `${b.data_agendamento}|${b.hora_agendamento?.slice(0,5)}`));
+
+      // Fetch day-specific exceptions (pauses & closures) covering the next 21 days
+      const startStr = now.toISOString().split('T')[0];
+      const endStr   = end.toISOString().split('T')[0];
+      const { data: excecoes } = await sb
+        .from('excecoes_agenda')
+        .select('*')
+        .eq('estabelecimento_id', state.estabId)
+        .gte('data_excecao', startStr)
+        .lte('data_excecao', endStr);
+      const excecoesMap = {}; // dayKey -> array of exceptions
+      (excecoes || []).forEach(e => {
+        if (!excecoesMap[e.data_excecao]) excecoesMap[e.data_excecao] = [];
+        excecoesMap[e.data_excecao].push(e);
+      });
+
+      const totalDuration = state.servicos
+        .filter(s => state.selectedIds.has(s.id))
+        .reduce((acc, s) => acc + (s.duracao_minutos || 30), 0) || 30;
+
+      function toMinutes(timeStr) {
+        if (!timeStr) return null;
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
+      }
+
+      function isBlocked(cursor) {
+        const dayKey = cursor.toISOString().split('T')[0];
+        const curMin = cursor.getHours() * 60 + cursor.getMinutes();
+        const dow    = cursor.getDay();
+        const hhmm   = `${String(cursor.getHours()).padStart(2,'0')}:${String(cursor.getMinutes()).padStart(2,'0')}`;
+
+        // Not a working day
+        if (!diasFunc.includes(dow)) return true;
+
+        // Outside working hours
+        if (curMin < WORK_START_MIN || curMin + totalDuration > WORK_END_MIN) return true;
+
+        // Already booked
+        if (bookedSet.has(`${dayKey}|${hhmm}`)) return true;
+
+        // Pre-defined lunch/recurring breaks
+        for (const p of pausasPadrao) {
+          const ps = toMinutes(p.inicio);
+          const pe = toMinutes(p.fim);
+          if (ps !== null && pe !== null && curMin < pe && curMin + totalDuration > ps) return true;
+        }
+
+        // Day-specific exceptions
+        const dayExcecoes = excecoesMap[dayKey] || [];
+        for (const exc of dayExcecoes) {
+          if (exc.tipo === 'fechado_dia_todo') return true;
+          if (exc.tipo === 'fechado_resto_do_dia') {
+            const es = toMinutes(exc.inicio);
+            if (es !== null && curMin >= es) return true;
+          }
+          if (exc.tipo === 'pausa') {
+            const es = toMinutes(exc.inicio);
+            const ee = toMinutes(exc.fim);
+            if (es !== null && ee !== null && curMin < ee && curMin + totalDuration > es) return true;
+          }
+        }
+
+        return false;
+      }
+
+      const slots = [];
+      let cursor = new Date(now);
+      // Round up to next 30-min slot
+      const mins = cursor.getMinutes();
+      if (mins < 30) { cursor.setMinutes(30, 0, 0); }
+      else { cursor.setHours(cursor.getHours() + 1, 0, 0, 0); }
+
+      while (slots.length < 20 && cursor < end) {
+        if (!isBlocked(cursor)) {
+          slots.push(new Date(cursor));
+        }
+        cursor = new Date(cursor.getTime() + 30 * 60000);
+        // Jump to next working day start if past end or not working
+        const curMin = cursor.getHours() * 60 + cursor.getMinutes();
+        if (curMin >= WORK_END_MIN) {
+          cursor.setDate(cursor.getDate() + 1);
+          cursor.setHours(Math.floor(WORK_START_MIN / 60), WORK_START_MIN % 60, 0, 0);
+        }
+      }
+      state.slots = slots;
+    }
+
+    function renderStep3() {
+      state.step = 3;
+      updateStepBar();
+      const fmtDate = d => d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+      const fmtTime = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      const slotsHtml = state.slots.length === 0
+        ? '<p style="color:var(--muted);text-align:center;padding:1.5rem 0">Nenhum horário disponível nos próximos dias. Entre em contato diretamente.</p>'
+        : state.slots.map((slot, i) => `
+          <div class="slot-item ${state.selectedSlot?.getTime() === slot.getTime() ? 'selected' : ''}" data-i="${i}">
+            <div class="slot-icon">🗓</div>
+            <div class="slot-info">
+              <div class="s-date">${fmtDate(slot)}</div>
+              <div class="s-time">${fmtTime(slot)}</div>
+            </div>
+          </div>`).join('');
+
+      document.getElementById('main').innerHTML = `
+        <div class="card">
+          <div class="section-title">🕐 Próximos horários disponíveis</div>
+          ${slotsHtml}
+          <button class="btn" id="btn-step3" disabled>Confirmar agendamento →</button>
+          <button class="btn outline" onclick="renderStep2()">← Voltar</button>
+        </div>`;
+
+      // Pre-select if only 1 slot
+      if (state.slots.length === 1) { state.selectedSlot = state.slots[0]; document.querySelector('.slot-item')?.classList.add('selected'); updateStep3Btn(); }
+
+      document.querySelectorAll('.slot-item').forEach(el => {
+        el.addEventListener('click', () => {
+          document.querySelectorAll('.slot-item').forEach(e => e.classList.remove('selected'));
+          el.classList.add('selected');
+          state.selectedSlot = state.slots[Number(el.dataset.i)];
+          updateStep3Btn();
+        });
+      });
+    }
+
+    function updateStep3Btn() {
+      const btn = document.getElementById('btn-step3');
+      if (btn) { btn.disabled = !state.selectedSlot; btn.onclick = goToStep4; }
+    }
+
+    /* ═══════════════════════════════════════
+       STEP 4 — Confirmação + PIX
+    ═══════════════════════════════════════ */
+    function goToStep4() { renderStep4(); }
+
+    function renderStep4() {
+      state.step = 4;
+      updateStepBar();
+
+      const selected = state.servicos.filter(s => state.selectedIds.has(s.id));
+      const total = selected.reduce((acc, s) => acc + Number(s.preco), 0);
+      const totalTaxa = selected.reduce((acc, s) => acc + (s.cobra_reserva ? Number(s.taxa_reserva) : 0), 0);
+      const precisaPix = totalTaxa > 0;
+      const chave = state.estab?.chave_pix;
+
+      const fmtDt = d => d.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+
+      const pixSection = precisaPix && chave ? `
+        <div class="pix-box" style="margin-top:1rem">
+          <div class="pix-title">💳 Taxa de Reserva — R$ ${totalTaxa.toFixed(2).replace('.', ',')}</div>
+          <p style="font-size:.82rem;color:var(--muted);margin-bottom:.75rem">
+            Realize o PIX abaixo para confirmar sua reserva. Após o pagamento, envie o comprovante para o Whatsapp do estabelecimento.
+          </p>
+          <div class="pix-value">
+            <span id="chave-pix-txt" style="word-break:break-all;flex:1;margin-right:.75rem">${chave}</span>
+            <button class="copy-btn" onclick="copyPix()">Copiar</button>
+          </div>
+        </div>` : '';
+
+      document.getElementById('main').innerHTML = `
+        <div class="card">
+          <div class="section-title">✅ Confirmar agendamento</div>
+          <div class="summary-row"><span class="label">Nome</span><span class="value">${state.clienteName}</span></div>
+          <div class="summary-row"><span class="label">Serviços</span><span class="value">${selected.map(s => s.nome).join(', ')}</span></div>
+          <div class="summary-row"><span class="label">Horário</span><span class="value">${fmtDt(state.selectedSlot)}</span></div>
+          <div class="summary-row"><span class="label">Total</span><span class="value" style="color:var(--primary)">R$ ${total.toFixed(2).replace('.', ',')}</span></div>
+          ${precisaPix ? `<div class="summary-row"><span class="label">Taxa reserva</span><span class="value" style="color:var(--yellow)">R$ ${totalTaxa.toFixed(2).replace('.', ',')} <span class="chip-tag">PIX</span></span></div>` : ''}
+          ${pixSection}
+          <button class="btn" id="btn-confirm">🎉 Confirmar agora</button>
+          <button class="btn outline" onclick="renderStep3()">← Voltar</button>
+        </div>`;
+
+      document.getElementById('btn-confirm').addEventListener('click', submitBooking);
+    }
+
+    async function submitBooking() {
+      const btn = document.getElementById('btn-confirm');
+      btn.disabled = true; btn.textContent = 'Enviando...';
+
+      const selected = state.servicos.filter(s => state.selectedIds.has(s.id));
+      const totalTaxa = selected.reduce((acc, s) => acc + (s.cobra_reserva ? Number(s.taxa_reserva) : 0), 0);
+      const precisaPix = totalTaxa > 0;
+
+      // Build payload with all required fields
+      const obj = {
+        estabelecimento_id: state.estabId,
+        cliente_nome: state.clienteName,
+        cliente_telefone: state.clientePhone || '',
+        servico_nome: selected.map(s => s.nome).join(' + '),
+        data_agendamento: state.selectedSlot.toISOString().split('T')[0],
+        hora_agendamento: `${state.selectedSlot.getHours().toString().padStart(2,'0')}:${state.selectedSlot.getMinutes().toString().padStart(2,'0')}`,
+        agendamento_status: precisaPix ? 'Pendente' : 'Confirmado',
+        pagamento_status: !precisaPix,
+        taxa_reserva: totalTaxa,
+        valor_total: total,
+      };
+
+      // servico_id — passa o primeiro serviço selecionado quando disponível
+      if (selected.length > 0 && selected[0].id) {
+        obj.servico_id = selected[0].id;
+      }
+
+      console.log('[agendamento] inserindo:', obj);
+      const { data, error } = await sb.from('agendamentos').insert(obj).select().single();
+
+      if (error) {
+        console.error('[agendamento] ERRO:', error);
+        btn.disabled = false; btn.textContent = '🎉 Confirmar agora';
+        alert('Erro ao agendar: ' + error.message + (error.details ? '\n' + error.details : ''));
+        return;
+      }
+
+      renderSuccess(precisaPix, data);
+    }
+
+    function renderSuccess(precisaPix, agendamento) {
+      const selected = state.servicos.filter(s => state.selectedIds.has(s.id));
+      const total = selected.reduce((acc, s) => acc + Number(s.preco), 0);
+      const fmtDt = d => d.toLocaleString('pt-BR', { weekday:'long', day:'2-digit', month:'long', hour:'2-digit', minute:'2-digit' });
+
+      // Hide steps bar
+      document.getElementById('steps-bar').style.display = 'none';
+
+      let successStr = `
+          <div class="success-icon">✓</div>
+          <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:.5rem">Agendamento confirmado!</h2>
+          <p style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem">
+            Te esperamos, ${state.clienteName}! 🙌
+          </p>`;
+
+      if (precisaPix) {
+        successStr = `
+          <div class="success-icon" style="background:var(--yellow);box-shadow:0 0 32px rgba(245,158,11,.4);">⏳</div>
+          <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:.5rem">Aguardando Pagamento</h2>
+          <p style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem">
+            Sua reserva está pendente. Envie o comprovante do PIX para o Whatsapp do estabelecimento para confirmar.
+          </p>`;
+        
+        // Polling para checar se o estabelecimento confirmou
+        if (agendamento && agendamento.id) {
+          setInterval(async () => {
+             const { data } = await sb.from('agendamentos').select('status').eq('id', agendamento.id).single();
+             if (data && data.status === 'confirmado') {
+                location.reload(); // Recarrega ou pode mostrar mensagem de sucesso
+             }
+          }, 5000);
+        }
+      }
+
+      document.getElementById('main').innerHTML = `
+        <div class="card" style="text-align:center">
+          ${successStr}
+          <div style="text-align:left; width: 100%">
+            <div class="summary-row"><span class="label">Serviços</span><span class="value">${selected.map(s=>s.nome).join(', ')}</span></div>
+            <div class="summary-row"><span class="label">Quando</span><span class="value">${fmtDt(state.selectedSlot)}</span></div>
+            <div class="summary-row"><span class="label">Total</span><span class="value" style="color:var(--primary)">R$ ${total.toFixed(2).replace('.', ',')}</span></div>
+          </div>
+          <p style="color:var(--muted);font-size:.8rem;margin-top:1.25rem">
+            Caso precise cancelar, entre em contato diretamente com o estabelecimento.
+          </p>
+          <button class="btn outline" style="margin-top:1rem" onclick="location.reload()">Novo agendamento</button>
+        </div>`;
+    }
+
+    function copyPix() {
+      const chave = document.getElementById('chave-pix-txt')?.textContent;
+      if (!chave) return;
+      navigator.clipboard.writeText(chave).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        if (btn) { btn.textContent = 'Copiado!'; setTimeout(() => btn.textContent = 'Copiar', 2000); }
+      });
+    }
+  </script>
+</body>
+</html>

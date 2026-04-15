@@ -1,6 +1,37 @@
 import './style.css'
 import { supabase } from './supabase.js'
 
+function formatPhone(value) {
+  if (!value) return ""
+  value = value.replace(/\D/g, '')
+  value = value.slice(0, 11)
+  if (value.length > 10) {
+    return value.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
+  } else if (value.length > 6) {
+    return value.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3")
+  } else if (value.length > 2) {
+    return value.replace(/(\d{2})(\d{0,5})/, "($1) $2")
+  } else if (value.length > 0) {
+    return value.replace(/(\d{0,2})/, "($1")
+  }
+  return value
+}
+
+function hasTimePassed(slotTime, selectedDate) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const selDateOnly = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate());
+  
+  if (selDateOnly < today) return true;
+  if (selDateOnly > today) return false;
+  
+  const [h, m] = slotTime.split(':').map(Number);
+  const slotDate = new Date();
+  slotDate.setHours(h, m, 0, 0);
+  
+  return now > slotDate;
+}
+
 // ---- Mercado Pago OAuth callback handler ----
 // Runs on every page load, detects the ?code= redirect from MP
 async function handleMpCallback() {
@@ -129,6 +160,7 @@ let appState = {
   showModal: null,
   activeAgendaItem: null,
   agendaData: {},
+  excecoesDia: [], // pauses / blocks for current day from excecoes_agenda table
   pixModal: null, // { qr_code, qr_code_b64, ticket_url, valor, agendamento_id }
   pendingAgendamento: null, // temp storage while waiting for MP token setup
   financasData: {
@@ -143,6 +175,7 @@ let appState = {
   },
   servicosAtivos: [],
   servicosLoaded: false,
+  agendaLoaded: false,
   editingServicoId: null,
   editingServicoForm: {},
   deletingServicoId: null,
@@ -155,6 +188,7 @@ let appState = {
     reservaValue: ''
   },
 }
+window.appState = appState;
 
 function getAgendaDayKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
@@ -211,6 +245,55 @@ function render() {
 
   window.scrollTo(0, 0)
 
+  // Auto-fetch agenda
+  if (appState.screen === 'agenda' && !appState.agendaLoaded && appState.user) {
+    appState.agendaLoaded = true; // prevent loop
+
+    // 1) Load profile schedule settings (dias, horarios, pausas)
+    supabase.from('estabelecimentos')
+      .select('dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao')
+      .eq('id', appState.user.id).single()
+      .then(({ data: prof }) => {
+        if (prof) {
+          appState.profile = { ...(appState.profile || {}), ...prof };
+          // If not configured yet → open setup modal
+          if (!prof.dias_funcionamento || prof.dias_funcionamento.length === 0) {
+            appState.showModal = 'horario-funcionamento';
+            render();
+          }
+        }
+      });
+
+    // 2) Load booked appointments only (no "livre" slots)
+    supabase.from('agendamentos').select('*').eq('estabelecimento_id', appState.user.id).neq('agendamento_status', 'Concluído')
+      .order('hora_agendamento', { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data) {
+          appState.agendaData = {};
+          data.forEach(dbItem => {
+            const dayKey = dbItem.data_agendamento;
+            if (!appState.agendaData[dayKey]) appState.agendaData[dayKey] = [];
+            appState.agendaData[dayKey].push({
+              id: dbItem.id,
+              time: dbItem.hora_agendamento?.slice(0, 5),
+              client: dbItem.cliente_nome || 'Cliente',
+              service: dbItem.servico_nome,
+              status: (dbItem.agendamento_status || 'Pendente').toLowerCase(),
+              valor_total: dbItem.valor_total
+            });
+          });
+          render();
+        }
+      });
+
+    // 3) Load today's exceptions (pauses / closed)
+    const todayKey = getAgendaDayKey(new Date());
+    supabase.from('excecoes_agenda').select('*')
+      .eq('estabelecimento_id', appState.user.id)
+      .eq('data_excecao', todayKey)
+      .then(({ data }) => { if (data) { appState.excecoesDia = data; render(); } });
+  }
+
   // Auto-fetch servicos
   if (appState.screen === 'servicos' && !appState.servicosLoaded && appState.user) {
     supabase.from('servicos').select('*').eq('estabelecimento_id', appState.user.id).order('created_at', { ascending: false })
@@ -258,6 +341,35 @@ function render() {
       break
   }
 
+  if (appState.showModal === 'confirm-logout') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#fee2e2; color:#dc2626; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">🚪</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">SAIR DA CONTA?</h2>
+        <p style="color:var(--text-secondary); margin-bottom:2rem; line-height:1.5;">Deseja realmente sair da sua conta?</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-do-logout" style="width:100%; padding:1.1rem; border-radius:1rem; background:#dc2626; color:white; font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">SIM, SAIR</button>
+          <button id="btn-cancel-logout" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">CANCELAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(modalOverlay)
+
+    document.getElementById('btn-cancel-logout').addEventListener('click', () => {
+      appState.showModal = null
+      render()
+    })
+    document.getElementById('btn-do-logout').addEventListener('click', async () => {
+      await supabase.auth.signOut()
+      appState.user = null
+      appState.screen = 'login'
+      appState.showModal = null
+      render()
+    })
+  }
+
   if (appState.showModal === 'new-agendamento') {
     const modalOverlay = document.createElement('div')
     modalOverlay.className = 'overlay'
@@ -289,6 +401,30 @@ function render() {
     root.appendChild(modalOverlay)
     attachQuickBookEvents()
   }
+  if (appState.showModal === 'horario-funcionamento') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = renderHorarioFuncionamentoModal()
+    root.appendChild(modalOverlay)
+    attachHorarioFuncionamentoEvents()
+  }
+
+  if (appState.showModal === 'fazer-pausa') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = renderFazPausaModal()
+    root.appendChild(modalOverlay)
+    attachFazPausaEvents()
+  }
+
+  if (appState.showModal === 'gerenciar-pausa') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = renderGerenciarPausaModal()
+    root.appendChild(modalOverlay)
+    attachGerenciarPausaEvents()
+  }
+
   if (appState.showModal === 'print-options') {
     const modalOverlay = document.createElement('div')
     modalOverlay.className = 'overlay'
@@ -365,12 +501,190 @@ function render() {
       render()
     })
   }
+  if (appState.showModal === 'confirm-delete-trans') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:380px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#fee2e2; color:#dc2626; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">🗑️</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.3rem; font-weight:900; margin-bottom:1rem;">EXCLUIR TRANSAÇÃO?</h2>
+        <p style="color:var(--text-secondary); margin-bottom:2rem; line-height:1.5;">Deseja realmente excluir esta transação? Esta ação não pode ser desfeita.</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-do-delete-trans" style="width:100%; padding:1.1rem; border-radius:1rem; background:#dc2626; color:white; font-weight:900; letter-spacing:1px; border:none; cursor:pointer;">SIM, EXCLUIR</button>
+          <button id="btn-cancel-delete-trans" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:1px; border:none; cursor:pointer;">CANCELAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(modalOverlay)
+    
+    document.getElementById('btn-cancel-delete-trans').addEventListener('click', () => {
+      appState.showModal = null
+      render()
+    })
+    document.getElementById('btn-do-delete-trans').addEventListener('click', async () => {
+      const dbId = appState.financasData.pendingDeleteId
+      const idx = appState.financasData.pendingDeleteIdx
+      
+      const { error } = await supabase.from('transacoes_financeiras').delete().eq('id', dbId)
+      if (error) { alert('Erro ao excluir: ' + error.message) }
+      else {
+        appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
+      }
+      appState.showModal = null
+      render()
+    })
+  }
+
+  if (appState.showModal === 'confirm-reverse-trans') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#e0e7ff; color:#4338ca; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">🔄</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">ESTORNAR TRANSAÇÃO?</h2>
+        <p style="color:var(--text-secondary); margin-bottom:2rem; line-height:1.5;">Esta ação removerá o valor do caixa e o <strong>agendamento voltará a ficar Pendente</strong> no dia original da reserva.</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-do-reverse-trans" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--primary); color:white; font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">SIM, ESTORNAR</button>
+          <button id="btn-cancel-reverse-trans" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">CANCELAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(modalOverlay)
+    
+    document.getElementById('btn-cancel-reverse-trans').addEventListener('click', () => {
+      appState.showModal = null
+      render()
+    })
+    document.getElementById('btn-do-reverse-trans').addEventListener('click', async () => {
+      const dbId = appState.financasData.pendingReverseDbId
+      const agendaId = appState.financasData.pendingReverseAgendaId
+      
+      const { error: agError } = await supabase.from('agendamentos').update({ 
+        agendamento_status: 'Pendente',
+        pagamento_status: false 
+      }).eq('id', agendaId)
+      
+      if (agError) { alert('Erro ao estornar: ' + agError.message); return }
+
+      const { error: trError } = await supabase.from('transacoes_financeiras').delete().eq('id', dbId)
+      if (!trError) {
+        appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
+        appState.agendaLoaded = false
+        appState.agendaData = {}
+        appState.showModal = null
+        render()
+      } else {
+        alert('Erro ao excluir transação: ' + trError.message)
+      }
+    })
+  }
+
+  if (appState.showModal === 'confirm-reverse-fixed') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#e0e7ff; color:#4338ca; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">🔄</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">ESTORNAR PAGAMENTO?</h2>
+        <p style="color:var(--text-secondary); margin-bottom:2rem; line-height:1.5;">Esta ação removerá o pagamento e o lançamento voltará a ficar como <strong>'Pagar Agora'</strong> para a competência selecionada.</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-do-reverse-fixed" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--primary); color:white; font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">SIM, ESTORNAR</button>
+          <button id="btn-cancel-reverse-fixed" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">CANCELAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(modalOverlay)
+    
+    document.getElementById('btn-cancel-reverse-fixed').addEventListener('click', () => {
+      appState.showModal = null
+      render()
+    })
+    document.getElementById('btn-do-reverse-fixed').addEventListener('click', async () => {
+      const dbId = appState.financasData.pendingReverseFixedId
+      const { error: trError } = await supabase.from('transacoes_financeiras').delete().eq('id', dbId)
+      if (!trError) {
+        appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
+        appState.showModal = null
+        render()
+      } else {
+        alert('Erro ao estornar pagamento: ' + trError.message)
+      }
+    })
+  }
+
+  if (appState.showModal === 'confirm-delete-all-fixed') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#fee2e2; color:#dc2626; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">🗑️</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">EXCLUIR DESPESA FIXA?</h2>
+        <p style="color:var(--text-secondary); margin-bottom:2rem; line-height:1.5;">Esta ação excluirá a conta fixa <strong>"${appState.financasData.pendingDeleteAllFixedDesc}"</strong> do mês atual e de todos os meses seguintes. (O histórico de pagamentos passados será mantido).</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-do-delete-all-fixed" style="width:100%; padding:1.1rem; border-radius:1rem; background:#dc2626; color:white; font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">SIM, EXCLUIR CONTA</button>
+          <button id="btn-cancel-delete-all-fixed" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">CANCELAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(modalOverlay)
+    
+    document.getElementById('btn-cancel-delete-all-fixed').addEventListener('click', () => {
+      appState.showModal = null
+      render()
+    })
+    document.getElementById('btn-do-delete-all-fixed').addEventListener('click', async () => {
+      const desc = appState.financasData.pendingDeleteAllFixedDesc
+      const limitDate = `${appState.financasData.year}-${String(appState.financasData.month + 1).padStart(2,'0')}-01`
+      
+      // Delete specific month payments (including advance ones with [REF:..]) from this month forward
+      const { error: trError } = await supabase.from('transacoes_financeiras').delete().eq('categoria', 'Fixo').like('descricao', `${desc}%`).gte('data_transacao', limitDate)
+      // Delete templates
+      const { error: trErrorTpl } = await supabase.from('transacoes_financeiras').delete().eq('descricao', `${desc} [TEMPLATE]`)
+
+      if (!trError && !trErrorTpl) {
+        appState.financasData.transactions = appState.financasData.transactions.filter(t => {
+          if (t.isTemplate && t.desc === desc) return false;
+          // Keep if it's an old real transaction
+          if (t.cat === 'Fixo' && t.desc === desc) {
+            const d = t.fullDate ? new Date(t.fullDate + 'T12:00:00') : null
+            return d && d < new Date(limitDate + 'T12:00:00')
+          }
+          return true;
+        })
+        appState.showModal = null
+        render()
+      } else {
+        alert('Erro ao excluir despesa fixa: ' + (trError?.message || trErrorTpl?.message))
+      }
+    })
+  }
+
+
+  if (appState.showModal === 'confirm-cancel') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:390px;width:92%;padding:2rem;border-radius:1.5rem;text-align:center;">
+        <button id="btn-close-cancel-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
+        <div style="width:70px;height:70px;background:#fee2e2;color:#dc2626;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;font-size:2rem;font-weight:900;">!</div>
+        <h2 style="font-family:var(--font-alt);font-size:1.3rem;font-weight:900;line-height:1.2;margin-bottom:1rem;">CANCELAR AGENDAMENTO</h2>
+        <p style="font-size:0.95rem;color:var(--text-secondary);margin-bottom:2rem;line-height:1.5;">Deseja realmente cancelar o agendamento de <strong>${appState.activeAgendaItem?.client}</strong>?</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-confirm-cancel-final" style="width:100%;padding:1.1rem;border-radius:1rem;background:#dc2626;color:white;font-weight:900;font-size:0.88rem;letter-spacing:1.5px;border:none;cursor:pointer;">SIM, CANCELAR</button>
+          <button id="btn-close-cancel" style="width:100%;padding:1.1rem;border-radius:1rem;background:var(--surface-hover);color:var(--text-main);font-weight:900;font-size:0.88rem;letter-spacing:1.5px;border:none;cursor:pointer;">NÃO, VOLTAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(modalOverlay)
+    attachConfirmCancelEvents()
+  }
 
   if (appState.showModal === 'mercadopago') {
     const modalOverlay = document.createElement('div')
     modalOverlay.className = 'overlay'
     modalOverlay.innerHTML = `
       <div class="card animate-fade-in" style="max-width: 480px; width: 95%; padding: 2.5rem; text-align: left; border-radius: 24px; max-height: 90vh; overflow-y: auto;">
+        <button id="btn-close-mp-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
         <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem;">
           <div style="display:flex; align-items:center; gap:1rem;">
             <div style="width:48px; height:48px; background:linear-gradient(135deg,#009ee3,#0077b6); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
@@ -381,7 +695,6 @@ function render() {
               <p style="font-size:0.8rem; color:var(--text-secondary); margin:0; line-height:1.4;">Configure uma única vez para receber as taxas de reserva direto na sua conta.</p>
             </div>
           </div>
-          <button id="btn-close-mp-x" style="background:none; border:none; color:var(--text-secondary); cursor:pointer; font-size:1.2rem; padding:0.2rem;">✕</button>
         </div>
 
         <div style="background:rgba(0,158,227,0.08); border:1.5px solid #009ee3; border-radius:16px; padding:1.2rem; margin-bottom:1.5rem;">
@@ -717,47 +1030,159 @@ function renderDashboard() {
 
 function renderAgenda() {
   const dayKey = getAgendaDayKey(appState.selectedDate)
-  if (!appState.agendaData[dayKey]) {
-    appState.agendaData[dayKey] = getInitialDayData()
+  const profile = appState.profile || {}
+  const diasFuncionamento = profile.dias_funcionamento
+  const isConfigured = diasFuncionamento && diasFuncionamento.length > 0
+  const todayDow = appState.selectedDate.getDay() // 0=Dom..6=Sáb
+  const isDayOff = isConfigured && !diasFuncionamento.includes(todayDow)
+
+  // Only booked items (no "livre" slots)
+  const dayItems = appState.agendaData[dayKey] || []
+
+  // Check for day-closing exception
+  const fechadoHoje = appState.excecoesDia.some(e => e.tipo === 'fechado_dia_todo')
+
+  let bodyContent
+  if (isDayOff || fechadoHoje) {
+    bodyContent = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:5rem 2rem;">
+        <span style="font-size:3rem;opacity:0.4;">🔒</span>
+        <p style="font-weight:700;font-size:1rem;text-align:center;color:var(--text-secondary);opacity:0.5;">Estabelecimento fechado hoje....</p>
+      </div>`
+  } else if (dayItems.length === 0) {
+    const dayNum = appState.selectedDate.getDate()
+    bodyContent = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;padding:5rem 2rem;">
+        <svg width="64" height="72" viewBox="0 0 64 72" fill="none" xmlns="http://www.w3.org/2000/svg" style="opacity:0.35;">
+          <rect x="2" y="10" width="60" height="60" rx="7" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="2"/>
+          <rect x="2" y="10" width="60" height="20" rx="7" fill="#f87171"/>
+          <rect x="2" y="22" width="60" height="8" fill="#f87171"/>
+          <rect x="14" y="2" width="8" height="16" rx="4" fill="#94a3b8"/>
+          <rect x="42" y="2" width="8" height="16" rx="4" fill="#94a3b8"/>
+          <text x="32" y="60" text-anchor="middle" font-family="system-ui,sans-serif" font-size="26" font-weight="900" fill="#64748b">${dayNum}</text>
+        </svg>
+        <p style="font-weight:700;font-size:1rem;text-align:center;color:var(--text-secondary);opacity:0.5;">Ainda não existe um serviço agendado para hoje...</p>
+      </div>`
+  } else {
+    bodyContent = dayItems.map((item, index) => {
+      const isPendente = item.status === 'pendente'
+      const valorDisplay = item.valor_total || item.valorTotal ? `R$ ${parseFloat(item.valor_total || item.valorTotal).toFixed(2).replace('.', ',')}` : '---'
+
+      // Red border = ANY appointment whose time has already passed (regardless of status)
+      const isOverdue = hasTimePassed(item.time, appState.selectedDate)
+
+      let cardStyle
+      if (isOverdue && isPendente) {
+        // Overdue + pending: red border, full opacity (urgent!)
+        cardStyle = 'background:rgba(255,241,242,0.9); border: 2.5px solid #ef4444; opacity:1;'
+      } else if (isPendente) {
+        // Pending but not yet overdue: dashed, faded
+        cardStyle = 'background:rgba(255,255,255,0.5); border: 1.5px dashed #cbd5e1; opacity:0.5;'
+      } else if (isOverdue) {
+        // Confirmed but time passed: orange-red border to signal needs conclude/cancel
+        cardStyle = 'background:#fff; border: 2px solid #f97316; opacity:1;'
+      } else {
+        cardStyle = 'background:#ffffff; border: 1px solid var(--border);'
+      }
+
+      return `
+        <div class="agenda-item card ripple" data-index="${index}" style="cursor:pointer; padding:0; align-items:stretch; overflow:hidden; display:flex; flex-direction:column; border-radius:18px; ${cardStyle}">
+          <!-- Header: Time | Price -->
+          <div style="display:flex; border-bottom: 1px solid var(--border); background:rgba(0,0,0,0.01);">
+            <div style="flex:1; padding:12px; text-align:center; border-right:1px solid var(--border); font-weight:800; font-size:1.1rem; color:var(--text-main); display:flex; align-items:center; justify-content:center; gap:6px;">
+              <span>🕒</span> ${item.time}
+            </div>
+            <div style="flex:1; padding:12px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--text-main);">${valorDisplay}</div>
+          </div>
+
+          <!-- Body: Name & Services -->
+          <div style="padding: 0.4rem 1rem 0.75rem 1rem; display:flex; flex-direction:column; gap:0.6rem; text-align:center;">
+            <h4 style="font-family:var(--font-body); font-weight:800; font-size:1.15rem; color:var(--text-main); margin:0; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding: 0 5px;">
+              ${item.client}
+            </h4>
+            ${item.service ? `
+              <p style="color:var(--text-secondary); font-size:0.85rem; font-weight:600; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.4; opacity:0.8;">
+                ${item.service}
+              </p>` : ''}
+          </div>
+
+          <!-- Footer: overdue warning OR pending confirm -->
+          ${(isOverdue && isPendente) ? `
+            <div class="card-footer-pendente" data-id="${item.id}" style="border-top:1.5px solid #fca5a5; padding:10px 12px; background:rgba(239,68,68,0.08); display:flex; justify-content:center; align-items:center; cursor:pointer; transition: all 0.2s; position:relative;">
+              <span style="color:#dc2626; font-size:0.75rem; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">⚠️ Pendente — Confirme ou Cancele</span>
+              <style>.card-footer-pendente:active { transform: scale(0.98); }</style>
+            </div>
+          ` : isOverdue ? `
+            <div style="border-top:1.5px solid #fed7aa; padding:10px 12px; background:rgba(249,115,22,0.07); display:flex; justify-content:center; align-items:center;">
+              <span style="color:#ea580c; font-size:0.75rem; font-weight:900; letter-spacing:0.5px; text-transform:uppercase;">⏰ Dar Baixa — Concluído ou Cancelado</span>
+            </div>
+          ` : isPendente ? `
+            <div class="card-footer-pendente" data-id="${item.id}" style="border-top:1px solid #cbd5e1; padding:12px; background:rgba(203,213,225,0.1); display:flex; justify-content:center; align-items:center; cursor:pointer; transition: all 0.2s; position:relative;">
+              <span class="btn-confirm-txt" style="color:#64748b; font-size:0.8rem; font-weight:800; letter-spacing:0.5px; text-transform:uppercase;">Confirme o pagamento</span>
+              ${item.id ? `
+                <div style="display:flex; gap:0.4rem; position:absolute; right:12px;">
+                  <button class="btn-ag-accept ripple" data-id="${item.id}" style="background:#10b981; color:white; width:28px; height:28px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">✓</button>
+                  <button class="btn-ag-reject ripple" data-id="${item.id}" style="background:#ef4444; color:white; width:28px; height:28px; border-radius:50%; border:none; display:flex; align-items:center; justify-content:center; font-size:0.8rem;">X</button>
+                </div>
+              ` : ''}
+              <style>.card-footer-pendente:active { transform: scale(0.98); background: rgba(203,213,225,0.3); }</style>
+            </div>
+          ` : ''}
+        </div>`
+    }).join('')
   }
-  const currentDayData = appState.agendaData[dayKey]
+
+  // Pausa ativa hoje (badge)
+  const now = new Date()
+  const curTime = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+  const pausaAtivaRaw = appState.excecoesDia.find(e => e.tipo === 'pausa')
+  const pausaAtiva = (pausaAtivaRaw && pausaAtivaRaw.fim?.slice(0,5) > curTime) ? pausaAtivaRaw : null
+
+  const encerradoHoje = appState.excecoesDia.find(e => e.tipo === 'fechado_resto_do_dia')
+  const pausaBadge = pausaAtiva
+    ? `<button id="btn-gerenciar-pausa" style="font-size:0.7rem;font-weight:700;background:rgba(251,191,36,0.15);color:#b45309;border-radius:999px;padding:3px 12px;margin-left:0.75rem;border:none;cursor:pointer;">☕ PAUSA ${pausaAtiva.inicio?.slice(0,5)}–${pausaAtiva.fim?.slice(0,5)}</button>`
+    : encerradoHoje
+    ? `<button id="btn-gerenciar-pausa" style="font-size:0.7rem;font-weight:700;background:rgba(239,68,68,0.1);color:var(--red);border-radius:999px;padding:3px 12px;margin-left:0.75rem;border:none;cursor:pointer;">🔒 DIA ENCERRADO</button>`
+    : ''
 
   return renderTabHeader(formatDate(appState.selectedDate), `
-    <div class="agenda-content p-lg animate-fade-in" style="max-width: 50rem; margin: 0 auto; padding: 1.25rem;">
-      <div class="flex justify-between items-center" style="margin-bottom: 2rem;">
-        <h2 style="font-family: var(--font-alt); font-size: 1.1rem; font-weight: 800; letter-spacing: 1px; color: var(--text-secondary);">PROGRAMAÇÃO DO DIA</h2>
+    <div id="ptr-container" style="overflow-y:auto;height:calc(100vh - 120px);">
+    <div class="agenda-content p-lg animate-fade-in" style="max-width:50rem;margin:0 auto;padding:1.25rem;">
+
+      <!-- Pull-to-refresh indicator -->
+      <div id="ptr-indicator" style="display:none;flex-direction:column;align-items:center;gap:0.5rem;padding:1rem 0 0.5rem;">
+        <div id="ptr-spinner" style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:none;"></div>
+        <span style="font-size:0.75rem;color:var(--text-secondary);font-weight:700;">↓ Solte para atualizar</span>
       </div>
 
-      <div class="agenda-list flex flex-col gap-md" style="padding-bottom: 8rem;">
-        ${currentDayData.map((item, index) => {
-    const isLivre = item.status === 'livre';
-    return `
-          <div class="agenda-item card ripple" data-index="${index}" style="cursor: pointer; flex-direction: row; padding: 1.25rem; align-items: center; text-align: left; ${isLivre ? 'opacity: 0.6; background: rgba(var(--primary-rgb), 0.02); border-style: dashed;' : ''}">
-            <!-- Time Section -->
-            <div class="flex items-center gap-md w-full">
-              <span style="font-weight: 900; font-size: 1.25rem; color: var(--primary); width: 5rem;">${item.time}</span>
-              <div style="height: 3rem; width: 1px; background: var(--border);"></div>
-              
-              <!-- Content Section -->
-              <div class="flex flex-col justify-center" style="margin-left: 1rem;">
-                <h4 style="font-family: var(--font-body); font-weight: 700; font-size: 1.1rem; margin: 0; color: var(--text-main); line-height: 1.2;">
-                  ${item.client}
-                </h4>
-                ${item.service ? `
-                  <p style="color: var(--text-secondary); font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 0.25rem;">
-                    ${item.service}
-                  </p>
-                ` : ''}
-              </div>
-            </div>
-          </div>
-          `}).join('')}
+      <div class="flex justify-between items-center" style="margin-bottom:2rem;">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.25rem;">
+          <h2 style="font-family:var(--font-alt);font-size:1.1rem;font-weight:800;letter-spacing:1px;color:var(--text-secondary);">PROGRAMAÇÃO DO DIA</h2>
+          ${pausaBadge}
+        </div>
+        <button id="btn-edit-horario" title="Editar horário de funcionamento" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:0.25rem;display:flex;align-items:center;">
+          ${icons.edit}
+        </button>
+      </div>
+
+      <div class="agenda-list flex flex-col gap-md" style="padding-bottom:10rem;">
+        ${bodyContent}
       </div>
 
     </div>
-    <button id="btn-open-agenda-modal" class="fab ripple" style="position: fixed; bottom: 2rem; right: 2rem; padding: 0 1.5rem; height: 3.5rem; background: var(--primary); color: var(--on-primary); border-radius: 2rem; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-lg); z-index: 9999; gap: 0.5rem;">
-      ${icons.plus} <span style="font-weight: 800; font-size: 0.85rem; letter-spacing: 1px;">ADICIONAR HORÁRIO</span>
+    </div>
+
+    <!-- FABs: only when no modal is open -->
+    ${!appState.showModal ? `
+    ${ (!isDayOff && !fechadoHoje && !encerradoHoje) ? `
+    <button id="btn-fazer-pausa" class="fab ripple" style="position:fixed;bottom:4.75rem;right:1.5rem;padding:0 0.9rem;height:2rem;background:var(--surface);color:var(--text-main);border-radius:2rem;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-lg);z-index:9999;gap:0.4rem;border:2.5px solid var(--primary);">
+      <span style="font-weight:800;font-size:0.7rem;letter-spacing:0.5px;">☕ FAZER PAUSA</span>
+    </button>` : ''}
+
+    <button id="btn-open-agenda-modal" class="fab ripple" style="position:fixed;bottom:1.5rem;right:1.5rem;padding:0 1rem;height:2.5rem;background:var(--primary);color:var(--on-primary);border-radius:2rem;display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow-lg);z-index:9999;gap:0.4rem;">
+      ${icons.plus} <span style="font-weight:800;font-size:0.75rem;letter-spacing:1px;">AGENDAR MANUALMENTE</span>
     </button>
+    ` : ''}
   `)
 }
 
@@ -765,14 +1190,15 @@ function renderAgendaActionsModal() {
   const item = appState.activeAgendaItem
   return `
     <div class="card animate-fade-in" style="max-width: 400px; width: 90%; padding: 32px; border-radius: 24px;">
+      <button id="btn-close-actions-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
       <h3 style="margin-bottom: 10px; font-family: var(--font-alt); color: var(--primary);">${item.client}</h3>
       <p style="color: var(--text-secondary); margin-bottom: 30px; font-weight: 600;">${item.time} - ${item.service}</p>
       
       <div class="flex flex-col gap-md w-full">
-        ${item.status === 'aguardando_pagamento' ? `
-          <button id="btn-confirm-payment" style="background: var(--primary); color: var(--on-primary); padding: 18px; border-radius: 12px; font-weight: 800; width: 100%;">COMPROVANTE RECEBIDO (CONFIRMAR)</button>
+        ${item.status === 'pendente' ? `
+          <button id="btn-confirm-payment" style="background:#10b981; color:white; padding:18px; border-radius:12px; font-weight:900; width:100%; box-shadow:0 4px 15px rgba(16,185,129,0.3); border:none; cursor:pointer;">COMPROVANTE RECEBIDO (CONFIRMAR)</button>
         ` : ''}
-        ${item.status !== 'aguardando_pagamento' ? `
+        ${item.status !== 'pendente' ? `
           <button id="btn-conclude-service" style="background: #16a34a; color: white; padding: 18px; border-radius: 12px; font-weight: 800; width: 100%;">SERVIÇO CONCLUÍDO</button>
         ` : ''}
         <button id="btn-cancel-service" style="background: #dc2626; color: white; padding: 18px; border-radius: 12px; font-weight: 800; width: 100%;">CANCELAR SERVIÇO</button>
@@ -780,6 +1206,109 @@ function renderAgendaActionsModal() {
       </div>
     </div>
   `
+}
+
+// ─── Popup: Horário de funcionamento (setup/edit) ─────────────────────────────
+function renderHorarioFuncionamentoModal() {
+  const profile = appState.profile || {}
+  const dias = Array.isArray(profile.dias_funcionamento) ? profile.dias_funcionamento : []
+  const abertura = profile.horario_abertura || '09:00'
+  const fechamento = profile.horario_fechamento || '18:00'
+  const pausas = Array.isArray(profile.pausas_padrao) ? profile.pausas_padrao : []
+  const isEdit = dias.length > 0
+
+  const diasSemana = [
+    { label: 'DOM', val: 0 }, { label: 'SEG', val: 1 },
+    { label: 'TER', val: 2 }, { label: 'QUA', val: 3 },
+    { label: 'QUI', val: 4 }, { label: 'SEX', val: 5 },
+    { label: 'SÁB', val: 6 },
+  ]
+
+  const lbl = `font-size:0.7rem;font-weight:800;letter-spacing:1.5px;color:var(--text-secondary);margin-bottom:0.6rem;display:block;`
+  const input = `width:100%;padding:0.8rem;border-radius:0.75rem;border:1.5px solid var(--border);background:var(--surface);color:var(--text-main);font-family:inherit;font-size:1rem;`
+  const pausaRow = (p, i) => `
+    <div class="pausa-row" data-idx="${i}" style="display:flex;gap:0.6rem;align-items:center;margin-bottom:0.5rem;">
+      <input type="time" class="pausa-inicio" value="${p.inicio||''}" style="flex:1;${input}">
+      <span style="color:var(--text-secondary);font-weight:700;font-size:0.85rem;">até</span>
+      <input type="time" class="pausa-fim" value="${p.fim||''}" style="flex:1;${input}">
+      <button class="btn-remove-pausa" style="background:none;border:none;color:var(--red);font-size:1.2rem;cursor:pointer;padding:0.25rem;flex-shrink:0;">✕</button>
+    </div>`
+
+  return `
+    <div class="card animate-fade-in custom-scroll" style="max-width:440px;width:92%;padding:2rem;border-radius:1.5rem;max-height:90vh;overflow-y:auto;">
+      <button id="btn-close-horario-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem;">
+        <h2 style="font-family:var(--font-alt);font-size:1.3rem;font-weight:900;line-height:1.2;">
+          ${isEdit ? 'EDITAR' : 'CONFIGURE O'}<br>HORÁRIO DE<br>FUNCIONAMENTO
+        </h2>
+      </div>
+
+      <span style="${lbl}">DIAS DE FUNCIONAMENTO</span>
+      <div style="display:flex;gap:0.4rem;flex-wrap:wrap;margin-bottom:1.5rem;">
+        ${diasSemana.map(d => {
+          const sel = dias.includes(d.val)
+          return `<button class="dia-btn${sel?' dia-sel':''}" data-dia="${d.val}"
+            style="padding:0.45rem 0.8rem;border-radius:0.75rem;border:1.5px solid ${sel?'var(--primary)':'var(--border)'};background:${sel?'var(--primary)':'transparent'};color:${sel?'var(--on-primary)':'var(--text-main)'};font-weight:800;font-size:0.75rem;cursor:pointer;transition:all 0.18s;">${d.label}</button>`
+        }).join('')}
+      </div>
+
+      <span style="${lbl}">HORÁRIO DE FUNCIONAMENTO</span>
+      <div style="display:flex;gap:0.75rem;margin-bottom:1.5rem;align-items:flex-end;">
+        <div style="flex:1;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">Abertura</label>
+          <input type="time" id="horario-abertura" value="${abertura}" style="${input}">
+        </div>
+        <span style="color:var(--text-secondary);font-weight:700;padding-bottom:0.85rem;">–</span>
+        <div style="flex:1;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">Fechamento</label>
+          <input type="time" id="horario-fechamento" value="${fechamento}" style="${input}">
+        </div>
+      </div>
+
+      <button id="btn-add-pausa-padrao" style="display:block;width:100%;text-align:left;font-size:0.85rem;font-weight:800;color:var(--primary);background:none;border:none;cursor:pointer;padding:0.3rem 0;margin-bottom:0.6rem;">+ Adicionar Intervalo no expediente</button>
+      <div id="pausas-padrao-list">
+        ${pausas.length > 0
+          ? pausas.map((p,i) => pausaRow(p,i)).join('')
+          : `<p id="pausas-empty" style="font-size:0.8rem;color:var(--text-secondary);padding:0.4rem 0 0.6rem;">Nenhum intervalo configurado.</p>`
+        }
+      </div>
+
+      <button id="btn-save-horario" style="width:100%;padding:1.1rem;border-radius:1rem;background:var(--primary);color:var(--on-primary);font-weight:900;font-size:0.88rem;letter-spacing:1.5px;border:none;cursor:pointer;margin-top:1.25rem;">SALVAR CONFIGURAÇÃO</button>
+    </div>`
+}
+
+// ─── Popup: Fazer Pausa ───────────────────────────────────────────────────────
+function renderFazPausaModal() {
+  const now = new Date()
+  const cur = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`
+  const inp = `width:100%;padding:0.8rem;border-radius:0.75rem;border:1.5px solid var(--border);background:var(--surface);color:var(--text-main);font-family:inherit;font-size:1rem;`
+  return `
+    <div class="card animate-fade-in" style="max-width:390px;width:92%;padding:2rem;border-radius:1.5rem;">
+      <button id="btn-close-pausa-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;">
+        <h2 style="font-family:var(--font-alt);font-size:1.3rem;font-weight:900;line-height:1.2;">FAZER PAUSA</h2>
+      </div>
+      <p style="font-size:0.85rem;color:var(--text-secondary);font-weight:600;margin-bottom:1.25rem;line-height:1.5;">
+        Selecione o horário de início e fim da pausa de <strong>hoje</strong>. Agendamentos não serão aceitos neste intervalo.
+      </p>
+      <span style="font-size:0.7rem;font-weight:800;letter-spacing:1.5px;color:var(--text-secondary);display:block;margin-bottom:0.6rem;">HORÁRIO DA PAUSA</span>
+      <div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;align-items:flex-end;">
+        <div style="flex:1;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">Início</label>
+          <input type="time" id="pausa-inicio" value="${cur}" style="${inp}">
+        </div>
+        <span style="color:var(--text-secondary);font-weight:700;padding-bottom:0.85rem;">–</span>
+        <div style="flex:1;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">Fim</label>
+          <input type="time" id="pausa-fim" style="${inp}">
+        </div>
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:0.75rem;padding:1rem;border-radius:0.85rem;border:1.5px solid var(--border);cursor:pointer;margin-bottom:1.25rem;">
+        <input type="checkbox" id="encerrar-dia" style="width:18px;height:18px;accent-color:var(--primary);margin-top:2px;flex-shrink:0;">
+        <span style="font-size:0.875rem;font-weight:600;color:var(--text-main);">Encerrar o dia a partir deste horário<br><span style="color:var(--text-secondary);font-size:0.78rem;">Nenhum agendamento será aceito pelo restante do dia</span></span>
+      </label>
+      <button id="btn-confirmar-pausa" style="width:100%;padding:1.1rem;border-radius:1rem;background:var(--primary);color:var(--on-primary);font-weight:900;font-size:0.88rem;letter-spacing:1.5px;border:none;cursor:pointer;">CONFIRMAR PAUSA</button>
+    </div>`
 }
 
 function renderServiceSearchSelect(inputId, listId, services) {
@@ -792,21 +1321,22 @@ function renderServiceSearchSelect(inputId, listId, services) {
     <div style="position:relative;">
       <div style="position:relative;">
         <input type="text" id="${inputId}" autocomplete="off" placeholder="Buscar serviço..."
-          style="padding: 14px 14px 14px 40px; border-radius: 12px; width: 100%; border: 1.5px solid var(--border); background: var(--surface); font-family: inherit; font-size: 1rem; transition: all 0.2s;">
+          style="padding: 14px 14px 14px 40px; border-radius: 12px; width: 100%; box-sizing: border-box; border: 1.5px solid var(--border); background: var(--surface); font-family: inherit; font-size: 1rem; transition: all 0.2s;">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
           style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text-secondary); pointer-events:none;">
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
         </svg>
       </div>
-      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; top:100%; left:0; right:0; max-height:220px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 4px; z-index: 1000; box-shadow: var(--shadow-lg);">
+      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:160px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 100; box-shadow: var(--shadow-lg);">
         ${services.map(s => `
-          <div class="service-opt" data-nome="${s.nome}"
-            style="padding:14px 16px; cursor:pointer; font-size:0.95rem; font-weight:600; border-bottom: 1px solid var(--border); color: var(--text-main); transition: all 0.2s;">
-            ${s.nome}
-          </div>
+          <label class="service-opt" data-nome="${s.nome}"
+            style="padding:15px 16px; cursor:pointer; font-size:0.95rem; font-weight:600; border-bottom: 1px solid var(--border); color: var(--text-main); transition: all 0.2s; display:flex; align-items:center; gap: 10px; margin:0;">
+            <input type="checkbox" value="${s.nome}" style="width: 18px; height: 18px; accent-color: var(--primary); flex-shrink:0;">
+            <span>${s.nome} <span style="color:var(--text-secondary); font-size:0.8rem;">(R$ ${parseFloat(s.preco || 0).toFixed(2).replace('.', ',')})</span></span>
+          </label>
         `).join('')}
       </div>
-      <input type="hidden" id="${inputId}-selected" value="">
+      <input type="hidden" id="${inputId}-selected" value="[]">
     </div>
   `
 }
@@ -817,43 +1347,48 @@ function attachServiceSearchSelect(inputId, listId) {
   const hiddenInput = document.getElementById(inputId + '-selected')
   if (!searchInput || !listEl) return
 
+  // Close only when clicking outside
+  const closeListHandler = (e) => {
+    if (listEl && !searchInput.contains(e.target) && !listEl.contains(e.target)) {
+      listEl.style.display = 'none' 
+      searchInput.style.borderColor = 'var(--border)'
+      document.removeEventListener('mousedown', closeListHandler)
+    }
+  }
+
   searchInput.addEventListener('focus', () => { 
     listEl.style.display = 'block'
     searchInput.style.borderColor = 'var(--primary)'
-  })
-  
-  // Use a small delay for blur to allow clicking the option
-  searchInput.addEventListener('blur', () => { 
-    setTimeout(() => { 
-      listEl.style.display = 'none' 
-      searchInput.style.borderColor = 'var(--border)'
-    }, 200)
+    // Usamos setTimeout para garantir que o mousedown não dispare no mesmo ciclo do focus
+    setTimeout(() => document.addEventListener('mousedown', closeListHandler), 0)
   })
 
   // Filter on typing
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.toLowerCase()
     listEl.querySelectorAll('.service-opt').forEach(opt => {
-      opt.style.display = opt.dataset.nome.toLowerCase().includes(q) ? 'block' : 'none'
+      opt.style.display = opt.dataset.nome.toLowerCase().includes(q) ? 'flex' : 'none'
     })
-    hiddenInput.value = ''
   })
 
-  // Select on click
+  const updateSelected = () => {
+    const checked = Array.from(listEl.querySelectorAll('input[type="checkbox"]:checked'))
+    const names = checked.map(cb => cb.value)
+    searchInput.value = names.length > 0 ? names.join(', ') : ''
+    hiddenInput.value = JSON.stringify(names)
+  }
+
+  // Select on toggle
+  listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', updateSelected)
+  })
+
   listEl.querySelectorAll('.service-opt').forEach(opt => {
     opt.addEventListener('mouseenter', () => { 
       opt.style.background = 'var(--surface-hover)'
-      opt.style.color = 'var(--primary)'
     })
     opt.addEventListener('mouseleave', () => { 
       opt.style.background = ''
-      opt.style.color = 'var(--text-main)'
-    })
-    opt.addEventListener('mousedown', (e) => {
-      // Use mousedown instead of click to fire before blur
-      searchInput.value = opt.dataset.nome
-      hiddenInput.value = opt.dataset.nome
-      listEl.style.display = 'none'
     })
   })
 }
@@ -862,13 +1397,18 @@ function renderQuickBookModal() {
   const item = appState.activeAgendaItem
   return `
     <div class="card animate-fade-in" style="max-width: 400px; width: 90%; padding: 32px; border-radius: 24px; text-align: left; align-items: stretch;">
+      <button id="btn-close-quick-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
       <h3 style="margin-bottom: 5px; font-family: var(--font-alt); color: var(--primary);">AGENDAR HORÁRIO</h3>
       <p style="color: var(--text-secondary); margin-bottom: 25px; font-weight: 600;">Horário selecionado: ${item.time}</p>
       
       <div class="flex flex-col gap-md">
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">NOME DO CLIENTE</label>
-          <input type="text" id="quick-client-name" placeholder="Ex: João da Silva" style="padding: 14px; border-radius: 12px;">
+          <input type="text" id="quick-client-name" placeholder="Ex: João da Silva" maxlength="50" style="padding: 14px; border-radius: 12px;">
+        </div>
+        <div class="flex flex-col gap-xs">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">TELEFONE (OPCIONAL)</label>
+          <input type="tel" id="quick-client-phone" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px;">
         </div>
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary);">SERVIÇO</label>
@@ -885,25 +1425,29 @@ function renderQuickBookModal() {
 function renderNewAgendamentoModal() {
   return `
     <div class="card animate-fade-in" style="max-width: 450px; width: 90%; padding: 32px; align-items: stretch; text-align: left; border-radius: 24px;">
+      <button id="btn-close-modal" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
       <div class="flex justify-between items-center" style="margin-bottom: 24px;">
         <h3 style="font-family: var(--font-alt); font-size: 1.2rem; color: var(--primary);">NOVO AGENDAMENTO</h3>
-        <button id="btn-close-modal" style="color: var(--text-secondary);">${icons.back}</button>
       </div>
       
       <div class="flex flex-col gap-md">
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Nome do Cliente</label>
-          <input type="text" id="modal-client-name" placeholder="Ex: João Silva" style="padding: 14px; border-radius: 12px; width: 100%;">
+          <input type="text" id="modal-client-name" placeholder="Ex: João Silva" maxlength="50" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
+        </div>
+        <div class="flex flex-col gap-xs">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Telefone (Opcional)</label>
+          <input type="tel" id="modal-client-phone" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
         </div>
         
-        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-          <div class="flex flex-col gap-xs">
+        <div class="grid" style="display: grid; grid-template-columns: 1fr 120px; gap: 16px; width: 100%; box-sizing: border-box;">
+          <div class="flex flex-col gap-xs" style="width: 100%; box-sizing: border-box; min-width: 0;">
             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Data</label>
-            <input type="date" id="modal-date" style="padding: 14px; border-radius: 12px; width: 100%;">
+            <input type="date" id="modal-date" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box; font-family: inherit;">
           </div>
-          <div class="flex flex-col gap-xs">
+          <div class="flex flex-col gap-xs" style="width: 100%; box-sizing: border-box; min-width: 0;">
             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Horário</label>
-            <input type="time" id="modal-time" style="padding: 14px; border-radius: 12px; width: 100%;">
+            <input type="time" id="modal-time" style="padding: 14px 10px; border-radius: 12px; width: 100%; box-sizing: border-box; font-family: inherit; text-align: center;">
           </div>
         </div>
         
@@ -975,45 +1519,132 @@ function dbTransToLocal(row) {
   const type = row.tipo === 'entrada' ? 'in' : 'out';
   const cat = row.categoria === 'Entrada' ? '' : row.categoria;
   const dp = row.data_transacao.split('-');
+  // Extract time from created_at timestamp
+  let timeStr = ''
+  if (row.created_at) {
+    const d = new Date(row.created_at)
+    timeStr = ` - ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`
+  }
+  let finalDesc = row.descricao;
+  const isTemplate = finalDesc.includes('[TEMPLATE]');
+  if (isTemplate) {
+    finalDesc = finalDesc.replace(' [TEMPLATE]', '');
+  }
+
+  let fixedCompetence = null;
+  const refMatch = finalDesc.match(/ \[REF:(\d{2})\/(\d{4})\]/);
+  if (refMatch) {
+    fixedCompetence = `${refMatch[2]}-${refMatch[1]}`; // YYYY-MM
+    finalDesc = finalDesc.replace(refMatch[0], '');
+  }
+
   return {
     id: row.id,
-    desc: row.descricao,
+    desc: finalDesc,
     val: Number(row.valor),
-    type, cat,
-    date: `${dp[2]}/${dp[1]}`,
-    fullDate: row.data_transacao
+    type, 
+    cat: row.categoria === 'Entrada' ? '' : row.categoria,
+    date: `${dp[2]}/${dp[1]}${timeStr}`,
+    fullDate: row.data_transacao,
+    rawCreatedAt: row.created_at,
+    agendamentoId: row.agendamento_id,
+    isFixed: row.categoria === 'Fixo',
+    fixedCompetence,
+    isTemplate
   };
 }
 
 function localTransToDb(desc, val, typeFull, dateInput, userId) {
   const tipo = typeFull.startsWith('in') ? 'entrada' : 'saida';
   const categoria = typeFull === 'in' ? 'Entrada' : (typeFull === 'out-fixo' ? 'Fixo' : 'Variável');
-  return { estabelecimento_id: userId, descricao: desc, valor: val, tipo, categoria, data_transacao: dateInput };
+  const finalDesc = typeFull === 'out-fixo' ? `${desc} [TEMPLATE]` : desc;
+  return { estabelecimento_id: userId, descricao: finalDesc, valor: val, tipo, categoria, data_transacao: dateInput };
 }
+
+// Unified helper to get transactions for a month, including virtual recurring fixed expenses
+function getMonthlyTransactions(month, year, allTransactions) {
+  const transactionsWithIdx = allTransactions.map((t, i) => ({ ...t, originalIndex: i }));
+
+  // Real transactions in this month
+  const realThisMonth = transactionsWithIdx.filter(t => {
+    if (t.isTemplate) return false;
+    const d = t.fullDate ? new Date(t.fullDate + 'T12:00:00') : null;
+    return d && d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  // Fixed expenses registered in previous months (or current month if template)
+  const fixedExpenses = allTransactions.filter(t => t.isFixed);
+  
+  // Pagamentos feitos em QUALQUER mês, especificamente para ESTE mês
+  const futuresForThisMonth = fixedExpenses.filter(t => t.fixedCompetence === `${year}-${String(month + 1).padStart(2,'0')}`);
+
+  // Pagamentos feitos NESTE mês, mas especificamente para OUTRO mês
+  const paymentsForOtherMonths = realThisMonth.filter(t => t.fixedCompetence && t.fixedCompetence !== `${year}-${String(month + 1).padStart(2,'0')}`);
+
+  // Nomes das despesas fixas já pagas (convencionalmente ou especificamente)
+  const fixedThisMonthNames = [
+    ...realThisMonth.filter(t => t.isFixed && !paymentsForOtherMonths.includes(t)).map(t => t.desc.toLowerCase()),
+    ...futuresForThisMonth.map(t => t.desc.toLowerCase())
+  ];
+
+  // Virtual fixed entries (not yet paid this month)
+  const virtualFixed = fixedExpenses
+    .filter(t => {
+      if (!t.fullDate) return false;
+      const d = new Date(t.fullDate + 'T12:00:00');
+      let createdBeforeOrDuring = false;
+      if (t.isTemplate) {
+        createdBeforeOrDuring = (d.getFullYear() < year) || (d.getFullYear() === year && d.getMonth() <= month);
+      } else {
+        createdBeforeOrDuring = (d.getFullYear() < year) || (d.getFullYear() === year && d.getMonth() < month);
+      }
+      const alreadyPaid = fixedThisMonthNames.includes(t.desc.toLowerCase());
+      return createdBeforeOrDuring && !alreadyPaid;
+    })
+    // Deduplicate by name (only one per month)
+    .filter((t, i, arr) => arr.findIndex(x => x.desc.toLowerCase() === t.desc.toLowerCase()) === i)
+    .map(t => ({
+      ...t,
+      id: `virtual-${t.id}`,
+      fullDate: `${year}-${String(month + 1).padStart(2,'0')}-01`,
+      date: `01/${String(month + 1).padStart(2,'0')}`,
+      originalIndex: -1,
+      isVirtual: true
+    }));
+
+  const monthlyTransactions = [...realThisMonth, ...virtualFixed];
+  
+  const injectedFutures = futuresForThisMonth.map(t => ({
+    ...t,
+    isVirtual: false,
+    originalIndex: -1,
+    ignoreInTotals: true 
+  }));
+
+  return [...monthlyTransactions, ...injectedFutures].sort((a, b) => {
+    const timeA = a.rawCreatedAt ? new Date(a.rawCreatedAt).getTime() : 0;
+    const timeB = b.rawCreatedAt ? new Date(b.rawCreatedAt).getTime() : 0;
+    return timeB - timeA;
+  });
+}
+
 // ---------------------------------
 
 function renderFinancas() {
   const monthNames = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
   const { month, year, transactions, filterByDay, categoryFilter } = appState.financasData;
 
-  // Map all transactions with their original index to preserve it across filters
-  const transactionsWithIdx = transactions.map((t, i) => ({ ...t, originalIndex: i }));
+  const monthlyTransactions = getMonthlyTransactions(month, year, transactions);
 
-  // Monthly stats (always for the whole month)
-  const monthlyTransactions = transactionsWithIdx.filter(t => {
-    const d = t.fullDate ? new Date(t.fullDate + 'T12:00:00') : null;
-    return d && d.getMonth() === month && d.getFullYear() === year;
-  });
-
-  const totalIn = monthlyTransactions.filter(t => t.type === 'in').reduce((acc, t) => acc + t.val, 0);
-  const totalOut = monthlyTransactions.filter(t => t.type === 'out').reduce((acc, t) => acc + t.val, 0);
+  const totalIn = monthlyTransactions.filter(t => t.type === 'in' && !t.ignoreInTotals).reduce((acc, t) => acc + t.val, 0);
+  const totalOut = monthlyTransactions.filter(t => t.type === 'out' && !t.ignoreInTotals).reduce((acc, t) => acc + t.val, 0);
   const balance = totalIn - totalOut;
 
   // Filter list by day if enabled
   let filteredList = monthlyTransactions;
   if (filterByDay) {
     const selectedKey = getAgendaDayKey(appState.selectedDate);
-    filteredList = transactionsWithIdx.filter(t => t.fullDate === selectedKey);
+    filteredList = monthlyTransactions.filter(t => t.fullDate === selectedKey);
   }
 
   return renderTabHeader('CONTROLE FINANCEIRO', `
@@ -1078,28 +1709,71 @@ function renderFinancas() {
       if (categoryFilter === 'Fixas') list = list.filter(t => t.cat === 'Fixo');
       if (categoryFilter === 'Variáveis') list = list.filter(t => t.cat === 'Variável');
 
-      return list.length ? list.map((t) => `
-          <div class="transaction-item card" style="flex-direction: row; padding: 1.25rem; text-align: left; justify-content: space-between; align-items: center; border-radius: 1rem;">
-            <div class="flex items-center gap-md" style="flex: 1;">
-              <div style="background: ${t.type === 'in' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; color: ${t.type === 'in' ? '#16a34a' : '#dc2626'}; padding: 0.625rem; border-radius: 50%;">
-                ${t.type === 'in' ? icons.up : icons.down}
-              </div>
-              <div style="margin-left: 0.5rem;">
-                <h4 style="font-family: var(--font-body); font-weight: 700; font-size: 1rem; line-height: 1.2;">${t.desc}</h4>
-                <p style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; margin-top: 2px;">${t.cat ? t.cat + ' • ' : ''}${t.date}</p>
-              </div>
+      return list.length ? list.map((t, tIdx) => {
+        const isFromAgenda = Boolean(t.agendamentoId)
+        const valColor = t.type === 'in' ? '#16a34a' : '#dc2626'
+        const valSign = t.type === 'in' ? '+' : '-'
+        
+        return `
+          <div style="position:relative; margin-top:16px; border: 1.5px solid #d1d5db; border-radius:16px; background:#fff; overflow:visible;">
+            <!-- Date Header floating center -->
+            <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:#fff; padding:0 12px; font-size:0.72rem; font-weight:700; color:#6b7280; white-space:nowrap; letter-spacing:0.3px;">
+              ${t.date}
             </div>
-            <div class="flex items-center gap-md">
-              <p style="font-weight: 800; font-size: 0.95rem; color: ${t.type === 'in' ? '#16a34a' : '#dc2626'}; text-align: right; min-width: 80px;">
-                ${t.type === 'in' ? '+ R$' : '- R$'} ${t.val.toFixed(2)}
-              </p>
-              <div class="flex gap-xs no-print">
-                <button class="btn-edit-trans p-xs" data-id="${t.originalIndex}" data-dbid="${t.id}" style="color: var(--text-secondary);">${icons.edit}</button>
-                <button class="btn-delete-trans p-xs" data-id="${t.originalIndex}" data-dbid="${t.id}" style="color: #f87171;">${icons.trash}</button>
+            <!-- Row: [content left] [icons right] -->
+            <div style="display:flex; flex-direction:row; align-items:flex-start; padding:18px 12px 16px 16px; gap:12px;">
+              <!-- Left: all stacked -->
+              <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:6px;">
+                <!-- Value -->
+                <span style="color:${valColor}; font-weight:800; font-size:1rem; line-height:1.2;">
+                  ${valSign} R$${t.val.toFixed(2).replace('.',',')}
+                </span>
+                <!-- Name -->
+                <h4 style="font-size:0.95rem; font-weight:800; color:#111; margin:0; line-height:1.3; word-break:break-word;">
+                  ${t.desc}
+                </h4>
+                ${t.cat && t.cat !== 'Entrada' ? `
+                  <!-- Service -->
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <p style="font-size:0.82rem; color:#4b5563; font-weight:500; font-style:italic; margin:0; line-height:1.3; word-break:break-word;">
+                      ${t.cat}
+                    </p>
+                    ${t.cat === 'Fixo' && !t.isVirtual ? `
+                      <span style="font-size:0.6rem; font-weight:900; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">✓ PAGO</span>
+                    ` : ''}
+                  </div>
+                ` : ''}
+              </div>
+              <!-- Right: Actions column -->
+              <div style="flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:8px;" class="no-print">
+                ${t.isVirtual ? `
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    <button class="btn-pay-fixed ripple" data-desc="${t.desc}" data-val="${t.val}" data-full-date="${t.fullDate}" style="background:#dc2626; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:0.65rem; font-weight:900; letter-spacing:0.5px;">PAGAR AGORA</button>
+                    <!-- Permite edição e exclusão nas virtuais -->
+                    <div style="display:flex; justify-content:center; gap:8px;">
+                      <button class="btn-edit-trans" data-dbid="${t.id.replace('virtual-','')}" title="Editar Todas" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">✏️</button>
+                      <button class="btn-delete-trans-all" data-desc="${t.desc}" title="Excluir Transação Fixa" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
+                    </div>
+                  </div>
+                ` : `
+                  <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    <button class="btn-edit-trans" data-dbid="${t.id}" title="Editar" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">✏️</button>
+                    ${isFromAgenda ? `
+                      <button class="btn-reverse-trans" data-dbid="${t.id}" data-agendaid="${t.agendamentoId}" title="Estornar" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🔄</button>
+                      <button class="btn-delete-trans" data-dbid="${t.id}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
+                    ` : (t.cat === 'Fixo' ? `
+                      <button class="btn-reverse-fixed-payment" data-dbid="${t.id}" title="Estornar Pagamento Fixo" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🔄</button>
+                      <button class="btn-delete-trans-all" data-desc="${t.desc}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
+                    ` : `
+                      <button class="btn-delete-trans" data-dbid="${t.id}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
+                    `)}
+                  </div>
+                `}
               </div>
             </div>
           </div>
-        `).join('') : '<p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; padding: 40px;">Nenhum detalhe encontrado para este filtro.</p>'
+        `
+      }).join('') : '<p style="text-align: center; color: var(--text-secondary); font-size: 0.8rem; padding: 40px;">Nenhum detalhe encontrado para este filtro.</p>'
     })()}
       </div>
     </div>
@@ -1112,6 +1786,7 @@ function renderFinancas() {
 function renderPrintOptionsModal() {
   return `
     <div class="card animate-fade-in" style="max-width: 400px; width: 90%; padding: 32px; border-radius: 24px;">
+      <button id="btn-close-print-modal-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
       <h3 style="margin-bottom: 20px; font-family: var(--font-alt); color: var(--primary); text-transform: uppercase;">Escolha o Relatório</h3>
       
       <div class="flex flex-col gap-md w-full">
@@ -1133,13 +1808,10 @@ function renderMonthlyReport() {
   const { month, year, transactions } = appState.financasData;
   const monthNames = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 
-  const monthly = transactions.filter(t => {
-    const d = t.fullDate ? new Date(t.fullDate + 'T12:00:00') : null;
-    return d && d.getMonth() === month && d.getFullYear() === year;
-  });
+  const monthly = getMonthlyTransactions(month, year, transactions);
 
-  const totalIn = monthly.filter(t => t.type === 'in').reduce((acc, t) => acc + t.val, 0);
-  const totalOut = monthly.filter(t => t.type === 'out').reduce((acc, t) => acc + t.val, 0);
+  const totalIn = monthly.filter(t => t.type === 'in' && !t.ignoreInTotals).reduce((acc, t) => acc + t.val, 0);
+  const totalOut = monthly.filter(t => t.type === 'out' && !t.ignoreInTotals).reduce((acc, t) => acc + t.val, 0);
 
   return `
     <div style="padding: 40px 20px; color: #1a1a1a; font-family: 'Inter', sans-serif; background: white; min-height: 100vh; max-width: 900px; margin: 0 auto;">
@@ -1212,12 +1884,9 @@ function renderAnnualReport() {
   const monthNamesFull = ["JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
 
   const annualSummary = monthNamesFull.map((name, idx) => {
-    const monthly = transactions.filter(t => {
-      const d = t.fullDate ? new Date(t.fullDate + 'T12:00:00') : null;
-      return d && d.getMonth() === idx && d.getFullYear() === year;
-    });
-    const ent = monthly.filter(t => t.type === 'in').reduce((acc, t) => acc + t.val, 0);
-    const sai = monthly.filter(t => t.type === 'out').reduce((acc, t) => acc + t.val, 0);
+    const monthlyItems = getMonthlyTransactions(idx, year, transactions);
+    const ent = monthlyItems.filter(t => t.type === 'in' && !t.ignoreInTotals).reduce((acc, t) => acc + t.val, 0);
+    const sai = monthlyItems.filter(t => t.type === 'out' && !t.ignoreInTotals).reduce((acc, t) => acc + t.val, 0);
     return { name, ent, sai, sal: ent - sai };
   });
 
@@ -1303,6 +1972,7 @@ function renderEditTransactionModal() {
 
   return `
     <div class="card animate-fade-in" style="max-width: 400px; width: 90%; padding: 32px; border-radius: 24px; text-align: left; align-items: stretch;">
+      <button id="btn-close-edit-trans-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
       <h3 style="margin-bottom: 25px; font-family: var(--font-alt); color: var(--primary);">EDITAR TRANSAÇÃO</h3>
       
       <div class="flex flex-col gap-md">
@@ -1344,6 +2014,7 @@ function renderEditTransactionModal() {
 function renderNewTransactionModal() {
   return `
     <div class="card animate-fade-in" style="max-width: 400px; width: 90%; padding: 32px; border-radius: 24px; text-align: left; align-items: stretch;">
+      <button id="btn-close-trans-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
       <h3 style="margin-bottom: 25px; font-family: var(--font-alt); color: var(--primary);">NOVA TRANSAÇÃO</h3>
       
       <div class="flex flex-col gap-md">
@@ -1647,7 +2318,7 @@ function attachLoginEvents() {
   const capitalizeInput = (e) => {
     const start = e.target.selectionStart;
     const value = e.target.value;
-    const formatted = value.replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+    const formatted = value.replace(/(?:^|\s)\S/g, m => m.toUpperCase());
     if (value !== formatted) {
       e.target.value = formatted;
       e.target.setSelectionRange(start, start);
@@ -1710,7 +2381,7 @@ function attachDashboardEvents() {
   const servicos = document.getElementById('card-servicos')
   const assinaturas = document.getElementById('card-assinaturas')
 
-  if (logout) logout.addEventListener('click', () => { appState.screen = 'login'; render() })
+  if (logout) logout.addEventListener('click', () => { appState.showModal = 'confirm-logout'; render() })
   if (agenda) agenda.addEventListener('click', () => { appState.screen = 'agenda'; render() })
   if (financas) financas.addEventListener('click', () => { appState.screen = 'financas'; render() })
   if (servicos) servicos.addEventListener('click', () => { appState.screen = 'servicos'; render() })
@@ -1731,6 +2402,73 @@ function attachGenericBack() {
 function attachAgendaEvents() {
   attachGenericBack()
 
+  // ─── Pull-to-refresh ───────────────────────────────────────
+  const ptrContainer = document.getElementById('ptr-container');
+  const ptrIndicator = document.getElementById('ptr-indicator');
+  const ptrSpinner   = document.getElementById('ptr-spinner');
+  let ptrStartY = 0;
+  let ptrActive = false;
+  let ptrTriggered = false;
+
+  if (ptrContainer) {
+    ptrContainer.addEventListener('touchstart', (e) => {
+      if (ptrContainer.scrollTop === 0) {
+        ptrStartY = e.touches[0].clientY;
+        ptrActive = true;
+        ptrTriggered = false;
+      }
+    }, { passive: true });
+
+    ptrContainer.addEventListener('touchmove', (e) => {
+      if (!ptrActive) return;
+      const dy = e.touches[0].clientY - ptrStartY;
+      if (dy > 0 && ptrContainer.scrollTop === 0) {
+        ptrIndicator.style.display = 'flex';
+        const pct = Math.min(dy / 80, 1);
+        ptrSpinner.style.transform = `rotate(${pct * 720}deg)`;
+        if (dy > 70) ptrTriggered = true;
+      }
+    }, { passive: true });
+
+    ptrContainer.addEventListener('touchend', async () => {
+      if (ptrActive && ptrTriggered) {
+        ptrSpinner.style.animation = 'spin 0.6s linear infinite';
+        appState.agendaLoaded = false;
+        await new Promise(r => {
+          supabase.from('agendamentos').select('*').eq('estabelecimento_id', appState.user.id).neq('agendamento_status', 'Concluído').order('hora_agendamento', { ascending: true })
+            .then(({ data, error }) => {
+              if (!error && data) {
+                appState.agendaData = {};
+                data.forEach(dbItem => {
+                  const dayKey = dbItem.data_agendamento;
+                  if (!appState.agendaData[dayKey]) appState.agendaData[dayKey] = [];
+                  const timeKey = dbItem.hora_agendamento.slice(0, 5);
+                  const status = (dbItem.agendamento_status || 'Pendente').toLowerCase();
+                  const newItem = { id: dbItem.id, time: timeKey, client: dbItem.cliente_nome || 'Cliente', service: dbItem.servico_nome, status: status, valor_total: dbItem.valor_total };
+                  appState.agendaData[dayKey].push(newItem);
+                });
+                // Sort each day
+                Object.keys(appState.agendaData).forEach(k => appState.agendaData[k].sort((a,b) => a.time.localeCompare(b.time)));
+              }
+              r();
+            });
+        });
+
+        // Pull-to-refresh ALSO reloads exceptions for today
+        const todayKey = getAgendaDayKey(new Date());
+        const { data: excData } = await supabase.from('excecoes_agenda').select('*').eq('estabelecimento_id', appState.user.id).eq('data_excecao', todayKey);
+        if (excData) appState.excecoesDia = excData;
+
+        appState.agendaLoaded = true;
+        render();
+      } else {
+        ptrIndicator.style.display = 'none';
+      }
+      ptrActive = false;
+      ptrTriggered = false;
+    });
+  }
+
   const trigger = document.getElementById('btn-calendar-trigger')
   if (trigger) {
     trigger.addEventListener('click', () => {
@@ -1740,13 +2478,40 @@ function attachAgendaEvents() {
     })
   }
 
+  // Edit schedule pencil button
+  const btnEditHorario = document.getElementById('btn-edit-horario')
+  if (btnEditHorario) {
+    btnEditHorario.addEventListener('click', () => {
+      appState.showModal = 'horario-funcionamento'
+      render()
+    })
+  }
+
+  // Fazer Pausa FAB
+  const btnFazerPausa = document.getElementById('btn-fazer-pausa')
+  if (btnFazerPausa) {
+    btnFazerPausa.addEventListener('click', () => {
+      appState.showModal = 'fazer-pausa'
+      render()
+    })
+  }
+
+  // Badge de pausa — abre popup gerenciar
+  const btnGerenciarPausa = document.getElementById('btn-gerenciar-pausa')
+  if (btnGerenciarPausa) {
+    btnGerenciarPausa.addEventListener('click', () => {
+      appState.showModal = 'gerenciar-pausa'
+      render()
+    })
+  }
+
+  // Agendar Manualmente FAB
   const btnOpenModal = document.getElementById('btn-open-agenda-modal')
   if (btnOpenModal) {
     btnOpenModal.addEventListener('click', async () => {
       btnOpenModal.disabled = true
-      // Fetch services fresh from DB before opening modal
       if (appState.user) {
-        const { data } = await supabase.from('servicos').select('id, nome').eq('estabelecimento_id', appState.user.id).order('nome')
+        const { data } = await supabase.from('servicos').select('id, nome, preco, cobra_reserva, taxa_reserva').eq('estabelecimento_id', appState.user.id).order('nome')
         if (data) appState.servicosAtivos = data
       }
       appState.showModal = 'new-agendamento'
@@ -1757,19 +2522,21 @@ function attachAgendaEvents() {
 
   const items = document.querySelectorAll('.agenda-item')
   items.forEach(el => {
-    el.addEventListener('click', async () => {
+    el.addEventListener('click', async (e) => {
+      // Ignore click if it was on action buttons
+      if (e.target.closest('.btn-ag-accept') || e.target.closest('.btn-ag-reject')) return;
+
       const idx = el.dataset.index
       const dayKey = getAgendaDayKey(appState.selectedDate)
       const item = appState.agendaData[dayKey][idx]
       appState.activeAgendaItem = item
 
-      if (item.status === 'confirmado') {
+      if (item.status !== 'livre') {
         appState.showModal = 'agenda-actions'
         render()
       } else {
-        // Fetch services fresh from DB before opening quick-book modal
         if (appState.user) {
-          const { data } = await supabase.from('servicos').select('id, nome').eq('estabelecimento_id', appState.user.id).order('nome')
+          const { data } = await supabase.from('servicos').select('id, nome, preco').eq('estabelecimento_id', appState.user.id).order('nome')
           if (data) appState.servicosAtivos = data
         }
         appState.showModal = 'quick-book'
@@ -1777,6 +2544,52 @@ function attachAgendaEvents() {
       }
     })
   })
+
+  document.querySelectorAll('.card-footer-pendente').forEach(foot => {
+    foot.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const id = foot.dataset.id;
+      const dayKey = getAgendaDayKey(appState.selectedDate);
+      const item = appState.agendaData[dayKey].find(i => i.id == id);
+      if (item) {
+        appState.activeAgendaItem = item;
+        appState.showModal = 'agenda-actions'; 
+        render();
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-ag-accept').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const { error } = await supabase.from('agendamentos').update({ 
+        agendamento_status: 'Confirmado', 
+        pagamento_status: true 
+      }).eq('id', id);
+      
+      if (!error) {
+         appState.agendaLoaded = false;
+         render();
+      } else {
+         alert('Erro ao confirmar agendamento: ' + error.message);
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-ag-reject').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const dayKey = getAgendaDayKey(appState.selectedDate);
+      const clickedItem = appState.agendaData[dayKey].find(i => i.id == id);
+      if (clickedItem) {
+        appState.activeAgendaItem = clickedItem;
+        appState.showModal = 'confirm-cancel';
+        render();
+      }
+    });
+  });
 }
 
 function attachCalendarModalEvents() {
@@ -1837,7 +2650,10 @@ function attachNewAgendamentoEvents() {
   })
 
   if (overlay) overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) {
+    // Only close if click is directly on the overlay AND the service list is not open
+    const serviceList = document.getElementById('modal-service-list')
+    const isListOpen = serviceList && serviceList.style.display !== 'none'
+    if (e.target === overlay && !isListOpen) {
       appState.showModal = null
       render()
     }
@@ -1845,78 +2661,102 @@ function attachNewAgendamentoEvents() {
 
   attachServiceSearchSelect('modal-service-search', 'modal-service-list')
 
-  if (btnSave) btnSave.addEventListener('click', async () => {
+  const phoneInput = document.getElementById('modal-client-phone')
+  if (phoneInput) {
+    phoneInput.addEventListener('input', (e) => {
+      e.target.value = formatPhone(e.target.value)
+    })
+  }
+
+    if (btnSave) btnSave.addEventListener('click', async () => {
+    btnSave.disabled = true
     const name = document.getElementById('modal-client-name').value
+    const phone = document.getElementById('modal-client-phone').value || ''
     const dateInput = document.getElementById('modal-date').value
     const time = document.getElementById('modal-time').value
     const serviceHidden = document.getElementById('modal-service-search-selected')
-    const serviceNome = serviceHidden ? serviceHidden.value : ''
+    let selectedNames = []
+    try { selectedNames = JSON.parse(serviceHidden ? serviceHidden.value : '[]') } catch(e) {}
 
-    if (!name || !dateInput || !time || !serviceNome) {
-      alert('Por favor, preencha todos os campos.')
+    if (!name || !dateInput || !time || selectedNames.length === 0) {
+      alert('Por favor, preencha todos os campos e selecione os serviços.')
+      btnSave.disabled = false
       return
     }
 
-    // Procura o servico completo no estado local para ver se cobra taxa
-    const servico = appState.servicosAtivos.find(s => s.nome === serviceNome)
-    const cobraReserva = !!servico?.cobra_reserva
-    const taxaReserva = Number(servico?.taxa_reserva || 0)
-    const servicoId = servico?.id || null
+    const serviceNome = selectedNames.join(', ')
+
+    let valorTotal = 0
+    let taxaTotalReserva = 0
+    let cobraReserva = false
+    let firstServiceId = null
+
+    selectedNames.forEach(sn => {
+      const servico = appState.servicosAtivos.find(s => s.nome === sn)
+      if (servico) {
+         valorTotal += Number(servico.preco || 0)
+         if (!firstServiceId) firstServiceId = servico.id
+         if (servico.cobra_reserva) {
+           cobraReserva = true
+           taxaTotalReserva += Number(servico.taxa_reserva || 0)
+         }
+      }
+    })
 
     const date = new Date(dateInput + 'T12:00:00')
     const dayKey = getAgendaDayKey(date)
 
     if (!appState.agendaData[dayKey]) {
-      appState.agendaData[dayKey] = getInitialDayData()
+      appState.agendaData[dayKey] = []
     }
 
-    const slotIndex = appState.agendaData[dayKey].findIndex(s => s.time === time)
     const newEntry = { 
       time, 
       client: name, 
       service: serviceNome, 
-      status: cobraReserva ? 'aguardando_pagamento' : 'confirmado',
+      status: cobraReserva ? 'pendente' : 'confirmado',
       cobraReserva,
-      taxaReserva,
-      servicoId
+      taxaReserva: taxaTotalReserva,
+      valorTotal: valorTotal
     }
 
-    if (slotIndex > -1) {
-      appState.agendaData[dayKey][slotIndex] = newEntry
-    } else {
-      appState.agendaData[dayKey].push(newEntry)
-      appState.agendaData[dayKey].sort((a, b) => a.time.localeCompare(b.time))
-    }
+    appState.agendaData[dayKey].push(newEntry)
+    appState.agendaData[dayKey].sort((a, b) => a.time.localeCompare(b.time))
 
-    // Salvar também no banco 'agendamentos' para bater com historico e relatorios
-    const { error } = await supabase.from('agendamentos').insert([{
+    const { data: dbData, error } = await supabase.from('agendamentos').insert([{
       estabelecimento_id: appState.user?.id,
       cliente_nome: name,
-      servico_id: servicoId ?? null,
+      cliente_telefone: phone,
       servico_nome: serviceNome,
+      servico_id: firstServiceId,
       data_agendamento: dateInput,
       hora_agendamento: time,
-      status: cobraReserva ? 'aguardando_pagamento' : 'confirmado',
-      taxa_reserva: cobraReserva ? taxaReserva : 0,
-    }])
+      agendamento_status: cobraReserva ? 'Pendente' : 'Confirmado',
+      pagamento_status: !cobraReserva,
+      taxa_reserva: cobraReserva ? taxaTotalReserva : 0,
+      valor_total: valorTotal
+    }]).select().single()
 
-    if (error) console.error('Erro ao salvar agendamento no bd', error)
+    if (error) {
+      console.error('Erro ao salvar agendamento no bd', error)
+    } else if (dbData) {
+      newEntry.id = dbData.id
+    }
 
     appState.selectedDate = date
     appState.showModal = null
-    btn.innerHTML = oldHtml
-    btn.disabled = false
+    btnSave.disabled = false
     
     if (cobraReserva) {
       alert('Reserva criada! Aguardando o cliente enviar o comprovante do PIX para confirmar.')
     }
     render()
-    btn.disabled = false
   })
 }
 
 function attachAgendaActionsEvents() {
   const overlay = document.querySelector('.overlay')
+  const btnCloseX = document.getElementById('btn-close-actions-x')
   const btnClose = document.getElementById('btn-close-actions')
   const btnConclude = document.getElementById('btn-conclude-service')
   const btnCancel = document.getElementById('btn-cancel-service')
@@ -1925,62 +2765,459 @@ function attachAgendaActionsEvents() {
   const close = () => { appState.showModal = null; render() }
 
   if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
+  if (btnCloseX) btnCloseX.addEventListener('click', close)
   if (btnClose) btnClose.addEventListener('click', close)
 
   if (btnConfirmPayment) btnConfirmPayment.addEventListener('click', async () => {
+    const dayKey = getAgendaDayKey(appState.selectedDate)
+    const idx = appState.agendaData[dayKey].findIndex(i => i.id === appState.activeAgendaItem.id || (i.client === appState.activeAgendaItem.client && i.time === appState.activeAgendaItem.time))
+    
+    if (idx > -1) {
+      appState.agendaData[dayKey][idx] = { ...appState.activeAgendaItem, status: 'confirmado' }
+    }
+
+    if (appState.activeAgendaItem?.id) {
+      const { error } = await supabase.from('agendamentos').update({ 
+        pagamento_status: true,
+        agendamento_status: 'Confirmado'
+      }).eq('id', appState.activeAgendaItem.id)
+      
+      if (error) console.error('Erro ao confirmar pagamento:', error)
+      else {
+        appState.agendaLoaded = false
+        appState.agendaData = {} 
+      }
+    }
+    
     alert('Pagamento confirmado e agendamento efetivado!')
-    const dayKey = getAgendaDayKey(appState.selectedDate)
-    const idx = appState.agendaData[dayKey].indexOf(appState.activeAgendaItem)
-    appState.agendaData[dayKey][idx] = { ...appState.activeAgendaItem, status: 'confirmado' }
-    
-    // Opcional: Atualizar tb a tabela agendamentos via API (vou focar na UI da agenda q ta local por hr)
-    
     close()
   })
 
-  if (btnConclude) btnConclude.addEventListener('click', () => {
-    alert('Serviço concluído com sucesso!')
+  if (btnConclude) btnConclude.addEventListener('click', async () => {
+    // Prevent double-click: disable and close immediately
+    if (btnConclude.disabled) return
+    btnConclude.disabled = true
+    btnConclude.textContent = '...'
+    
     const dayKey = getAgendaDayKey(appState.selectedDate)
-    const idx = appState.agendaData[dayKey].indexOf(appState.activeAgendaItem)
-    appState.agendaData[dayKey][idx] = { ...appState.activeAgendaItem, client: 'Disponível', service: '', status: 'livre' }
+    const itemSnapshot = { ...appState.activeAgendaItem } // capture before close
+    
+    // Close modal immediately to prevent multiple clicks
     close()
-  })
-
-  if (btnCancel) btnCancel.addEventListener('click', () => {
-    if (confirm('Deseja realmente cancelar este serviço?')) {
-      const dayKey = getAgendaDayKey(appState.selectedDate)
-      const idx = appState.agendaData[dayKey].indexOf(appState.activeAgendaItem)
-      appState.agendaData[dayKey][idx] = { ...appState.activeAgendaItem, client: 'Disponível', service: '', status: 'livre' }
-      close()
+    
+    if (itemSnapshot?.id) {
+       const { error: agError } = await supabase.from('agendamentos').update({ agendamento_status: 'Concluído' }).eq('id', itemSnapshot.id)
+       
+       if (agError) {
+         console.error('Erro ao concluir:', agError)
+         alert('Erro ao concluir serviço: ' + agError.message)
+         return
+       }
+       
+       const valor = Number(itemSnapshot.valor_total || itemSnapshot.valorTotal || 0)
+       const finPayload = {
+         estabelecimento_id: appState.user.id,
+         descricao: `${itemSnapshot.client}`,
+         valor: valor,
+         tipo: 'entrada',
+         categoria: itemSnapshot.service || 'Serviço',
+         data_transacao: dayKey
+       }
+       
+       const { data: finData, error: finError } = await supabase.from('transacoes_financeiras').insert([finPayload]).select()
+       
+       if (finError) {
+         console.error('Erro ao lançar no financeiro:', finError.message)
+         alert('Serviço concluído, mas erro no caixa: ' + finError.message)
+       } else if (finData?.[0]?.id) {
+         // Link agendamento_id (silently — column may not exist yet)
+         await supabase.from('transacoes_financeiras')
+           .update({ agendamento_id: itemSnapshot.id })
+           .eq('id', finData[0].id)
+           .then(({ error }) => { if (error) console.warn('agendamento_id não vinculado:', error.message) })
+       }
+       
+       appState.agendaLoaded = false
+       appState.agendaData = {}
+       appState.financasLoaded = false
+       render()
     }
   })
+
+  if (btnCancel) btnCancel.addEventListener('click', async () => {
+    appState.showModal = 'confirm-cancel'
+    render()
+  })
+}
+
+function attachConfirmCancelEvents() {
+  const btnCloseX = document.getElementById('btn-close-cancel-x')
+  const btnClose = document.getElementById('btn-close-cancel')
+  const btnConfirm = document.getElementById('btn-confirm-cancel-final')
+  
+  const back = () => { appState.showModal = 'agenda-actions'; render() }
+  const close = () => { appState.showModal = null; render() }
+
+  if (btnCloseX) btnCloseX.addEventListener('click', back)
+  if (btnClose) btnClose.addEventListener('click', back)
+  
+  if (btnConfirm) btnConfirm.addEventListener('click', async () => {
+    const dayKey = getAgendaDayKey(appState.selectedDate)
+    const idx = appState.agendaData[dayKey].indexOf(appState.activeAgendaItem)
+    if (idx > -1) appState.agendaData[dayKey].splice(idx, 1)
+    if (appState.activeAgendaItem?.id) {
+       const { error } = await supabase.from('agendamentos').delete().eq('id', appState.activeAgendaItem.id)
+       if (error) {
+         console.error('Error deleting:', error)
+         alert('Erro ao cancelar: ' + error.message)
+       } else {
+         appState.agendaLoaded = false
+         appState.agendaData = {}
+         alert('Agendamento cancelado com sucesso!')
+       }
+    }
+    close()
+  })
+}
+
+// ─── Events: Horário de funcionamento popup ───────────────────────────────────
+function attachHorarioFuncionamentoEvents() {
+  const profile = appState.profile || {}
+  let selectedDays = [...(Array.isArray(profile.dias_funcionamento) ? profile.dias_funcionamento : [])]
+
+  const overlay = document.querySelector('.overlay')
+  if (overlay) overlay.addEventListener('click', (e) => {
+    // Only allow closing overlay if already configured
+    if (e.target === overlay && selectedDays.length > 0) { appState.showModal = null; render() }
+  })
+
+  const btnClose = document.getElementById('btn-close-horario-x')
+  if (btnClose) btnClose.addEventListener('click', () => { appState.showModal = null; render() })
+
+  // Day toggle
+  document.querySelectorAll('.dia-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const dia = parseInt(btn.dataset.dia)
+      if (selectedDays.includes(dia)) {
+        selectedDays = selectedDays.filter(d => d !== dia)
+        btn.classList.remove('dia-sel')
+        btn.style.background = 'transparent'
+        btn.style.color = 'var(--text-main)'
+        btn.style.borderColor = 'var(--border)'
+      } else {
+        selectedDays.push(dia)
+        btn.classList.add('dia-sel')
+        btn.style.background = 'var(--primary)'
+        btn.style.color = 'var(--on-primary)'
+        btn.style.borderColor = 'var(--primary)'
+      }
+    })
+  })
+
+  // Add interval row
+  const btnAddPausa = document.getElementById('btn-add-pausa-padrao')
+  if (btnAddPausa) {
+    btnAddPausa.addEventListener('click', () => {
+      const list = document.getElementById('pausas-padrao-list')
+      const emptyMsg = list.querySelector('#pausas-empty')
+      if (emptyMsg) emptyMsg.remove()
+      const inp = `flex:1;padding:0.8rem;border-radius:0.75rem;border:1.5px solid var(--border);background:var(--surface);color:var(--text-main);font-family:inherit;font-size:1rem;`
+      const row = document.createElement('div')
+      row.className = 'pausa-row'
+      row.style.cssText = 'display:flex;gap:0.6rem;align-items:center;margin-bottom:0.5rem;'
+      row.innerHTML = `
+        <input type="time" class="pausa-inicio" style="${inp}">
+        <span style="color:var(--text-secondary);font-weight:700;font-size:0.85rem;">até</span>
+        <input type="time" class="pausa-fim" style="${inp}">
+        <button class="btn-remove-pausa" style="background:none;border:none;color:var(--red);font-size:1.2rem;cursor:pointer;padding:0.25rem;flex-shrink:0;">✕</button>`
+      row.querySelector('.btn-remove-pausa').addEventListener('click', () => row.remove())
+      list.appendChild(row)
+    })
+  }
+
+  // Remove existing interval rows
+  document.querySelectorAll('.btn-remove-pausa').forEach(btn => {
+    btn.addEventListener('click', () => btn.closest('.pausa-row').remove())
+  })
+
+  // Save
+  const btnSave = document.getElementById('btn-save-horario')
+  if (btnSave) {
+    btnSave.addEventListener('click', async () => {
+      const abertura = document.getElementById('horario-abertura')?.value
+      const fechamento = document.getElementById('horario-fechamento')?.value
+      if (selectedDays.length === 0) { alert('Selecione pelo menos um dia de funcionamento.'); return }
+      if (!abertura || !fechamento) { alert('Informe os horários de abertura e fechamento.'); return }
+
+      const pausas = []
+      document.querySelectorAll('.pausa-row').forEach(row => {
+        const inicio = row.querySelector('.pausa-inicio')?.value
+        const fim = row.querySelector('.pausa-fim')?.value
+        if (inicio && fim) pausas.push({ inicio, fim })
+      })
+
+      btnSave.disabled = true; btnSave.textContent = 'SALVANDO...'
+      const { error } = await supabase.from('estabelecimentos').update({
+        dias_funcionamento: selectedDays,
+        horario_abertura: abertura,
+        horario_fechamento: fechamento,
+        pausas_padrao: pausas
+      }).eq('id', appState.user.id)
+      btnSave.disabled = false; btnSave.textContent = 'SALVAR CONFIGURAÇÃO'
+
+      if (error) { alert('Erro ao salvar: ' + error.message); return }
+
+      appState.profile = { ...(appState.profile || {}), dias_funcionamento: selectedDays, horario_abertura: abertura, horario_fechamento: fechamento, pausas_padrao: pausas }
+      appState.showModal = null
+      render()
+    })
+  }
+}
+
+// ─── Events: Fazer Pausa popup ────────────────────────────────────────────────
+function attachFazPausaEvents() {
+  const overlay = document.querySelector('.overlay')
+  if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) { appState.showModal = null; render() } })
+
+  const btnClose = document.getElementById('btn-close-pausa-x')
+  if (btnClose) btnClose.addEventListener('click', () => { appState.showModal = null; render() })
+
+  const btnConfirmar = document.getElementById('btn-confirmar-pausa')
+  if (btnConfirmar) btnConfirmar.addEventListener('click', async () => {
+    const inicio = document.getElementById('pausa-inicio')?.value
+    const fim = document.getElementById('pausa-fim')?.value
+    const encerrarDia = document.getElementById('encerrar-dia')?.checked
+
+    if (!encerrarDia && (!inicio || !fim)) { alert('Informe os horários de início e fim da pausa.'); return }
+    if (!encerrarDia && inicio >= fim) { alert('O horário de início deve ser antes do fim.'); return }
+
+    btnConfirmar.disabled = true; btnConfirmar.textContent = 'SALVANDO...'
+    const todayKey = getAgendaDayKey(new Date())
+    const tipo = encerrarDia ? 'fechado_resto_do_dia' : 'pausa'
+
+    const { error } = await supabase.from('excecoes_agenda').insert({
+      estabelecimento_id: appState.user.id,
+      data_excecao: todayKey,
+      tipo,
+      inicio: inicio || null,
+      fim: encerrarDia ? null : fim
+    })
+    btnConfirmar.disabled = false; btnConfirmar.textContent = 'CONFIRMAR PAUSA'
+
+    if (error) { alert('Erro ao salvar pausa: ' + error.message); return }
+
+    // Reload today's exceptions
+    const { data } = await supabase.from('excecoes_agenda').select('*')
+      .eq('estabelecimento_id', appState.user.id).eq('data_excecao', todayKey)
+    if (data) appState.excecoesDia = data
+
+    appState.showModal = null
+    render()
+    alert('Pausa configurada com sucesso!')
+  })
+}
+
+// ─── Popup: Gerenciar pausa existente ─────────────────────────────────────────
+function renderGerenciarPausaModal() {
+  const pausaAtiva   = appState.excecoesDia.find(e => e.tipo === 'pausa')
+  const encerradoHoje = appState.excecoesDia.find(e => e.tipo === 'fechado_resto_do_dia')
+  const excecao = pausaAtiva || encerradoHoje
+  if (!excecao) return '<div></div>'
+
+  const isPausa = excecao.tipo === 'pausa'
+  const labelTitulo = isPausa
+    ? `PAUSA: ${excecao.inicio?.slice(0,5)} – ${excecao.fim?.slice(0,5)}`
+    : 'DIA ENCERRADO ANTECIPADAMENTE'
+  const inp = `width:100%;padding:0.8rem;border-radius:0.75rem;border:1.5px solid var(--border);background:var(--surface);color:var(--text-main);font-family:inherit;font-size:1rem;`
+
+  return `
+    <div class="card animate-fade-in custom-scroll" style="max-width:380px;width:92%;padding:2rem;border-radius:1.5rem;max-height:90vh;overflow-y:auto;">
+      <button id="btn-close-gerenciar-pausa-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
+      <h2 style="font-family:var(--font-alt);font-size:1.2rem;font-weight:900;line-height:1.2;margin-bottom:1.25rem;">GERENCIAR PAUSA</h2>
+      <p style="font-size:0.85rem;font-weight:700;color:var(--text-secondary);margin-bottom:1.25rem;">${labelTitulo}</p>
+
+      <span style="font-size:0.7rem;font-weight:800;letter-spacing:1.5px;color:var(--text-secondary);display:block;margin-bottom:0.6rem;">EDITAR HORÁRIO</span>
+      <div style="display:flex;gap:0.75rem;margin-bottom:1.25rem;align-items:flex-end;">
+        <div style="flex:1;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">Início</label>
+          <input type="time" id="edit-pausa-inicio" value="${excecao.inicio?.slice(0,5)||''}" style="${inp}">
+        </div>
+        <span style="color:var(--text-secondary);font-weight:700;padding-bottom:0.85rem;">–</span>
+        <div style="flex:1;">
+          <label style="font-size:0.72rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.3rem;">Fim</label>
+          <input type="time" id="edit-pausa-fim" value="${excecao.fim?.slice(0,5)||''}" ${excecao.tipo === 'fechado_resto_do_dia' ? 'disabled' : ''} style="${inp}${excecao.tipo === 'fechado_resto_do_dia' ? 'opacity:0.5;' : ''}">
+        </div>
+      </div>
+
+      <label style="display:flex;align-items:flex-start;gap:0.75rem;padding:1rem;border-radius:0.85rem;border:1.5px solid var(--border);cursor:pointer;margin-bottom:1.25rem;">
+        <input type="checkbox" id="edit-encerrar-dia" ${excecao.tipo === 'fechado_resto_do_dia' ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--primary);margin-top:2px;flex-shrink:0;">
+        <span style="font-size:0.875rem;font-weight:600;color:var(--text-main);">Encerrar o dia a partir deste horário<br><span style="color:var(--text-secondary);font-size:0.78rem;">Nenhum agendamento será aceito pelo restante do dia</span></span>
+      </label>
+
+      <button id="btn-salvar-edicao-pausa" data-excecao-id="${excecao.id}" style="width:100%;padding:1rem;border-radius:1rem;background:var(--primary);color:var(--on-primary);font-weight:900;font-size:0.88rem;letter-spacing:1.5px;border:none;cursor:pointer;margin-bottom:0.375rem;">SALVAR ALTERAÇÃO</button>
+      <button id="btn-excluir-pausa" data-excecao-id="${excecao.id}" style="width:100%;padding:1rem;border-radius:1rem;background:transparent;color:var(--red);font-weight:800;font-size:0.88rem;letter-spacing:1px;border:1.5px solid var(--red);cursor:pointer;">EXCLUIR PAUSA</button>
+    </div>`
+}
+
+function attachGerenciarPausaEvents() {
+  const overlay = document.querySelector('.overlay')
+  if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) { appState.showModal = null; render() } })
+
+  const btnClose = document.getElementById('btn-close-gerenciar-pausa-x')
+  if (btnClose) btnClose.addEventListener('click', () => { appState.showModal = null; render() })
+
+  const excecao = appState.excecoesDia.find(e => e.tipo === 'pausa') ||
+                  appState.excecoesDia.find(e => e.tipo === 'fechado_resto_do_dia')
+  if (!excecao) return
+
+  // Toggle fim input when "encerrar dia" checkbox changes
+  const chkEncerrar = document.getElementById('edit-encerrar-dia')
+  const inputFim    = document.getElementById('edit-pausa-fim')
+  if (chkEncerrar && inputFim) {
+    chkEncerrar.addEventListener('change', () => {
+      inputFim.disabled = chkEncerrar.checked
+      inputFim.style.opacity = chkEncerrar.checked ? '0.5' : '1'
+    })
+  }
+
+  const reloadExcecoes = async () => {
+    const todayKey = getAgendaDayKey(new Date())
+    const { data } = await supabase.from('excecoes_agenda').select('*')
+      .eq('estabelecimento_id', appState.user.id).eq('data_excecao', todayKey)
+    if (data) appState.excecoesDia = data
+  }
+
+  const btnSalvar = document.getElementById('btn-salvar-edicao-pausa')
+  if (btnSalvar) {
+    btnSalvar.addEventListener('click', async () => {
+      const inicio      = document.getElementById('edit-pausa-inicio')?.value
+      const fim         = document.getElementById('edit-pausa-fim')?.value
+      const encerrarDia = document.getElementById('edit-encerrar-dia')?.checked
+
+      if (!inicio) { alert('Informe o horário de início.'); return }
+      if (!encerrarDia && !fim) { alert('Informe o horário de fim ou marque "Encerrar o dia".'); return }
+      if (!encerrarDia && inicio >= fim) { alert('O início deve ser antes do fim.'); return }
+
+      const tipo = encerrarDia ? 'fechado_resto_do_dia' : 'pausa'
+      btnSalvar.disabled = true; btnSalvar.textContent = 'SALVANDO...'
+      const { error } = await supabase.from('excecoes_agenda')
+        .update({ inicio, fim: encerrarDia ? null : fim, tipo })
+        .eq('id', excecao.id)
+      btnSalvar.disabled = false; btnSalvar.textContent = 'SALVAR ALTERAÇÃO'
+      if (error) { alert('Erro: ' + error.message); return }
+      await reloadExcecoes()
+      appState.showModal = null
+      render()
+    })
+  }
+
+  const btnExcluir = document.getElementById('btn-excluir-pausa')
+  if (btnExcluir) {
+    btnExcluir.addEventListener('click', async () => {
+      btnExcluir.disabled = true; btnExcluir.textContent = 'EXCLUINDO...'
+      const { error } = await supabase.from('excecoes_agenda').delete().eq('id', excecao.id)
+      if (error) { alert('Erro: ' + error.message); btnExcluir.disabled = false; btnExcluir.textContent = 'EXCLUIR PAUSA'; return }
+      await reloadExcecoes()
+      appState.showModal = null
+      render()
+    })
+  }
 }
 
 function attachQuickBookEvents() {
   const overlay = document.querySelector('.overlay')
+  const btnCloseX = document.getElementById('btn-close-quick-x')
   const btnClose = document.getElementById('btn-close-quick')
   const btnConfirm = document.getElementById('btn-confirm-quick')
 
   const close = () => { appState.showModal = null; render() }
 
   if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
+  if (btnCloseX) btnCloseX.addEventListener('click', close)
   if (btnClose) btnClose.addEventListener('click', close)
 
   attachServiceSearchSelect('quick-service-search', 'quick-service-list')
 
-  if (btnConfirm) btnConfirm.addEventListener('click', () => {
-    const name = document.getElementById('quick-client-name').value
-    const serviceHidden = document.getElementById('quick-service-search-selected')
-    const service = serviceHidden ? serviceHidden.value : ''
+  const phoneInputQuick = document.getElementById('quick-client-phone')
+  if (phoneInputQuick) {
+    phoneInputQuick.addEventListener('input', (e) => {
+      e.target.value = formatPhone(e.target.value)
+    })
+  }
 
-    if (!name || !service) {
-      alert('Preencha o nome e o serviço!')
+  if (btnConfirm) btnConfirm.addEventListener('click', async () => {
+    btnConfirm.disabled = true;
+    const name = document.getElementById('quick-client-name').value
+    const phone = document.getElementById('quick-client-phone').value || ''
+    const serviceHidden = document.getElementById('quick-service-search-selected')
+    let selectedNames = []
+    try { selectedNames = JSON.parse(serviceHidden ? serviceHidden.value : '[]') } catch(e) {}
+
+    if (!name || selectedNames.length === 0) {
+      alert('Informe o nome e selecione ao menos um serviço!')
+      btnConfirm.disabled = false;
       return
     }
 
+    const serviceNome = selectedNames.join(', ')
+    let valorTotal = 0
+    let taxaTotalReserva = 0
+    let cobraReserva = false
+    let firstServiceId = null
+
+    selectedNames.forEach(sn => {
+      const servico = appState.servicosAtivos.find(s => s.nome === sn)
+      if (servico) {
+         valorTotal += Number(servico.preco || 0)
+         if (!firstServiceId) firstServiceId = servico.id
+         if (servico.cobra_reserva) {
+           cobraReserva = true
+           taxaTotalReserva += Number(servico.taxa_reserva || 0)
+         }
+      }
+    })
+
     const dayKey = getAgendaDayKey(appState.selectedDate)
-    const idx = appState.agendaData[dayKey].indexOf(appState.activeAgendaItem)
-    appState.agendaData[dayKey][idx] = { ...appState.activeAgendaItem, client: name, service, status: 'confirmado' }
+    const item = appState.activeAgendaItem
+
+    const newEntry = { 
+      time: item.time, 
+      client: name, 
+      service: serviceNome, 
+      status: cobraReserva ? 'pendente' : 'confirmado',
+      cobraReserva,
+      taxaReserva: taxaTotalReserva,
+      valorTotal: valorTotal
+    }
+
+    const idx = appState.agendaData[dayKey].indexOf(item)
+    if (idx > -1) {
+      appState.agendaData[dayKey][idx] = newEntry
+    } else {
+      appState.agendaData[dayKey].push(newEntry)
+    }
+    appState.agendaData[dayKey].sort((a,b) => a.time.localeCompare(b.time))
+
+    const { data: dbData, error } = await supabase.from('agendamentos').insert([{
+      estabelecimento_id: appState.user?.id,
+      cliente_nome: name,
+      cliente_telefone: phone,
+      servico_nome: serviceNome,
+      servico_id: firstServiceId,
+      data_agendamento: dayKey,
+      hora_agendamento: item.time,
+      agendamento_status: cobraReserva ? 'Pendente' : 'Confirmado',
+      pagamento_status: !cobraReserva,
+      taxa_reserva: taxaTotalReserva,
+      valor_total: valorTotal
+    }]).select().single()
+
+    if (error) {
+      console.error('Erro no quick book:', error)
+    } else if (dbData) {
+      newEntry.id = dbData.id
+    }
+
     close()
   })
 }
@@ -2064,24 +3301,105 @@ function attachFinancasEvents() {
   editBtns.forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation()
-      const idx = btn.dataset.id
-      appState.financasData.activeTransaction = { ...appState.financasData.transactions[idx], originalIndex: idx }
-      appState.showModal = 'edit-transaction'
-      render()
+      const dbId = btn.dataset.dbid
+      const trans = appState.financasData.transactions.find(t => t.id === dbId)
+      if (trans) {
+        appState.financasData.activeTransaction = { ...trans }
+        appState.showModal = 'edit-transaction'
+        render()
+      }
     })
   })
 
   deleteBtns.forEach(btn => {
     btn.addEventListener('click', async (e) => {
       e.stopPropagation()
-      const idx = btn.dataset.id
       const dbId = btn.dataset.dbid
-      if (!confirm('Excluir esta transação? Esta ação não pode ser desfeita.')) return
 
-      const { error } = await supabase.from('transacoes_financeiras').delete().eq('id', dbId)
-      if (error) { alert('Erro ao excluir: ' + error.message); return }
+      // Custom popup
+      appState.showModal = 'confirm-delete-trans'
+      appState.financasData.pendingDeleteId = dbId
+      render()
+    })
+  })
 
-      appState.financasData.transactions.splice(Number(idx), 1)
+  // Pay Fixed Helper
+  document.querySelectorAll('.btn-pay-fixed').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const desc = btn.dataset.desc
+      const val = Number(btn.dataset.val)
+      
+      // Feedback visual imediato
+      btn.textContent = '...'
+      btn.disabled = true
+      
+      const monthViewed = appState.financasData.month + 1;
+      const yearViewed = appState.financasData.year;
+      const today = new Date();
+      const isDifferentMonth = (yearViewed !== today.getFullYear()) || ((monthViewed - 1) !== today.getMonth());
+      
+      let txDate = `${yearViewed}-${String(monthViewed).padStart(2,'0')}-01`;
+      let finalDesc = desc;
+
+      if (isDifferentMonth) {
+         txDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+         finalDesc = `${desc} [REF:${String(monthViewed).padStart(2, '0')}/${yearViewed}]`;
+      }
+      
+      const payload = {
+        estabelecimento_id: appState.user.id,
+        descricao: finalDesc,
+        valor: val,
+        tipo: 'saida',
+        categoria: 'Fixo',
+        data_transacao: txDate
+      }
+
+      const { data, error } = await supabase.from('transacoes_financeiras').insert([payload]).select().single()
+      if (error) {
+        alert('Erro ao pagar: ' + error.message)
+        btn.textContent = 'PAGAR AGORA'
+        btn.disabled = false
+      } else {
+        // Atualização instantânea na tela
+        if (data) {
+          appState.financasData.transactions.unshift(dbTransToLocal(data))
+        }
+        render()
+      }
+    })
+  })
+
+
+  document.querySelectorAll('.btn-reverse-trans').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const dbId = btn.dataset.dbid
+      const agendaId = btn.dataset.agendaid
+
+      // Custom popup
+      appState.showModal = 'confirm-reverse-trans'
+      appState.financasData.pendingReverseDbId = dbId
+      appState.financasData.pendingReverseAgendaId = agendaId
+      render()
+    })
+  })
+
+  document.querySelectorAll('.btn-reverse-fixed-payment').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      appState.showModal = 'confirm-reverse-fixed'
+      appState.financasData.pendingReverseFixedId = btn.dataset.dbid
+      render()
+    })
+  })
+
+  document.querySelectorAll('.btn-delete-trans-all').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      appState.showModal = 'confirm-delete-all-fixed'
+      appState.financasData.pendingDeleteAllFixedDesc = btn.dataset.desc
       render()
     })
   })
@@ -2097,7 +3415,7 @@ function attachFinancasEvents() {
 
 function attachNewTransactionEvents() {
   const overlay = document.querySelector('.overlay')
-  const btnClose = document.getElementById('btn-close-trans')
+  const btnClose = document.getElementById('btn-close-trans-x')
   const btnConfirm = document.getElementById('btn-confirm-trans')
   const selectType = document.getElementById('trans-type')
 
@@ -2135,7 +3453,7 @@ function attachNewTransactionEvents() {
   if (descInput) {
     descInput.addEventListener('input', () => {
       const pos = descInput.selectionStart
-      descInput.value = descInput.value.replace(/\b\w/g, c => c.toUpperCase())
+      descInput.value = descInput.value.replace(/(?:^|\\s)\\S/g, c => c.toUpperCase())
       descInput.setSelectionRange(pos, pos)
     })
   }
@@ -2172,6 +3490,7 @@ function attachNewTransactionEvents() {
 
 function attachPrintOptionsEvents() {
   const overlay = document.querySelector('.overlay')
+  const btnCloseX = document.getElementById('btn-close-print-modal-x')
   const btnClose = document.getElementById('btn-close-print-modal')
   const btnMonthly = document.getElementById('btn-report-monthly')
   const btnAnnual = document.getElementById('btn-report-annual')
@@ -2179,6 +3498,7 @@ function attachPrintOptionsEvents() {
   const close = () => { appState.showModal = null; render() }
 
   if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
+  if (btnCloseX) btnCloseX.addEventListener('click', close)
   if (btnClose) btnClose.addEventListener('click', close)
 
   if (btnMonthly) btnMonthly.addEventListener('click', () => {
@@ -2203,6 +3523,7 @@ function attachReportViewEvents() {
 
 function attachEditTransactionEvents() {
   const overlay = document.querySelector('.overlay')
+  const btnCloseX = document.getElementById('btn-close-edit-trans-x')
   const btnClose = document.getElementById('btn-close-edit-trans')
   const btnSave = document.getElementById('btn-save-edit-trans')
   const btnDate = document.getElementById('btn-edit-trans-date')
@@ -2211,6 +3532,7 @@ function attachEditTransactionEvents() {
   const close = () => { appState.showModal = null; render() }
 
   if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
+  if (btnCloseX) btnCloseX.addEventListener('click', close)
   if (btnClose) btnClose.addEventListener('click', close)
 
   if (btnDate) btnDate.addEventListener('click', () => {
@@ -2240,7 +3562,7 @@ function attachEditTransactionEvents() {
   if (descInput) {
     descInput.addEventListener('input', () => {
       const pos = descInput.selectionStart
-      descInput.value = descInput.value.replace(/\b\w/g, c => c.toUpperCase())
+      descInput.value = descInput.value.replace(/(?:^|\\s)\\S/g, c => c.toUpperCase())
       descInput.setSelectionRange(pos, pos)
     })
   }
@@ -2271,8 +3593,10 @@ function attachEditTransactionEvents() {
       return
     }
 
-    const idx = appState.financasData.activeTransaction.originalIndex
-    appState.financasData.transactions[idx] = dbTransToLocal(data[0])
+    const idx = appState.financasData.transactions.findIndex(t => t.id === dbId)
+    if (idx !== -1) {
+      appState.financasData.transactions[idx] = dbTransToLocal(data[0])
+    }
     close()
   })
 }
@@ -2291,7 +3615,7 @@ function attachServicosEvents() {
   if (nameInput) {
     nameInput.addEventListener('input', (e) => {
       const pos = e.target.selectionStart
-      e.target.value = e.target.value.replace(/\b\w/g, c => c.toUpperCase())
+      e.target.value = e.target.value.replace(/(?:^|\\s)\\S/g, c => c.toUpperCase())
       e.target.setSelectionRange(pos, pos)
       appState.servicosForm.name = e.target.value
     })
@@ -2437,7 +3761,7 @@ function attachServicosEvents() {
         if (nomeInput) {
           nomeInput.addEventListener('input', () => {
             const pos = nomeInput.selectionStart
-            nomeInput.value = nomeInput.value.replace(/\b\w/g, c => c.toUpperCase())
+            nomeInput.value = nomeInput.value.replace(/(?:^|\\s)\\S/g, c => c.toUpperCase())
             nomeInput.setSelectionRange(pos, pos)
           })
         }
@@ -2610,33 +3934,21 @@ async function criarAgendamentoComPix({ clienteNome, servicoId, servicoNome, dat
 // ──────────────────────────────────────────────────────────────────────────────
 
 // Initial boot: splash screen logic
-function showSplashScreen() {
-  const splash = document.createElement('div');
-  splash.id = 'pwa-splash-container';
-  splash.style.cssText = `
-    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: white; z-index: 9999999; margin: 0; padding: 0; gap: 2rem;
-  `;
-  splash.innerHTML = `
-    <img src="/logo_pegasus_full.png" alt="Pegasus" style="width: 75vw; max-width: 500px; height: auto;">
-    <div class="pwa-spinner"></div>
-    <style>
-      .pwa-spinner {
-        width: 40px; height: 40px;
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #b8860b;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-  `;
-  document.body.appendChild(splash);
-}
+function showSplashScreen()
+handleMpCallback().then(async () => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    appState.user = session.user;
+    appState.screen = 'dashboard';
+  }
+  supabase.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT') {
+      appState.user = null;
+      appState.screen = 'login';
+      render();
+    }
+  });
 
-showSplashScreen()
-handleMpCallback().then(() => {
   render();
   setTimeout(() => {
     const splash = document.getElementById('pwa-splash-container');
@@ -2645,6 +3957,5 @@ handleMpCallback().then(() => {
       splash.style.opacity = '0';
       setTimeout(() => splash.remove(), 500);
     }
-  }, 1000); // Tempo mínimo para garantir que o usuário veja a logo carregando
+  }, 1000);
 })
-

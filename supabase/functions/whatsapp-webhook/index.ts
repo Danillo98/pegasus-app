@@ -25,7 +25,7 @@ interface WaMessage {
 interface Servico {
   id: string;
   nome: string;
-  valor: number;
+  preco: number;
   taxa_reserva?: number;
   chave_pix?: string;
 }
@@ -39,6 +39,7 @@ interface Session {
   horario_selecionado: string | null;
   nome_cliente: string | null;
   pagina_servicos: number;
+  ultima_interacao?: string;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -78,6 +79,9 @@ Deno.serve(async (req: Request) => {
     const phoneNumberId: string = value.metadata?.phone_number_id;
     const clientPhone: string = msg.from;
 
+    console.log("Mensagem recebida de:", clientPhone, "para:", phoneNumberId);
+    console.log("Conteúdo da mensagem:", JSON.stringify(msg, null, 2));
+
     // Buscar o estabelecimento pelo phone_number_id
     const { data: estab } = await supabase
       .from("estabelecimentos")
@@ -87,8 +91,11 @@ Deno.serve(async (req: Request) => {
       .single();
 
     if (!estab) {
+      console.log("Estabelecimento não encontrado ou inativo. Phone ID:", phoneNumberId);
       return new Response("Estabelecimento não encontrado ou WhatsApp inativo", { status: 200 });
     }
+
+    console.log("Estabelecimento encontrado:", estab.id);
 
     const waToken: string = estab.whatsapp_token;
     const estabId: string = estab.id;
@@ -101,10 +108,14 @@ Deno.serve(async (req: Request) => {
     }
 
     // Buscar ou criar sessão do cliente
+    console.log("-> Chamando getSession...");
     let session = await getSession(estabId, clientPhone);
+    console.log("-> getSession retornou:", session?.id);
 
     if (!session) {
+      console.log("-> Sessão não encontrada, criando nova...");
       session = await createSession(estabId, clientPhone);
+      console.log("-> Nova sessão criada:", session?.id);
     } else {
       // Verificar timeout de 5 minutos
       const ultimaInteracao = new Date(session.ultima_interacao!);
@@ -121,14 +132,18 @@ Deno.serve(async (req: Request) => {
     }
 
     // Atualizar última interação
+    console.log("-> Atualizando ultima_interacao...");
     await updateLastInteraction(session.id);
 
     // Processar mensagem conforme etapa atual
+    console.log("-> Entrando em processMessage, etapa:", session?.etapa);
     await processMessage(msg, session, waToken, phoneNumberId);
+    console.log("-> processMessage finalizado.");
 
     return new Response("OK", { status: 200 });
   } catch (err) {
-    console.error("Erro no webhook WhatsApp:", err);
+    console.log("!!!! ERRO CAPTURADO NO CATCH !!!!", err);
+    console.error("ERRO GRAVE no webhook WhatsApp:", err);
     return new Response("Internal Server Error", { status: 500 });
   }
 });
@@ -337,7 +352,7 @@ async function handleConfirmacaoResumo(
   // Verificar se algum serviço tem taxa de reserva
   const { data: servicos } = await supabase
     .from("servicos")
-    .select("id, nome, valor, taxa_reserva, chave_pix")
+    .select("id, nome, preco, taxa_reserva, chave_pix")
     .in("id", session.servicos_ids);
 
   const temTaxaReserva = servicos?.some((s: Servico) => s.taxa_reserva && s.taxa_reserva > 0);
@@ -368,8 +383,8 @@ async function handleConfirmacaoResumo(
       .single();
 
     // Montar resumo dos serviços para o estabelecimento
-    const resumoServicos = servicos?.map((s: Servico) => `• ${s.nome} — R$${s.valor.toFixed(2)}`).join("\n");
-    const totalServicos = servicos?.reduce((acc: number, s: Servico) => acc + s.valor, 0);
+    const resumoServicos = servicos?.map((s: Servico) => `• ${s.nome} — R$${s.preco.toFixed(2)}`).join("\n");
+    const totalServicos = servicos?.reduce((acc: number, s: Servico) => acc + s.preco, 0);
     const horarioFormatado = new Date(session.horario_selecionado!).toLocaleTimeString("pt-BR", {
       hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo"
     });
@@ -432,7 +447,7 @@ async function handleEstabAction(
     // Buscar serviços
     const { data: servicos } = await supabase
       .from("servicos")
-      .select("id, nome, valor, taxa_reserva, chave_pix")
+      .select("id, nome, preco, taxa_reserva, chave_pix")
       .in("id", session.servicos_ids);
 
     // Gravar agendamento no banco
@@ -467,7 +482,7 @@ async function handleEstabAction(
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function sendText(token: string, phoneId: string, to: string, text: string) {
-  await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+  const res = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
@@ -480,6 +495,12 @@ async function sendText(token: string, phoneId: string, to: string, text: string
       text: { body: text }
     })
   });
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error("ERRO sendText - status:", res.status, "body:", errBody);
+  } else {
+    console.log("sendText OK para:", to);
+  }
 }
 
 async function sendButtonMessage(
@@ -488,7 +509,7 @@ async function sendButtonMessage(
   to: string,
   opts: { body: string; buttons: { id: string; title: string }[] }
 ) {
-  await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+  const res = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
@@ -510,6 +531,12 @@ async function sendButtonMessage(
       }
     })
   });
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error("ERRO sendButtonMessage - status:", res.status, "body:", errBody);
+  } else {
+    console.log("sendButtonMessage OK para:", to);
+  }
 }
 
 async function sendListMessage(
@@ -518,34 +545,42 @@ async function sendListMessage(
   to: string,
   opts: { header: string; body: string; buttonLabel: string; items: { id: string; title: string; description?: string }[] }
 ) {
-  await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
+  const payload = {
+    messaging_product: "whatsapp",
+    to,
+    type: "interactive",
+    interactive: {
+      type: "list",
+      header: { type: "text", text: opts.header },
+      body: { text: opts.body },
+      action: {
+        button: opts.buttonLabel,
+        sections: [{
+          title: "Opções",
+          rows: opts.items.map(item => ({
+            id: item.id,
+            title: item.title.slice(0, 24),
+            description: item.description?.slice(0, 72) || ""
+          }))
+        }]
+      }
+    }
+  };
+  console.log("sendListMessage payload:", JSON.stringify(payload));
+  const res = await fetch(`https://graph.facebook.com/v19.0/${phoneId}/messages`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to,
-      type: "interactive",
-      interactive: {
-        type: "list",
-        header: { type: "text", text: opts.header },
-        body: { text: opts.body },
-        action: {
-          button: opts.buttonLabel,
-          sections: [{
-            title: "Opções",
-            rows: opts.items.map(item => ({
-              id: item.id,
-              title: item.title.slice(0, 24),
-              description: item.description?.slice(0, 72) || ""
-            }))
-          }]
-        }
-      }
-    })
+    body: JSON.stringify(payload)
   });
+  if (!res.ok) {
+    const errBody = await res.text();
+    console.error("ERRO sendListMessage - status:", res.status, "body:", errBody);
+  } else {
+    console.log("sendListMessage OK para:", to);
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -559,10 +594,12 @@ async function enviarListaServicos(session: Session, token: string, phoneId: str
 
   const { data: servicos } = await supabase
     .from("servicos")
-    .select("id, nome, valor")
+    .select("id, nome, preco")
     .eq("estabelecimento_id", session.id_estabelecimento)
     .order("nome")
     .range(offset, offset + PAGE_SIZE); // busca até 10 (9 + possível "ver mais")
+
+  console.log("enviarListaServicos: estab=", session.id_estabelecimento, "servicos encontrados=", servicos?.length);
 
   if (!servicos?.length) {
     await sendText(token, phoneId, session.telefone_cliente,
@@ -576,7 +613,7 @@ async function enviarListaServicos(session: Session, token: string, phoneId: str
   let items = disponiveis.slice(0, PAGE_SIZE).map((s: Servico) => ({
     id: `servico_${s.id}`,
     title: s.nome,
-    description: `R$${s.valor.toFixed(2)}`
+    description: `R$${s.preco.toFixed(2)}`
   }));
 
   // Se havia 10 resultados, o décimo indica que há mais páginas
@@ -666,11 +703,11 @@ async function enviarListaHorarios(session: Session, token: string, phoneId: str
 async function enviarResumoConfirmacao(session: Session, token: string, phoneId: string) {
   const { data: servicos } = await supabase
     .from("servicos")
-    .select("id, nome, valor")
+    .select("id, nome, preco")
     .in("id", session.servicos_ids);
 
-  const resumo = servicos?.map((s: Servico) => `• ${s.nome} — R$${s.valor.toFixed(2)}`).join("\n");
-  const total = servicos?.reduce((acc: number, s: Servico) => acc + s.valor, 0) || 0;
+  const resumo = servicos?.map((s: Servico) => `• ${s.nome} — R$${s.preco.toFixed(2)}`).join("\n");
+  const total = servicos?.reduce((acc: number, s: Servico) => acc + s.preco, 0) || 0;
   const horarioFormatado = new Date(session.horario_selecionado!).toLocaleString("pt-BR", {
     weekday: "long", day: "2-digit", month: "2-digit",
     hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo"
@@ -695,18 +732,25 @@ async function enviarResumoConfirmacao(session: Session, token: string, phoneId:
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function confirmarAgendamento(session: Session, servicos: Servico[]) {
-  const total = servicos.reduce((acc: number, s: Servico) => acc + s.valor, 0);
   const nomesServicos = servicos.map((s: Servico) => s.nome).join(" + ");
+  const horario = new Date(session.horario_selecionado!);
+
+  // Formato data e hora separados (igual ao agendamento web)
+  const data_agendamento = horario.toISOString().split("T")[0];
+  const hora_agendamento = horario.toLocaleTimeString("pt-BR", {
+    hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo"
+  });
 
   await supabase.from("agendamentos").insert({
     estabelecimento_id: session.id_estabelecimento,
-    data_hora: session.horario_selecionado,
+    cliente_nome: session.nome_cliente,
+    cliente_telefone: session.telefone_cliente,
     servico_nome: nomesServicos,
-    status_reserva: "confirmado",
+    data_agendamento,
+    hora_agendamento,
+    status: "confirmado",
     origem: "whatsapp",
-    nome_whatsapp: session.nome_cliente,
-    telefone_cliente: session.telefone_cliente,
-    taxa_reserva: 0 // será atualizado se houver taxa
+    taxa_reserva: 0
   });
 }
 
@@ -715,7 +759,7 @@ async function confirmarAgendamento(session: Session, servicos: Servico[]) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 async function getSession(estabId: string, telefone: string): Promise<Session | null> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("whatsapp_sessions")
     .select("*")
     .eq("id_estabelecimento", estabId)
@@ -723,7 +767,9 @@ async function getSession(estabId: string, telefone: string): Promise<Session | 
     .not("etapa", "in", '("concluido","recusado","expirado")')
     .order("criado_em", { ascending: false })
     .limit(1)
-    .single();
+    .maybeSingle();
+
+  if (error) console.log("!! ERRO DB getSession:", error);
   return data as Session | null;
 }
 
@@ -737,11 +783,13 @@ async function getSessionById(id: string): Promise<Session | null> {
 }
 
 async function createSession(estabId: string, telefone: string): Promise<Session> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("whatsapp_sessions")
     .insert({ id_estabelecimento: estabId, telefone_cliente: telefone, etapa: "inicio" })
     .select()
     .single();
+
+  if (error) console.log("!! ERRO DB createSession:", error);
   return data as Session;
 }
 
