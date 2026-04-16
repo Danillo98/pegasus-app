@@ -2239,10 +2239,6 @@ function renderAssinaturas() {
     </div>
   `, false, false)
 }
-      </div>
-    </div>
-  `, false, false)
-}
 
 // --- EVENT HANDLERS ---
 
