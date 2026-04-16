@@ -1,6 +1,29 @@
 import './style.css'
 import { supabase } from './supabase.js'
 
+// --- GUARDA DE SEGURANÇA: BLOQUEAR LOGIN AUTOMÁTICO EM RECUPERAÇÃO/RESET ---
+async function clearAuthLoop() {
+  const url = window.location.href;
+  if (url.includes('reset=success') || url.includes('type=recovery') || url.includes('access_token')) {
+    // Se estivermos na página principal, forçar limpeza total
+    if (!window.location.pathname.includes('reset-password.html')) {
+        await supabase.auth.signOut();
+        localStorage.clear();
+        sessionStorage.clear();
+        // Se for token de recuperação, manda para a página de reset
+        if (url.includes('access_token')) {
+           window.location.replace('/reset-password.html' + window.location.hash);
+           return true; 
+        }
+        // Se for sucesso de reset, limpa a URL e mostra login
+        window.history.replaceState({}, document.title, '/');
+    }
+  }
+  return false;
+}
+const isRedirecting = await clearAuthLoop();
+if (isRedirecting) throw new Error("Redirecting to reset page..."); // Trava execução do resto do módulo
+
 function formatPhone(value) {
   if (!value) return ""
   value = value.replace(/\D/g, '')
@@ -4041,16 +4064,6 @@ function showSplashScreen() {
 
 showSplashScreen()
 handleMpCallback().then(async () => {
-  // Se viemos de uma redefinição de senha com sucesso, forçar logout total
-  const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('reset') === 'success') {
-      await supabase.auth.signOut();
-      localStorage.clear();
-      appState.user = null;
-      appState.screen = 'login';
-      window.history.replaceState({}, document.title, window.location.pathname);
-  }
-
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     appState.user = session.user;
@@ -4065,13 +4078,6 @@ handleMpCallback().then(async () => {
         appState.theme = profile.tipo // 'barbearia' ou 'salao'
       }
     } catch(e) { console.warn('Could not restore theme from profile', e) }
-    
-    // VERIFICAÇÃO CRUCIAL: Se estivermos em um fluxo de recuperação, não mostre o dashboard!
-    // Redirecione imediatamente para a página de reset.
-    if (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token')) {
-       window.location.replace('/reset-password.html' + window.location.hash);
-       return; // Trava o resto da execução
-    }
 
     appState.screen = 'dashboard';
   }
