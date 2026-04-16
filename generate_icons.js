@@ -58,7 +58,19 @@ async function processIcon() {
       // else: stays white (already set by background)
     });
 
-    // Composite logo centered inside the ring (85% of inner area to keep ring visible)
+    // --- Remove white background from logo ---
+    // Scan every pixel: if it's near-white, make it transparent
+    logo.scan(0, 0, logo.bitmap.width, logo.bitmap.height, function(px, py, idx) {
+      const r = this.bitmap.data[idx + 0];
+      const g = this.bitmap.data[idx + 1];
+      const b = this.bitmap.data[idx + 2];
+      // Consider "white" any pixel where all channels >= 230
+      if (r >= 230 && g >= 230 && b >= 230) {
+        this.bitmap.data[idx + 3] = 0; // fully transparent
+      }
+    });
+
+    // Composite logo centered inside the ring (70% of inner area to keep ring visible)
     logo.contain({ w: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.70), h: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.70) });
     const lx = Math.floor((SIZE - logo.bitmap.width) / 2);
     const ly = Math.floor((SIZE - logo.bitmap.height) / 2);
