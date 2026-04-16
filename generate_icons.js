@@ -1,4 +1,4 @@
-﻿import { Jimp } from 'jimp';
+import { Jimp } from 'jimp';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -19,27 +19,27 @@ async function processIcon() {
     
     // Logo centralizada (80% do espaço)
     logo.contain({ w: 820, h: 820 });
-    const x = Math.floor((1024 - logo.bitmap.width) / 2);
-    const y = Math.floor((1024 - logo.bitmap.height) / 2); 
-    bg1024.composite(logo, x, y);
-
-    // Desenha o círculo preto GROSSO com anti-aliasing manual simples
+    
     const centerX = 512; const centerY = 512; 
     const radius = 500; // Quase na borda
-    const thickness = 30; // Bem grosso (escala 1024)
     
     bg1024.scan(0, 0, 1024, 1024, function(px, py, idx) {
       const dx = px - centerX; const dy = py - centerY;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      // Borda interna e externa com suavização
-      if (distance >= radius - thickness && distance <= radius) {
+      // Preenche o círculo INTEIRO de preto para garantir que o ícone seja redondo
+      if (distance <= radius) {
         this.bitmap.data[idx + 0] = 0;
         this.bitmap.data[idx + 1] = 0;
         this.bitmap.data[idx + 2] = 0;
         this.bitmap.data[idx + 3] = 255;
       }
     });
+
+    // Composite logo over the black circle
+    const lx = Math.floor((1024 - logo.bitmap.width) / 2);
+    const ly = Math.floor((1024 - logo.bitmap.height) / 2); 
+    bg1024.composite(logo, lx, ly);
 
     // Redimensiona para o tamanho final (isso cria o anti-aliasing natural)
     bg1024.resize({ w: 512, h: 512 });
