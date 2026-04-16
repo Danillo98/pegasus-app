@@ -164,6 +164,7 @@ let appState = {
   pixModal: null, // { qr_code, qr_code_b64, ticket_url, valor, agendamento_id }
   pendingAgendamento: null, // temp storage while waiting for MP token setup
   selectedAssinatura: 'mensal', // 'mensal' or 'anual'
+  previousScreen: null,
   financasData: {
     month: new Date().getMonth(),
     year: new Date().getFullYear(),
@@ -244,7 +245,11 @@ function render() {
   const root = document.getElementById('app')
   document.body.className = `mode-${appState.theme}`
 
-  window.scrollTo(0, 0)
+  // Only scroll to top if screen actually changed
+  if (appState.previousScreen !== appState.screen) {
+    window.scrollTo(0, 0)
+    appState.previousScreen = appState.screen
+  }
 
   // Auto-fetch agenda
   if (appState.screen === 'agenda' && !appState.agendaLoaded && appState.user) {
@@ -2199,8 +2204,8 @@ function renderAssinaturas() {
         </div>
 
         <!-- PLANO ANUAL (OURO STYLE) -->
-        <div id="card-anual" class="card ripple" style="flex: 1; min-width: 20rem; border: 3px solid #FFC107; box-shadow: ${isAnual ? '0 0 35px rgba(255, 193, 7, 0.7)' : 'var(--shadow-md)'}; transform: ${isAnual ? 'scale(1.03)' : 'scale(1)'}; z-index: ${isAnual ? '10' : '1'}; padding: 3rem 2rem; background: #FFF8E1; border-radius: 1.5rem; position: relative; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);">
-          <div style="background: #FFC107; color: white; padding: 0.5rem 1.2rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -14px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 2px solid #FFF8E1; white-space: nowrap; line-height: 1;">MAIS ESCOLHIDO</div>
+        <div id="card-anual" class="card ripple" style="flex: 1; min-width: 20rem; border: 3px solid #FFC107; box-shadow: ${isAnual ? '0 0 35px rgba(255, 193, 7, 0.7)' : 'var(--shadow-md)'}; transform: ${isAnual ? 'scale(1.03)' : 'scale(1)'}; z-index: ${isAnual ? '10' : '1'}; padding: 3rem 2rem; background: #FFF8E1; border-radius: 1.5rem; position: relative; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: visible !important;">
+          <div style="background: #FFC107; color: white; padding: 0.5rem 1.2rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 2px solid #FFF8E1; white-space: nowrap; line-height: 1; z-index: 20;">MAIS ESCOLHIDO</div>
           <h3 style="margin-top: 0.625rem; font-size: 1.25rem; font-weight: 900; color: #856404;">PLANO ANUAL</h3>
           <div style="margin: 1.5rem 0;">
             <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 999<span style="font-size: 1.25rem; opacity: 0.6;">,00</span></h1>

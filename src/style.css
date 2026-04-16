@@ -119,7 +119,6 @@ a { text-decoration: none; color: inherit; }
   gap: clamp(1rem, 2vw, 2rem);
   text-align: center;
   position: relative;
-  overflow: hidden;
   width: 100%;
 }
 
