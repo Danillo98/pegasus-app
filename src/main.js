@@ -178,6 +178,7 @@ let appState = {
   servicosAtivos: [],
   servicosLoaded: false,
   agendaLoaded: false,
+  registrationData: { nome: '', telefone: '', endereco: '', email: '', senha: '', conf: '' },
   editingServicoId: null,
   editingServicoForm: {},
   deletingServicoId: null,
@@ -926,7 +927,7 @@ function renderLogin() {
     subContent = `
       <div class="w-full flex flex-col gap-md">
         <p style="font-size: 1.1rem; color: var(--text-secondary); text-align: center; margin-bottom: 10px;">Digite seu e-mail para redefinir a senha</p>
-        <input type="text" placeholder="Seu E-mail" style="padding: 18px; border-radius: 10px; border: 1px solid var(--border); width: 100%; font-size: 1.15rem;">
+        <input type="email" id="forgot-email" placeholder="Seu E-mail" autocapitalize="none" style="padding: 18px; border-radius: 10px; border: 1px solid var(--border); width: 100%; font-size: 1.15rem;">
         <button id="btn-reset" class="w-full" style="background: var(--primary); color: var(--on-primary); padding: 22px; border-radius: 10px; font-weight: 800; margin-top: 10px; font-size: 1.3rem;">
           ENVIAR E-MAIL
         </button>
@@ -949,12 +950,12 @@ function renderLogin() {
             </button>
           </div>
         </div>
-        <input type="text" id="reg-nome" placeholder="Nome Completo" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
-        <input type="text" id="reg-telefone" placeholder="Telefone" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
-        <input type="text" id="reg-endereco" placeholder="Endereço" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
-        <input type="email" id="reg-email" placeholder="Email" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
-        <input type="password" id="reg-senha" placeholder="Senha" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
-        <input type="password" id="reg-senha-confirm" placeholder="Confirmação de Senha" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
+        <input type="text" id="reg-nome" placeholder="Nome Completo" value="${appState.registrationData.nome}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
+        <input type="text" id="reg-telefone" placeholder="Telefone" value="${appState.registrationData.telefone}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
+        <input type="text" id="reg-endereco" placeholder="Endereço" value="${appState.registrationData.endereco}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
+        <input type="email" id="reg-email" placeholder="Email" value="${appState.registrationData.email}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
+        <input type="password" id="reg-senha" placeholder="Senha" value="${appState.registrationData.senha}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
+        <input type="password" id="reg-senha-confirm" placeholder="Confirmação de Senha" value="${appState.registrationData.conf}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
         <button id="btn-do-register" class="w-full" style="background: var(--primary); color: var(--on-primary); padding: 1rem; border-radius: 0.5rem; font-weight: 800; margin-top: 5px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 15px var(--glow);">
           CADASTRAR
         </button>
@@ -2308,26 +2309,34 @@ function attachLoginEvents() {
     appState.loginSubScreen = 'default'
     render()
   })
-  if (btnReset) btnReset.addEventListener('click', () => {
-    alert('E-mail de redefinição enviado!')
+  if (btnReset) btnReset.addEventListener('click', async () => {
+    const emailInput = document.getElementById('forgot-email')
+    const email = emailInput ? emailInput.value : ''
+    if (!email) return alert('Por favor, informe seu e-mail.')
+    
+    btnReset.textContent = 'ENVIANDO...'
+    btnReset.disabled = true
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + '/reset-password.html',
+    })
+
+    if (error) {
+       console.error('Erro reset password:', error)
+    }
+    
+    alert('Se houver uma conta ativa para o e-mail digitado, em instantes você receberá um e-mail para redefinição de senha!')
     appState.loginSubScreen = 'default'
     render()
   })
 
+  // Registration event listeners for persistence
+  const regNome = document.getElementById('reg-nome')
   const regTelefone = document.getElementById('reg-telefone')
-  if (regTelefone) {
-    regTelefone.addEventListener('input', (e) => {
-      let v = e.target.value.replace(/\D/g, '')
-      if (v.length <= 10) {
-        v = v.replace(/(\d{2})(\d)/, '($1) $2')
-        v = v.replace(/(\d{4})(\d)/, '$1-$2')
-      } else {
-        v = v.replace(/(\d{2})(\d)/, '($1) $2')
-        v = v.replace(/(\d{5})(\d)/, '$1-$2')
-      }
-      e.target.value = v.substring(0, 15) // Limit max length
-    })
-  }
+  const regEndereco = document.getElementById('reg-endereco')
+  const regEmail = document.getElementById('reg-email')
+  const regSenha = document.getElementById('reg-senha')
+  const regConf = document.getElementById('reg-senha-confirm')
 
   const capitalizeInput = (e) => {
     const start = e.target.selectionStart;
@@ -2339,18 +2348,44 @@ function attachLoginEvents() {
     }
   }
 
-  const regNome = document.getElementById('reg-nome')
-  const regEndereco = document.getElementById('reg-endereco')
-  if (regNome) regNome.addEventListener('input', capitalizeInput)
-  if (regEndereco) regEndereco.addEventListener('input', capitalizeInput)
+  if (regNome) {
+    regNome.addEventListener('input', (e) => {
+      capitalizeInput(e)
+      appState.registrationData.nome = e.target.value
+    })
+  }
+  if (regEndereco) {
+    regEndereco.addEventListener('input', (e) => {
+      capitalizeInput(e)
+      appState.registrationData.endereco = e.target.value
+    })
+  }
+
+  if (regTelefone) {
+    regTelefone.addEventListener('input', (e) => { 
+      let v = e.target.value.replace(/\D/g, '')
+      if (v.length <= 10) {
+        v = v.replace(/(\d{2})(\d)/, '($1) $2')
+        v = v.replace(/(\d{4})(\d)/, '$1-$2')
+      } else {
+        v = v.replace(/(\d{2})(\d)/, '($1) $2')
+        v = v.replace(/(\d{5})(\d)/, '$1-$2')
+      }
+      e.target.value = v.substring(0, 15)
+      appState.registrationData.telefone = e.target.value
+    }) 
+  }
+  if (regEmail) regEmail.addEventListener('input', (e) => { appState.registrationData.email = e.target.value })
+  if (regSenha) regSenha.addEventListener('input', (e) => { appState.registrationData.senha = e.target.value })
+  if (regConf) regConf.addEventListener('input', (e) => { appState.registrationData.conf = e.target.value })
 
   if (btnDoRegister) btnDoRegister.addEventListener('click', async () => {
-    const nome = document.getElementById('reg-nome').value
-    const telefone = document.getElementById('reg-telefone').value
-    const endereco = document.getElementById('reg-endereco').value
-    const email = document.getElementById('reg-email').value
-    const senha = document.getElementById('reg-senha').value
-    const conf = document.getElementById('reg-senha-confirm').value
+    const nome = regNome?.value
+    const telefone = regTelefone?.value
+    const email = regEmail?.value
+    const senha = regSenha?.value
+    const conf = regConf?.value
+    const endereco = regEndereco?.value
 
     if (!nome || !telefone || !email || !senha) {
       return alert('Preencha todos os campos obrigatórios.')
@@ -2383,6 +2418,7 @@ function attachLoginEvents() {
     }
 
     alert('Conta criada com sucesso! Seja bem-vindo ao Pegasus!<br>Você já pode fazer login.')
+    appState.registrationData = { nome: '', telefone: '', endereco: '', email: '', senha: '', conf: '' }
     appState.loginSubScreen = 'default'
     render()
   })
