@@ -1023,55 +1023,57 @@ function renderLogin() {
 
 function renderDashboard() {
   return `
-    <div class="dashboard-container min-h-screen animate-fade-in">
-      <header class="flex justify-between items-center" style="padding: 1.25rem var(--spacing-lg) 1.25rem 2.5%; border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100;">
-        <div class="flex items-center">
-           <img src="/logo_pegasus_sem_nome.png" alt="Pegasus Logo" style="height: 4.5rem; width: auto; object-fit: contain; margin-right: 0.5rem; ">
-           <span style="font-size: 0.75rem; background: var(--primary); padding: 0.25rem 0.8rem; border-radius: 2rem; color: var(--on-primary); font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">
-            ${appState.theme === 'salao' ? 'Salão' : appState.theme}
-           </span>
-        </div>
-        <button id="btn-logout" style="color: var(--text-secondary); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-left: 2rem;">Sair</button>
-      </header>
+    <div class="dashboard-container min-h-screen">
+      <div class="animate-fade-in">
+        <header class="flex justify-between items-center" style="padding: 1.25rem var(--spacing-lg) 1.25rem 2.5%; border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100;">
+          <div class="flex items-center">
+             <img src="/logo_pegasus_sem_nome.png" alt="Pegasus Logo" style="height: 4.5rem; width: auto; object-fit: contain; margin-right: 0.5rem; ">
+             <span style="font-size: 0.75rem; background: var(--primary); padding: 0.25rem 0.8rem; border-radius: 2rem; color: var(--on-primary); font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">
+              ${appState.theme === 'salao' ? 'Salão' : appState.theme}
+             </span>
+          </div>
+          <button id="btn-logout" style="color: var(--text-secondary); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-left: 2rem;">Sair</button>
+        </header>
 
-      <main style="padding-top: 3rem; padding-bottom: 4rem;">
-        <div class="text-center" style="margin-bottom: 3rem; padding: 0 1.25rem;">
-           <h1 style="font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 0.6rem; font-family: var(--font-heading);">PAINEL GERAL</h1>
-           <p style="color: var(--text-secondary); font-weight: 600; font-size: 1.1rem;">O que vamos fazer hoje?</p>
-        </div>
+        <main style="padding-top: 3rem; padding-bottom: 4rem;">
+          <div class="text-center" style="margin-bottom: 3rem; padding: 0 1.25rem;">
+             <h1 style="font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 0.6rem; font-family: var(--font-heading);">PAINEL GERAL</h1>
+             <p style="color: var(--text-secondary); font-weight: 600; font-size: 1.1rem;">O que vamos fazer hoje?</p>
+          </div>
 
-        <div class="dashboard-grid">
-          <div class="card" id="card-financas">
-            <div class="icon-container" style="transform: scale(1.2);">${icons.financas}</div>
-            <h3 style="margin-top: 1rem; font-size: 1.1rem;">Controle Financeiro</h3>
+          <div class="dashboard-grid">
+            <div class="card" id="card-financas">
+              <div class="icon-container" style="transform: scale(1.2);">${icons.financas}</div>
+              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Controle Financeiro</h3>
+            </div>
+            <div class="card" id="card-agenda">
+              <div class="icon-container" style="transform: scale(1.2);">${icons.agenda}</div>
+              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Minha Agenda</h3>
+            </div>
+            <div class="card" id="card-assinaturas">
+              <div class="icon-container" style="transform: scale(1.2);">${icons.assinaturas}</div>
+              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Assinaturas</h3>
+            </div>
+            <div class="card" id="card-servicos">
+              <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
+              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços Fornecidos</h3>
+            </div>
           </div>
-          <div class="card" id="card-agenda">
-            <div class="icon-container" style="transform: scale(1.2);">${icons.agenda}</div>
-            <h3 style="margin-top: 1rem; font-size: 1.1rem;">Minha Agenda</h3>
-          </div>
-          <div class="card" id="card-assinaturas">
-            <div class="icon-container" style="transform: scale(1.2);">${icons.assinaturas}</div>
-            <h3 style="margin-top: 1rem; font-size: 1.1rem;">Assinaturas</h3>
-          </div>
-          <div class="card" id="card-servicos">
-            <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
-            <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços Fornecidos</h3>
-          </div>
-        </div>
-      </main>
+        </main>
+      </div>
 
-      <!-- Botão Suporte Flutuante (Extreme Corner) -->
+      <!-- Botão Suporte Flutuante (Extreme Corner) - OUTSIDE animation to fix position:fixed -->
       <button id="btn-floating-support" style="
         position: fixed !important;
-        bottom: 8px !important;
-        right: 8px !important;
-        width: 60px !important;
-        height: 60px !important;
+        bottom: 1.5rem !important;
+        right: 1.5rem !important;
+        width: 65px !important;
+        height: 65px !important;
         border-radius: 50% !important;
         background: var(--primary) !important;
         color: var(--on-primary) !important;
         border: none !important;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+        box-shadow: var(--shadow-lg) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -4199,15 +4201,16 @@ handleMpCallback().then(async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     appState.user = session.user;
-    // Restore theme from DB on session resume (security: prevent theme switching)
+    // Restore theme and full profile from DB on session resume
     try {
       const { data: profile } = await supabase
         .from('estabelecimentos')
-        .select('tipo')
+        .select('*')
         .eq('id', session.user.id)
         .single()
-      if (profile?.tipo) {
+      if (profile) {
         appState.theme = profile.tipo // 'barbearia' ou 'salao'
+        appState.profile = profile
       }
     } catch(e) { console.warn('Could not restore theme from profile', e) }
 
