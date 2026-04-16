@@ -4041,6 +4041,16 @@ function showSplashScreen() {
 
 showSplashScreen()
 handleMpCallback().then(async () => {
+  // Se viemos de uma redefinição de senha com sucesso, forçar logout total
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('reset') === 'success') {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      appState.user = null;
+      appState.screen = 'login';
+      window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     appState.user = session.user;
