@@ -18,7 +18,7 @@ async function processIcon() {
     const SIZE = 1024;
     const CENTER = SIZE / 2;
     const RING_RADIUS = 490;   // outer radius of the black ring
-    const RING_WIDTH = 55;     // thickness of the black ring
+    const RING_WIDTH = 110;    // double thickness of the black ring (was 55)
 
     // Create white background
     const canvas = new Jimp({ width: SIZE, height: SIZE, color: 0xFFFFFFFF });
@@ -58,8 +58,8 @@ async function processIcon() {
       // else: stays white (already set by background)
     });
 
-    // Composite logo centered inside the ring (85% of inner area to keep ring visible)
-    logo.contain({ w: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.70), h: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.70) });
+    // Composite logo centered inside the ring (logo ~80% of inner area)
+    logo.contain({ w: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.805), h: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.805) });
     const lx = Math.floor((SIZE - logo.bitmap.width) / 2);
     const ly = Math.floor((SIZE - logo.bitmap.height) / 2);
     canvas.composite(logo, lx, ly);
