@@ -1063,19 +1063,19 @@ function renderDashboard() {
       <!-- Botão Suporte Flutuante -->
       <button id="btn-floating-support" style="
         position: fixed;
-        bottom: 20px;
-        right: 20px;
-        width: 65px;
-        height: 65px;
+        bottom: 1.5rem;
+        right: 1.5rem;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         background: var(--primary);
         color: var(--on-primary);
         border: none;
-        box-shadow: 0 4px 20px var(--glow);
+        box-shadow: var(--shadow-lg);
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 1000;
+        z-index: 9999;
         cursor: pointer;
         transition: transform 0.2s;
       ">
