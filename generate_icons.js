@@ -58,8 +58,8 @@ async function processIcon() {
       // else: stays white (already set by background)
     });
 
-    // Composite logo centered inside the ring
-    logo.contain({ w: SIZE - RING_WIDTH * 2 - 40, h: SIZE - RING_WIDTH * 2 - 40 });
+    // Composite logo centered inside the ring (85% of inner area to keep ring visible)
+    logo.contain({ w: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.70), h: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.70) });
     const lx = Math.floor((SIZE - logo.bitmap.width) / 2);
     const ly = Math.floor((SIZE - logo.bitmap.height) / 2);
     canvas.composite(logo, lx, ly);
