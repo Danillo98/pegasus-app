@@ -1063,10 +1063,10 @@ function renderDashboard() {
       <!-- Botão Suporte Flutuante -->
       <button id="btn-floating-support" style="
         position: fixed;
-        bottom: 2rem;
-        right: 1.5rem;
-        width: 65px;
-        height: 65px;
+        bottom: 1.25rem;
+        right: 1rem;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         background: var(--primary);
         color: var(--on-primary);
