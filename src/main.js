@@ -2214,7 +2214,7 @@ function renderAssinaturas() {
         </div>
 
         <!-- PLANO ANUAL -->
-        <div id="card-anual" class="card ripple" style="flex: 1; min-width: 20rem; border: 3px solid ${annualBorder}; box-shadow: ${isAnual ? `0 0 35px ${annualLed}` : 'var(--shadow-md)'}; transform: ${isAnual ? 'scale(1.03)' : 'scale(1)'}; z-index: ${isAnual ? '10' : '1'}; padding: 3rem 2rem; background: #ffffff; border-radius: 1.5rem; position: relative; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: visible !important;">
+        <div id="card-anual" class="card ripple" style="flex: 1; min-width: 20rem; border: 3px solid ${annualBorder}; box-shadow: 0 0 35px ${annualLed}; transform: scale(1.03); z-index: 10; padding: 3rem 2rem; background: #ffffff; border-radius: 1.5rem; position: relative; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: visible !important;">
           <div style="background: ${annualTagBg}; color: white; padding: 0.5rem 1.2rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 2px solid white; white-space: nowrap; line-height: 1; z-index: 20;">MAIS ESCOLHIDO</div>
           <h3 style="margin-top: 0.625rem; font-size: 1.25rem; font-weight: 900; color: ${annualAccent};">PLANO ANUAL</h3>
           <div style="margin: 1.5rem 0;">
@@ -4008,6 +4008,17 @@ handleMpCallback().then(async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     appState.user = session.user;
+    // Restore theme from DB on session resume (security: prevent theme switching)
+    try {
+      const { data: profile } = await supabase
+        .from('estabelecimentos')
+        .select('tipo')
+        .eq('id', session.user.id)
+        .single()
+      if (profile?.tipo) {
+        appState.theme = profile.tipo // 'barbearia' ou 'salao'
+      }
+    } catch(e) { console.warn('Could not restore theme from profile', e) }
     appState.screen = 'dashboard';
   }
   supabase.auth.onAuthStateChange((event, session) => {
