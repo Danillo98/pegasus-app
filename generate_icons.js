@@ -70,8 +70,8 @@ async function processIcon() {
       }
     });
 
-    // Composite logo centered inside the ring (70% of inner area to keep ring visible)
-    logo.contain({ w: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.70), h: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.70) });
+    // Composite logo centered inside the ring (80% of inner area - 15% larger than before)
+    logo.contain({ w: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.80), h: Math.round((SIZE - RING_WIDTH * 2 - 40) * 0.80) });
     const lx = Math.floor((SIZE - logo.bitmap.width) / 2);
     const ly = Math.floor((SIZE - logo.bitmap.height) / 2);
     canvas.composite(logo, lx, ly);
