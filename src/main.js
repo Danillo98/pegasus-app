@@ -263,6 +263,7 @@ const icons = {
   edit: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
   trash: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
   calendar: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-days"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>',
+  suporte: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a2 2 0 0 1-2 2h-5"/></svg>',
 }
 
 function render() {
@@ -368,6 +369,10 @@ function render() {
     case 'assinaturas':
       root.innerHTML = renderAssinaturas()
       attachAssinaturasEvents()
+      break
+    case 'suporte':
+      root.innerHTML = renderSupport()
+      attachSupportEvents()
       break
   }
 
@@ -1036,24 +1041,46 @@ function renderDashboard() {
         </div>
 
         <div class="dashboard-grid">
-          <div class="card" id="card-agenda">
-            <div class="icon-container" style="transform: scale(1.2);">${icons.agenda}</div>
-            <h3 style="margin-top: 1rem; font-size: 1.1rem;">Minha Agenda</h3>
-          </div>
           <div class="card" id="card-financas">
             <div class="icon-container" style="transform: scale(1.2);">${icons.financas}</div>
             <h3 style="margin-top: 1rem; font-size: 1.1rem;">Controle Financeiro</h3>
           </div>
-          <div class="card" id="card-servicos">
-            <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
-            <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços Fornecidos</h3>
+          <div class="card" id="card-agenda">
+            <div class="icon-container" style="transform: scale(1.2);">${icons.agenda}</div>
+            <h3 style="margin-top: 1rem; font-size: 1.1rem;">Minha Agenda</h3>
           </div>
           <div class="card" id="card-assinaturas">
             <div class="icon-container" style="transform: scale(1.2);">${icons.assinaturas}</div>
             <h3 style="margin-top: 1rem; font-size: 1.1rem;">Assinaturas</h3>
           </div>
+          <div class="card" id="card-servicos">
+            <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
+            <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços Fornecidos</h3>
+          </div>
         </div>
       </main>
+
+      <!-- Botão Suporte Flutuante -->
+      <button id="btn-floating-support" style="
+        position: fixed;
+        bottom: 2rem;
+        right: 1.5rem;
+        width: 65px;
+        height: 65px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: var(--on-primary);
+        border: none;
+        box-shadow: 0 4px 20px var(--glow);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        cursor: pointer;
+        transition: transform 0.2s;
+      ">
+        <div style="transform: scale(1.4);">${icons.suporte}</div>
+      </button>
     </div>
   `
 }
@@ -2459,7 +2486,112 @@ function attachDashboardEvents() {
   if (financas) financas.addEventListener('click', () => { appState.screen = 'financas'; render() })
   if (servicos) servicos.addEventListener('click', () => { appState.screen = 'servicos'; render() })
   if (assinaturas) assinaturas.addEventListener('click', () => { appState.screen = 'assinaturas'; render() })
+
+  const btnSupport = document.getElementById('btn-floating-support')
+  if (btnSupport) btnSupport.addEventListener('click', () => {
+    appState.screen = 'suporte'
+    render()
+  })
 }
+
+function renderSupport() {
+  return `
+    <div class="support-container min-h-screen animate-fade-in" style="background: #f8fafc;">
+      <header class="flex items-center" style="padding: 1.25rem var(--spacing-lg); border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100; justify-content: center;">
+        <button id="btn-back-support" style="position: absolute; left: var(--spacing-lg); color: var(--text-secondary); transform: scale(1.2);">${icons.back}</button>
+        <h1 style="font-family: var(--font-heading); font-size: 1.25rem; letter-spacing: 2px; text-transform: uppercase;">SUPORTE</h1>
+      </header>
+
+      <main style="padding: 2rem 1.25rem; max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem;">
+        
+        <!-- Bloco Principal -->
+        <div class="card" style="background: #ffffff; border-radius: 20px; padding: 2.5rem 1.5rem; text-align: center; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <div style="background: rgba(34, 197, 94, 0.1); width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem;">
+            <div style="color: #22c55e; transform: scale(2);">${icons.suporte}</div>
+          </div>
+          
+          <h2 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #1e293b;">Fale Conosco no WhatsApp</h2>
+          <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 2rem; line-height: 1.5;">
+            Nosso time de suporte está pronto para te ajudar. Descreva seu problema abaixo e clique em enviar.
+          </p>
+
+          <textarea id="support-message" placeholder="Como podemos ajudar?" 
+            style="width: 100%; height: 160px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 1rem; font-size: 1rem; margin-bottom: 1.5rem; resize: none; color: #1e293b; outline: none;"></textarea>
+
+          <button id="btn-send-whatsapp" style="
+            width: 100%; 
+            background: #22c55e; 
+            color: white; 
+            border: none; 
+            padding: 1rem; 
+            border-radius: 12px; 
+            font-weight: 800; 
+            font-size: 1.1rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 0.8rem;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+            text-transform: uppercase;
+            cursor: pointer;
+          ">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-11.7 8.38 8.38 0 0 1 3.8.9L22 2l-1.5 5.5Z"/></svg>
+            ENVIAR WHATSAPP
+          </button>
+
+          <div style="margin-top: 1.5rem; color: #64748b; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: #f1f5f9; padding: 0.8rem; border-radius: 8px;">
+            <span style="font-weight: 700;">+55 (22) 99878-6284</span>
+          </div>
+        </div>
+
+        <!-- Bloco Sobre Mim -->
+        <div class="card" style="background: #ffffff; border-radius: 20px; padding: 2rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+          <div style="display: flex; align-items: flex-start; gap: 1rem; margin-bottom: 1rem;">
+             <div style="width: 48px; height: 48px; min-width: 48px; background: #000; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+             </div>
+             <div>
+                <h3 style="font-family: var(--font-heading); font-size: 1rem; margin-bottom: 2px;">SOBRE MIM</h3>
+                <p style="color: #64748b; font-size: 0.9rem; font-weight: 600;">Danillo Neto</p>
+             </div>
+          </div>
+          <p style="color: #475569; font-size: 0.9rem; line-height: 1.6; font-style: italic;">
+            Sou formado em Sistemas de Informação (TI) e trabalho desenvolvendo sistemas personalizados que solucionam problemas reais de empresas dos mais variados ramos. Minha missão é transformar processos complexos em ferramentas simples e eficientes.
+            <br><br>
+            <strong>Fico à disposição através do meu WhatsApp caso precise de sistemas para outros tipos de negócios. Basta me chamar, e faremos seu negócio decolar! 😉</strong>
+          </p>
+        </div>
+
+      </main>
+    </div>
+  `
+}
+
+function attachSupportEvents() {
+  const btnBack = document.getElementById('btn-back-support')
+  const btnSend = document.getElementById('btn-send-whatsapp')
+
+  if (btnBack) btnBack.addEventListener('click', () => {
+    appState.screen = 'dashboard'
+    render()
+  })
+
+  if (btnSend) btnSend.addEventListener('click', () => {
+    const msg = document.getElementById('support-message').value
+    if (!msg) return alert('Por favor, descreva sua dúvida ou problema.')
+
+    const profile = appState.profile || {}
+    const clientName = profile.nome_completo || 'Não informado'
+    const typeLabel = (profile.tipo === 'salao' ? 'Salão de Beleza' : 'Barbearia')
+    const address = profile.endereco || 'Não informado'
+
+    const fullMessage = `*SUPORTE PEGASUS APP* 🚀\n\n*Cliente:* ${clientName}\n*Tipo:* ${typeLabel}\n*Endereço:* ${address}\n*Mensagem:* ${msg}`
+    
+    const whatsappUrl = `https://wa.me/5522998786284?text=${encodeURIComponent(fullMessage)}`
+    window.open(whatsappUrl, '_blank')
+  })
+}
+
 
 function attachGenericBack() {
   const back = document.getElementById('btn-back-dashboard')
