@@ -3992,8 +3992,8 @@ function showSplashScreen() {
     <style>
       .pwa-spinner {
         width: 40px; height: 40px;
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #b8860b;
+        border: 4px solid #e5e7eb;
+        border-top: 4px solid #000000;
         border-radius: 50%;
         animation: spin 1s linear infinite;
       }
@@ -4030,6 +4030,31 @@ handleMpCallback().then(async () => {
   });
 
   render();
+
+  // --- Hardware Back Button (Android) ---
+  // Push an initial state so popstate fires when user presses Back
+  history.pushState({ screen: appState.screen }, '');
+
+  window.addEventListener('popstate', (e) => {
+    // If we're not on login, go back to previous screen instead of closing
+    if (appState.screen !== 'login') {
+      // Close any open modal first
+      if (appState.showModal) {
+        appState.showModal = null;
+        render();
+      } else if (appState.screen !== 'dashboard') {
+        // Go back to dashboard from sub-screens
+        appState.screen = 'dashboard';
+        render();
+      }
+      // Push another state so the next back press also gets intercepted
+      history.pushState({ screen: appState.screen }, '');
+    } else {
+      // On login screen, allow the browser to minimize/close naturally
+      history.back();
+    }
+  });
+
   setTimeout(() => {
     const splash = document.getElementById('pwa-splash-container');
     if (splash) {
