@@ -989,7 +989,7 @@ function renderLogin() {
 function renderDashboard() {
   return `
     <div class="dashboard-container min-h-screen animate-fade-in">
-      <header class="flex justify-between items-center" style="padding: 1.25rem var(--spacing-lg) 1.25rem 0; border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100;">
+      <header class="flex justify-between items-center" style="padding: 1.25rem var(--spacing-lg) 1.25rem 5%; border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100;">
         <div class="flex items-center">
            <img src="/logo_pegasus_sem_nome.png" alt="Pegasus Logo" style="height: 4.5rem; width: auto; object-fit: contain; margin-right: 0.5rem; ">
            <span style="font-size: 0.75rem; background: var(--primary); padding: 0.25rem 0.8rem; border-radius: 2rem; color: var(--on-primary); font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">
@@ -1609,7 +1609,8 @@ function getMonthlyTransactions(month, year, allTransactions) {
       fullDate: `${year}-${String(month + 1).padStart(2,'0')}-01`,
       date: `01/${String(month + 1).padStart(2,'0')}`,
       originalIndex: -1,
-      isVirtual: true
+      isVirtual: true,
+      ignoreInTotals: true
     }));
 
   const monthlyTransactions = [...realThisMonth, ...virtualFixed];
@@ -1745,29 +1746,22 @@ function renderFinancas() {
                 ` : ''}
               </div>
               <!-- Right: Actions column -->
-              <div style="flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:8px;" class="no-print">
+              <div style="flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:8px;" class="no-print">
                 ${t.isVirtual ? `
-                  <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-                    <button class="btn-pay-fixed ripple" data-desc="${t.desc}" data-val="${t.val}" data-full-date="${t.fullDate}" style="background:#dc2626; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:0.65rem; font-weight:900; letter-spacing:0.5px;">PAGAR AGORA</button>
-                    <!-- Permite edição e exclusão nas virtuais -->
-                    <div style="display:flex; justify-content:center; gap:8px;">
-                      <button class="btn-edit-trans" data-dbid="${t.id.replace('virtual-','')}" title="Editar Todas" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">✏️</button>
-                      <button class="btn-delete-trans-all" data-desc="${t.desc}" title="Excluir Transação Fixa" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
-                    </div>
-                  </div>
+                  <button class="btn-pay-fixed ripple" data-desc="${t.desc}" data-val="${t.val}" data-full-date="${t.fullDate}" style="background:#dc2626; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:0.65rem; font-weight:900; letter-spacing:0.5px;">PAGAR AGORA</button>
+                  <button class="btn-edit-trans" data-dbid="${t.id.replace('virtual-','')}" title="Editar Todas" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">✏️</button>
+                  <button class="btn-delete-trans-all" data-desc="${t.desc}" title="Excluir Transação Fixa" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
                 ` : `
-                  <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
-                    <button class="btn-edit-trans" data-dbid="${t.id}" title="Editar" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">✏️</button>
-                    ${isFromAgenda ? `
-                      <button class="btn-reverse-trans" data-dbid="${t.id}" data-agendaid="${t.agendamentoId}" title="Estornar" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🔄</button>
-                      <button class="btn-delete-trans" data-dbid="${t.id}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
-                    ` : (t.cat === 'Fixo' ? `
-                      <button class="btn-reverse-fixed-payment" data-dbid="${t.id}" title="Estornar Pagamento Fixo" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🔄</button>
-                      <button class="btn-delete-trans-all" data-desc="${t.desc}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
-                    ` : `
-                      <button class="btn-delete-trans" data-dbid="${t.id}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
-                    `)}
-                  </div>
+                  <button class="btn-edit-trans" data-dbid="${t.id}" title="Editar" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">✏️</button>
+                  ${isFromAgenda ? `
+                    <button class="btn-reverse-trans" data-dbid="${t.id}" data-agendaid="${t.agendamentoId}" title="Estornar" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🔄</button>
+                    <button class="btn-delete-trans" data-dbid="${t.id}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
+                  ` : (t.cat === 'Fixo' ? `
+                    <button class="btn-reverse-fixed-payment" data-dbid="${t.id}" title="Estornar Pagamento Fixo" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🔄</button>
+                    <button class="btn-delete-trans-all" data-desc="${t.desc}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
+                  ` : `
+                    <button class="btn-delete-trans" data-dbid="${t.id}" title="Excluir" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">🗑️</button>
+                  `)}
                 `}
               </div>
             </div>
@@ -2184,37 +2178,39 @@ function renderAssinaturas() {
       </div>
 
       <div class="flex gap-lg justify-center items-stretch" style="display: flex; gap: 2rem; flex-wrap: wrap;">
-        <div class="card" style="flex: 1; min-width: 20rem; border-color: var(--primary); transform: scale(1.02); z-index: 2; padding: 3rem 2rem; background: var(--background);">
-          <div style="background: var(--primary); color: var(--on-primary); padding: 0.4rem 1rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); letter-spacing: 1px;">RECOMENDADO</div>
-          <h3 style="margin-top: 0.625rem; font-size: 1.25rem;">PLANO PREMIUM</h3>
+        <!-- PLANO MENSAL (OURO STYLE) -->
+        <div class="card" style="flex: 1; min-width: 20rem; border: 3px solid #FFC107; box-shadow: 0 0 25px rgba(255, 193, 7, 0.4); transform: scale(1.02); z-index: 2; padding: 3rem 2rem; background: #FFF8E1; border-radius: 1.5rem; position: relative;">
+          <div style="background: #FFC107; color: white; padding: 0.4rem 1rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); letter-spacing: 1px;">POPULAR</div>
+          <h3 style="margin-top: 0.625rem; font-size: 1.25rem; font-weight: 900; color: #856404;">PLANO MENSAL</h3>
           <div style="margin: 1.5rem 0;">
-            <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900;">R$ 89<span style="font-size: 1.25rem; opacity: 0.6;">,90</span></h1>
-            <p style="font-size: 0.9rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">faturamento mensal</p>
+            <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 99<span style="font-size: 1.25rem; opacity: 0.6;">,90</span></h1>
           </div>
-          <ul style="text-align: left; margin: 2rem 0; font-size: 1rem; color: var(--text-secondary); line-height: 2.2; font-weight: 500;">
-            <li>✓ <strong>Agenda</strong> Ilimitada</li>
-            <li>✓ <strong>Financeiro</strong> Profissional</li>
-            <li>✓ Relatórios de <strong>Performance</strong></li>
-            <li>✓ Suporte via <strong>WhatsApp</strong> 24h</li>
-            <li>✓ Cadastro de <strong>Colaboradores</strong></li>
+          <ul style="text-align: left; margin: 2rem 0; font-size: 1rem; color: #495057; line-height: 2.2; font-weight: 600;">
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #FFC107;">✓</div> Agenda Ilimitada</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #FFC107;">✓</div> Financeiro Profissional com Fluxo de Caixa</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #FFC107;">✓</div> Relatórios Mensais e Anuais em PDF</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #FFC107;">✓</div> Suporte via WhatsApp</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #FFC107;">✓</div> Compatibilidade com WhatsApp Business</li>
           </ul>
-          <button style="background: var(--primary); color: var(--on-primary); padding: 1.25rem; border-radius: 0.75rem; font-weight: 800; width: 100%; box-shadow: var(--shadow-md); letter-spacing: 1px;">ASSINAR AGORA</button>
+          <button style="background: #212529; color: white; padding: 1.25rem; border-radius: 0.75rem; font-weight: 800; width: 100%; box-shadow: var(--shadow-md); letter-spacing: 1px; border: none; cursor: pointer;">ASSINAR AGORA</button>
         </div>
 
-        <div class="card" style="flex: 1; min-width: 20rem; opacity: 0.95; padding: 3rem 2rem;">
-          <h3 style="margin-top: 0.625rem; font-size: 1.25rem;">PLANO ANUAL</h3>
+        <!-- PLANO ANUAL (PLATINA STYLE) -->
+        <div class="card" style="flex: 1; min-width: 20rem; border: 3px solid #00BCD4; box-shadow: 0 0 25px rgba(0, 188, 212, 0.4); padding: 3rem 2rem; background: #E0F7FA; border-radius: 1.5rem; position: relative;">
+          <div style="background: #00BCD4; color: white; padding: 0.4rem 1rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -0.9rem; left: 50%; transform: translateX(-50%); letter-spacing: 1px;">MELHOR VALOR</div>
+          <h3 style="margin-top: 0.625rem; font-size: 1.25rem; font-weight: 900; color: #006064;">PLANO ANUAL</h3>
           <div style="margin: 1.5rem 0;">
-            <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900;">R$ 79<span style="font-size: 1.25rem; opacity: 0.6;">,90</span></h1>
-            <p style="font-size: 0.9rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">equivalente mensal</p>
+            <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 999<span style="font-size: 1.25rem; opacity: 0.6;">,00</span></h1>
           </div>
-          <p style="font-size: 0.8rem; font-weight: 900; background: rgba(34, 197, 94, 0.1); color: #16a34a; padding: 0.4rem 1rem; border-radius: 1.25rem; display: inline-block; margin-bottom: 1.25rem; letter-spacing: 0.5px;">ECONOMIZE R$ 120,00</p>
-          <ul style="text-align: left; margin: 1.5rem 0; font-size: 1rem; color: var(--text-secondary); line-height: 2.2; font-weight: 500;">
-            <li>✓ Tudo do Plano Premium</li>
-            <li>✓ <strong>Domínio</strong> .com.br incluso</li>
-            <li>✓ <strong>Dashboards</strong> avançados</li>
-            <li>✓ Gestão de <strong>Estoque</strong></li>
+          <p style="font-size: 0.8rem; font-weight: 900; background: rgba(0, 188, 212, 0.1); color: #00838f; padding: 0.6rem 1.25rem; border-radius: 1.25rem; display: inline-block; margin-bottom: 1.25rem; letter-spacing: 0.5px; border: 1.5px solid rgba(0, 188, 212, 0.3);">ECONOMIZE 2 MESES DE ASSINATURA (R$199,80)</p>
+          <ul style="text-align: left; margin: 1.5rem 0; font-size: 1rem; color: #495057; line-height: 2.2; font-weight: 600;">
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #00BCD4;">✓</div> Agenda Ilimitada</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #00BCD4;">✓</div> Financeiro Profissional com Fluxo de Caixa</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #00BCD4;">✓</div> Relatórios Mensais e Anuais em PDF</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #00BCD4;">✓</div> Suporte via WhatsApp</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #00BCD4;">✓</div> Compatibilidade com WhatsApp Business</li>
           </ul>
-          <button style="border: 2px solid var(--primary); color: var(--primary); padding: 1.1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; letter-spacing: 1px;">MUDAR PARA ANUAL</button>
+          <button style="border: 2px solid #00BCD4; background: transparent; color: #006064; padding: 1.1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; letter-spacing: 1px; cursor: pointer;">MUDAR PARA ANUAL</button>
         </div>
       </div>
     </div>
