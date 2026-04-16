@@ -2220,7 +2220,7 @@ function renderAssinaturas() {
           <div style="margin: 1.5rem 0;">
             <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 999<span style="font-size: 1.25rem; opacity: 0.6;">,00</span></h1>
           </div>
-          <p style="font-size: 0.8rem; font-weight: 900; background: ${isSalao ? 'rgba(255, 77, 148, 0.1)' : 'rgba(0, 0, 0, 0.05)'}; color: ${annualAccent}; padding: 0.6rem 1.25rem; border-radius: 1.25rem; display: inline-block; margin-bottom: 1.25rem; letter-spacing: 0.5px; border: 1.5px solid ${isSalao ? 'rgba(255, 77, 148, 0.2)' : 'rgba(0, 0, 0, 0.1)'};">ECONOMIZE 2 MESES DE ASSINATURA (R$199,80)</p>
+          <p style="font-size: 0.8rem; font-weight: 900; background: ${isSalao ? 'rgba(255, 77, 148, 0.1)' : 'rgba(0, 0, 0, 0.05)'}; color: ${annualAccent}; padding: 0.6rem 1.25rem; border-radius: 1.25rem; display: inline-block; margin-bottom: 1.25rem; letter-spacing: 0.5px; border: 1.5px solid ${isSalao ? 'rgba(255, 77, 148, 0.2)' : 'rgba(0, 0, 0, 0.1)'};">ECONOMIZE 2 MESES DE ASSINATURA (R$199,80 DE ECONOMIA)</p>
           <ul style="text-align: left; margin: 1.5rem 0; font-size: 1rem; color: #4b5563; line-height: 2.2; font-weight: 500;">
             <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${annualBorder}; font-weight: 900;">✓</div> Agenda Ilimitada</li>
             <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${annualBorder}; font-weight: 900;">✓</div> Financeiro Profissional com Fluxo de Caixa</li>
