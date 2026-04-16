@@ -1,13 +1,6 @@
 import './style.css'
 import { supabase } from './supabase.js'
 
-// Redirecionar fluxos de recuperação de senha para a página dedicada
-if (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token=')) {
-  if (!window.location.pathname.includes('reset-password.html')) {
-    window.location.href = window.location.origin + '/reset-password.html' + window.location.hash;
-  }
-}
-
 function formatPhone(value) {
   if (!value) return ""
   value = value.replace(/\D/g, '')
@@ -4062,6 +4055,14 @@ handleMpCallback().then(async () => {
         appState.theme = profile.tipo // 'barbearia' ou 'salao'
       }
     } catch(e) { console.warn('Could not restore theme from profile', e) }
+    
+    // VERIFICAÇÃO CRUCIAL: Se estivermos em um fluxo de recuperação, não mostre o dashboard!
+    // Redirecione imediatamente para a página de reset.
+    if (window.location.hash.includes('type=recovery') || window.location.hash.includes('access_token')) {
+       window.location.replace('/reset-password.html' + window.location.hash);
+       return; // Trava o resto da execução
+    }
+
     appState.screen = 'dashboard';
   }
   supabase.auth.onAuthStateChange((event, session) => {
