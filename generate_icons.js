@@ -18,7 +18,7 @@ async function processIcon() {
     const SIZE = 1024;
     const CENTER = SIZE / 2;
     const RING_RADIUS = 490;   // outer radius of the black ring
-    const RING_WIDTH = 110;    // double thickness of the black ring (was 55)
+    const RING_WIDTH = 55;     // ring thickness
 
     // Create white background
     const canvas = new Jimp({ width: SIZE, height: SIZE, color: 0xFFFFFFFF });
