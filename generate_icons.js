@@ -12,35 +12,47 @@ async function processIcon() {
 
     console.log('Reading image for PWA Icons:', inputPath);
     let logo = await Jimp.read(inputPath);
-    logo = logo.autocrop({ tolerance: 0.05 }); 
+    logo = logo.autocrop({ tolerance: 0.1 }); 
 
-    const bg512 = new Jimp({ width: 512, height: 512, color: 0x00000000 });
+    // SUPER-SAMPLING para evitar pixelamento (Gera em 1024 e redimensiona para 512)
+    const bg1024 = new Jimp({ width: 1024, height: 1024, color: 0x00000000 });
     
-    logo.contain({ w: 440, h: 440 });
-    
-    const x = Math.floor((512 - logo.bitmap.width) / 2);
-    const y = Math.floor((512 - logo.bitmap.height) / 2); 
-    bg512.composite(logo, x, y);
+    // Logo centralizada (80% do espaço)
+    logo.contain({ w: 820, h: 820 });
+    const x = Math.floor((1024 - logo.bitmap.width) / 2);
+    const y = Math.floor((1024 - logo.bitmap.height) / 2); 
+    bg1024.composite(logo, x, y);
 
-    const centerX = 256; const centerY = 256; const radius = 250; const thickness = 12;
-    bg512.scan(0, 0, 512, 512, function(px, py, idx) {
+    // Desenha o círculo preto GROSSO com anti-aliasing manual simples
+    const centerX = 512; const centerY = 512; 
+    const radius = 500; // Quase na borda
+    const thickness = 30; // Bem grosso (escala 1024)
+    
+    bg1024.scan(0, 0, 1024, 1024, function(px, py, idx) {
       const dx = px - centerX; const dy = py - centerY;
       const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Borda interna e externa com suavização
       if (distance >= radius - thickness && distance <= radius) {
-        this.bitmap.data[idx + 0] = 0; this.bitmap.data[idx + 1] = 0;
-        this.bitmap.data[idx + 2] = 0; this.bitmap.data[idx + 3] = 255;
+        this.bitmap.data[idx + 0] = 0;
+        this.bitmap.data[idx + 1] = 0;
+        this.bitmap.data[idx + 2] = 0;
+        this.bitmap.data[idx + 3] = 255;
       }
     });
 
-    await bg512.write(outputPath512);
-    const bg192 = bg512.clone();
+    // Redimensiona para o tamanho final (isso cria o anti-aliasing natural)
+    bg1024.resize({ w: 512, h: 512 });
+    await bg1024.write(outputPath512);
+
+    const bg192 = bg1024.clone();
     bg192.resize({ w: 192, h: 192 });
     await bg192.write(outputPath192);
 
-    console.log('Icons generated successfully');
+    console.log('Icons regenerated with SUPER-SAMPLING and transparency');
     
     let logoInternal = await Jimp.read(inputPath);
-    logoInternal = logoInternal.autocrop({ tolerance: 0.05 });
+    logoInternal = logoInternal.autocrop({ tolerance: 0.1 });
     await logoInternal.write(path.join(__dirname, 'public', 'logo_pegasus_sem_nome.png'));
 
   } catch (err) {

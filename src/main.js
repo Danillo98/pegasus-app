@@ -2220,21 +2220,25 @@ function renderAssinaturas() {
 
         <!-- PLANO ANUAL (TEMÁTICO STYLE) -->
         <div id="card-anual" class="card ripple" style="flex: 1; min-width: 20rem; border: 3px solid ${annualCardBorder}; box-shadow: ${isAnual ? `0 0 35px ${annualGlow}` : 'var(--shadow-md)'}; transform: ${isAnual ? 'scale(1.03)' : 'scale(1)'}; z-index: ${isAnual ? '10' : '1'}; padding: 3rem 2rem; background: ${annualCardBg}; border-radius: 1.5rem; position: relative; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: visible !important;">
-          <div style="background: ${isBarbearia ? '#333333' : '#FFC107'}; color: white; padding: 0.5rem 1.2rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); border: 2px solid ${annualCardBg}; white-space: nowrap; line-height: 1; z-index: 20;">MAIS ESCOLHIDO</div>
+          <div style="background: ${isBarbearia ? '#333333' : '#ffffff'}; color: ${isBarbearia ? '#ffffff' : '#FF4D94'}; padding: 0.5rem 1.2rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); border: 2px solid ${annualCardBg}; white-space: nowrap; line-height: 1; z-index: 20;">MAIS ESCOLHIDO</div>
           <h3 style="margin-top: 0.625rem; font-size: 1.25rem; font-weight: 900; color: ${annualTextColor};">PLANO ANUAL</h3>
           <div style="margin: 1.5rem 0;">
             <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900; color: ${annualTextColor};">R$ 999<span style="font-size: 1.25rem; opacity: 0.6;">,00</span></h1>
           </div>
           <p style="font-size: 0.8rem; font-weight: 900; background: rgba(255, 255, 255, 0.15); color: ${annualTextColor}; padding: 0.6rem 1.25rem; border-radius: 1.25rem; display: inline-block; margin-bottom: 1.25rem; letter-spacing: 0.5px; border: 1.5px solid rgba(255, 255, 255, 0.3);">ECONOMIZE 2 MESES DE ASSINATURA (R$199,80)</p>
           <ul style="text-align: left; margin: 1.5rem 0; font-size: 1rem; color: ${annualSubText}; line-height: 2.2; font-weight: 600;">
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${isBarbearia ? '#fff' : '#fff'};">✓</div> Agenda Ilimitada</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${isBarbearia ? '#fff' : '#fff'};">✓</div> Financeiro Profissional com Fluxo de Caixa</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${isBarbearia ? '#fff' : '#fff'};">✓</div> Relatórios Mensais e Anuais em PDF</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${isBarbearia ? '#fff' : '#fff'};">✓</div> Suporte via WhatsApp</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${isBarbearia ? '#fff' : '#fff'};">✓</div> Compatibilidade com WhatsApp Business</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #fff;">✓</div> Agenda Ilimitada</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #fff;">✓</div> Financeiro Profissional com Fluxo de Caixa</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #fff;">✓</div> Relatórios Mensais e Anuais em PDF</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #fff;">✓</div> Suporte via WhatsApp</li>
+            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: #fff;">✓</div> Compatibilidade com WhatsApp Business</li>
           </ul>
-          <button id="btn-subscribe-anual" style="background: #212529; color: white; padding: 1.25rem; border-radius: 0.75rem; font-weight: 800; width: 100%; box-shadow: var(--shadow-md); letter-spacing: 1px; border: ${isBarbearia ? '1.5px solid #444' : 'none'}; cursor: pointer;">ASSINAR AGORA</button>
+          <button id="btn-subscribe-anual" style="background: ${isBarbearia ? '#212529' : '#ffffff'}; color: ${isBarbearia ? '#ffffff' : '#FF4D94'}; padding: 1.25rem; border-radius: 0.75rem; font-weight: 800; width: 100%; box-shadow: var(--shadow-md); letter-spacing: 1px; border: ${isBarbearia ? '1.5px solid #444' : 'none'}; cursor: pointer;">ASSINAR AGORA</button>
         </div>
+      </div>
+    </div>
+  `, false, false)
+}
       </div>
     </div>
   `, false, false)
@@ -4001,8 +4005,26 @@ handleMpCallback().then(async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.user) {
     appState.user = session.user;
+    
+    // FETCH PROFILE to restore theme/type correctly
+    const { data: prof } = await supabase
+      .from('estabelecimentos')
+      .select('*')
+      .eq('id', session.user.id)
+      .single()
+
+    if (prof) {
+      appState.theme = prof.tipo 
+      appState.profile = prof
+    }
+
     appState.screen = 'dashboard';
   }
+  
+  // Remove splash after boot is complete
+  const splash = document.getElementById('pwa-splash-container')
+  if (splash) splash.remove()
+
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       appState.user = null;
