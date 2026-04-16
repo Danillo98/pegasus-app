@@ -1060,23 +1060,23 @@ function renderDashboard() {
         </div>
       </main>
 
-      <!-- Botão Suporte Flutuante -->
+      <!-- Botão Suporte Flutuante (Extreme Corner) -->
       <button id="btn-floating-support" style="
-        position: fixed;
-        bottom: 1.5rem;
-        right: 1.5rem;
-        width: 60px;
-        height: 60px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: var(--on-primary);
-        border: none;
-        box-shadow: var(--shadow-lg);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-        cursor: pointer;
+        position: fixed !important;
+        bottom: 8px !important;
+        right: 8px !important;
+        width: 60px !important;
+        height: 60px !important;
+        border-radius: 50% !important;
+        background: var(--primary) !important;
+        color: var(--on-primary) !important;
+        border: none !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 99999 !important;
+        cursor: pointer !important;
         transition: transform 0.2s;
       ">
         <div style="transform: scale(1.4);">${icons.suporte}</div>
