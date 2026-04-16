@@ -1,4 +1,4 @@
-import { Jimp } from 'jimp';
+ï»¿import { Jimp } from 'jimp';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -14,21 +14,19 @@ async function processIcon() {
     let logo = await Jimp.read(inputPath);
     logo = logo.autocrop({ tolerance: 0.05 }); 
 
-    const bg512 = new Jimp({ width: 512, height: 512, color: '#ffffff' });
+    const bg512 = new Jimp({ width: 512, height: 512, color: 0x00000000 });
     
-    // Diminui 10% para o ícone da área de trabalho
-    logo.contain({ w: 380, h: 380 });
+    logo.contain({ w: 440, h: 440 });
     
     const x = Math.floor((512 - logo.bitmap.width) / 2);
     const y = Math.floor((512 - logo.bitmap.height) / 2); 
     bg512.composite(logo, x, y);
 
-    // Desenha o círculo preto apenas para o ícone externo
-    const centerX = 256; const centerY = 256; const radius = 220; const thickness = 6;
+    const centerX = 256; const centerY = 256; const radius = 250; const thickness = 12;
     bg512.scan(0, 0, 512, 512, function(px, py, idx) {
       const dx = px - centerX; const dy = py - centerY;
       const distance = Math.sqrt(dx * dx + dy * dy);
-      if (distance >= radius - thickness && distance <= radius + thickness) {
+      if (distance >= radius - thickness && distance <= radius) {
         this.bitmap.data[idx + 0] = 0; this.bitmap.data[idx + 1] = 0;
         this.bitmap.data[idx + 2] = 0; this.bitmap.data[idx + 3] = 255;
       }
@@ -39,16 +37,14 @@ async function processIcon() {
     bg192.resize({ w: 192, h: 192 });
     await bg192.write(outputPath192);
 
-    console.log('? Ícones de instalação (PWA) gerados com círculo!');
+    console.log('Icons generated successfully');
     
-    // RESTAURAR LOGO INTERNA: Sem círculo e tamanho original
     let logoInternal = await Jimp.read(inputPath);
     logoInternal = logoInternal.autocrop({ tolerance: 0.05 });
     await logoInternal.write(path.join(__dirname, 'public', 'logo_pegasus_sem_nome.png'));
-    console.log('? Logo interna restaurada ao padrão original!');
 
   } catch (err) {
-    console.error('Erro:', err);
+    console.error('Error:', err);
   }
 }
 processIcon();
