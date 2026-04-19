@@ -314,3 +314,51 @@ input[type="date"], input[type="time"] {
 select:focus {
   border-color: var(--primary);
 }
+
+/* ── Print Styles (Relatórios) ── */
+@media print {
+  @page {
+    margin: 1cm;
+    size: auto;
+  }
+  
+  /* Hide everything by default */
+  body * {
+    visibility: hidden !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  
+  /* Reset background for print */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Show only the report and its children */
+  #printable-report, #printable-report * {
+    visibility: visible !important;
+  }
+
+  /* Position report at the top of the print page */
+  #printable-report {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* Force black text for contrast in print */
+  #printable-report h1, #printable-report h2, #printable-report h3, #printable-report p, #printable-report span {
+     color: #000 !important;
+  }
+
+  /* Hide print buttons and back buttons inside the report during print */
+  #printable-report button, #printable-report .no-print {
+    display: none !important;
+  }
+}

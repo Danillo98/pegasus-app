@@ -523,17 +523,20 @@ function render() {
       appState.deletingServicoId = null
       render()
     })
-    document.getElementById('btn-confirm-delete-servico').addEventListener('click', async () => {
+    document.getElementById('btn-confirm-delete-servico').addEventListener('click', () => {
       const id = appState.deletingServicoId
-      const { error } = await supabase.from('servicos').delete().eq('id', id)
-      if (error) {
-        alert('Erro ao excluir serviço: ' + error.message)
-      } else {
-        appState.servicosAtivos = appState.servicosAtivos.filter(s => s.id !== id)
-      }
+      
+      // Optimistic delete
+      appState.servicosAtivos = appState.servicosAtivos.filter(s => s.id !== id)
       appState.showModal = null
       appState.deletingServicoId = null
       render()
+
+      supabase.from('servicos').delete().eq('id', id).then(({ error }) => {
+        if (error) {
+          alert('Erro ao sincronizar exclusão: ' + error.message)
+        }
+      })
     })
   }
   if (appState.showModal === 'confirm-delete-trans') {
@@ -556,17 +559,17 @@ function render() {
       appState.showModal = null
       render()
     })
-    document.getElementById('btn-do-delete-trans').addEventListener('click', async () => {
+    document.getElementById('btn-do-delete-trans').addEventListener('click', () => {
       const dbId = appState.financasData.pendingDeleteId
-      const idx = appState.financasData.pendingDeleteIdx
       
-      const { error } = await supabase.from('transacoes_financeiras').delete().eq('id', dbId)
-      if (error) { alert('Erro ao excluir: ' + error.message) }
-      else {
-        appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
-      }
+      // Optimistic delete
+      appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
       appState.showModal = null
       render()
+
+      supabase.from('transacoes_financeiras').delete().eq('id', dbId).then(({ error }) => {
+        if (error) alert('Erro ao sincronizar exclusão: ' + error.message)
+      })
     })
   }
 
@@ -590,27 +593,30 @@ function render() {
       appState.showModal = null
       render()
     })
-    document.getElementById('btn-do-reverse-trans').addEventListener('click', async () => {
+    document.getElementById('btn-do-reverse-trans').addEventListener('click', () => {
       const dbId = appState.financasData.pendingReverseDbId
       const agendaId = appState.financasData.pendingReverseAgendaId
       
-      const { error: agError } = await supabase.from('agendamentos').update({ 
+      // Optimistic state
+      appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
+      appState.agendaLoaded = false
+      appState.agendaData = {}
+      appState.showModal = null
+      render()
+
+      // Background Sync
+      supabase.from('agendamentos').update({ 
         agendamento_status: 'Pendente',
         pagamento_status: false 
-      }).eq('id', agendaId)
-      
-      if (agError) { alert('Erro ao estornar: ' + agError.message); return }
-
-      const { error: trError } = await supabase.from('transacoes_financeiras').delete().eq('id', dbId)
-      if (!trError) {
-        appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
-        appState.agendaLoaded = false
-        appState.agendaData = {}
-        appState.showModal = null
-        render()
-      } else {
-        alert('Erro ao excluir transação: ' + trError.message)
-      }
+      }).eq('id', agendaId).then(({ error: agError }) => {
+        if (agError) {
+          alert('Erro ao sincronizar estorno no agendamento: ' + agError.message)
+        } else {
+          supabase.from('transacoes_financeiras').delete().eq('id', dbId).then(({ error: trError }) => {
+            if (trError) alert('Erro ao sincronizar exclusão da transação: ' + trError.message)
+          })
+        }
+      })
     })
   }
 
@@ -634,16 +640,18 @@ function render() {
       appState.showModal = null
       render()
     })
-    document.getElementById('btn-do-reverse-fixed').addEventListener('click', async () => {
+    document.getElementById('btn-do-reverse-fixed').addEventListener('click', () => {
       const dbId = appState.financasData.pendingReverseFixedId
-      const { error: trError } = await supabase.from('transacoes_financeiras').delete().eq('id', dbId)
-      if (!trError) {
-        appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
-        appState.showModal = null
-        render()
-      } else {
-        alert('Erro ao estornar pagamento: ' + trError.message)
-      }
+      
+      // Optimistic state update
+      appState.financasData.transactions = appState.financasData.transactions.filter(t => t.id !== dbId)
+      appState.showModal = null
+      render()
+
+      // Background Sync
+      supabase.from('transacoes_financeiras').delete().eq('id', dbId).then(({ error }) => {
+        if (error) alert('Erro ao sincronizar estorno fixo: ' + error.message)
+      })
     })
   }
 
@@ -1406,7 +1414,6 @@ function attachServiceSearchSelect(inputId, listId) {
   const hiddenInput = document.getElementById(inputId + '-selected')
   if (!searchInput || !listEl) return
 
-  // Close only when clicking outside
   const closeListHandler = (e) => {
     if (listEl && !searchInput.contains(e.target) && !listEl.contains(e.target)) {
       listEl.style.display = 'none' 
@@ -1418,11 +1425,9 @@ function attachServiceSearchSelect(inputId, listId) {
   searchInput.addEventListener('focus', () => { 
     listEl.style.display = 'block'
     searchInput.style.borderColor = 'var(--primary)'
-    // Usamos setTimeout para garantir que o mousedown não dispare no mesmo ciclo do focus
     setTimeout(() => document.addEventListener('mousedown', closeListHandler), 0)
   })
 
-  // Filter on typing
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.toLowerCase()
     listEl.querySelectorAll('.service-opt').forEach(opt => {
@@ -1430,14 +1435,53 @@ function attachServiceSearchSelect(inputId, listId) {
     })
   })
 
-  const updateSelected = () => {
-    const checked = Array.from(listEl.querySelectorAll('input[type="checkbox"]:checked'))
-    const names = checked.map(cb => cb.value)
-    searchInput.value = names.length > 0 ? names.join(', ') : ''
-    hiddenInput.value = JSON.stringify(names)
-  }
+  // Visual Check Logic
+  const labels = listEl.querySelectorAll('.service-opt')
+  labels.forEach(label => {
+    const chk = label.querySelector('input[type="checkbox"]')
+    
+    // Initial state if already checked
+    if (chk.checked) {
+      label.style.background = 'var(--surface-hover)'
+      label.style.borderColor = 'var(--primary)'
+      if (!label.querySelector('.chk-icon')) {
+        label.insertAdjacentHTML('beforeend', `<span class="chk-icon" style="color:var(--primary); font-size:1.1rem; margin-left:auto; font-weight:900;">✓</span>`)
+      }
+    }
 
-  // Select on toggle
+    label.onclick = (e) => {
+      if (e.target !== chk) {
+        chk.checked = !chk.checked
+        chk.dispatchEvent(new Event('change'))
+      }
+    }
+
+    chk.onchange = () => {
+      const allChecks = Array.from(listEl.querySelectorAll('input[type="checkbox"]'))
+      const selected = allChecks.filter(c => c.checked).map(c => c.value)
+      
+      // Update visual style for all
+      allChecks.forEach(c => {
+        const parent = c.closest('.service-opt')
+        if (c.checked) {
+          parent.style.background = 'var(--surface-hover)'
+          parent.style.borderColor = 'var(--primary)'
+          if (!parent.querySelector('.chk-icon')) {
+            parent.insertAdjacentHTML('beforeend', `<span class="chk-icon" style="color:var(--primary); font-size:1.1rem; margin-left:auto; font-weight:900;">✓</span>`)
+          }
+        } else {
+          parent.style.background = 'transparent'
+          parent.style.borderColor = 'var(--border)'
+          const icon = parent.querySelector('.chk-icon')
+          if (icon) icon.remove()
+        }
+      })
+
+      hiddenInput.value = JSON.stringify(selected)
+      searchInput.value = selected.join(', ')
+    }
+  })
+}
   listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
     cb.addEventListener('change', updateSelected)
   })
@@ -1489,11 +1533,19 @@ function renderNewAgendamentoModal() {
         <h3 style="font-family: var(--font-alt); font-size: 1.2rem; color: var(--primary);">NOVO AGENDAMENTO</h3>
       </div>
       
+      </div>
+      
       <div class="flex flex-col gap-md">
+        <div class="flex flex-col gap-xs">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Serviço Desejado</label>
+          ${renderServiceSearchSelect('modal-service-search', 'modal-service-list', appState.servicosAtivos)}
+        </div>
+
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Nome do Cliente</label>
           <input type="text" id="modal-client-name" placeholder="Ex: João Silva" maxlength="50" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
         </div>
+        
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Telefone (Opcional)</label>
           <input type="tel" id="modal-client-phone" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
@@ -1508,11 +1560,6 @@ function renderNewAgendamentoModal() {
             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Horário</label>
             <input type="time" id="modal-time" style="padding: 14px 10px; border-radius: 12px; font-family: inherit; text-align: center;">
           </div>
-        </div>
-        
-        <div class="flex flex-col gap-xs">
-          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Serviço Desejado</label>
-          ${renderServiceSearchSelect('modal-service-search', 'modal-service-list', appState.servicosAtivos)}
         </div>
         
         <button id="btn-save-agendamento" style="background: var(--primary); color: var(--on-primary); padding: 18px; border-radius: 12px; font-weight: 800; margin-top: 10px; letter-spacing: 1px;">
@@ -1867,7 +1914,7 @@ function renderMonthlyReport() {
   const totalOut = monthly.filter(t => t.type === 'out' && !t.ignoreInTotals).reduce((acc, t) => acc + t.val, 0);
 
   return `
-    <div style="padding: 40px 20px; color: #1a1a1a; font-family: 'Inter', sans-serif; background: white; min-height: 100vh; max-width: 900px; margin: 0 auto;">
+    <div id="printable-report" style="padding: 40px 20px; color: #1a1a1a; font-family: 'Inter', sans-serif; background: white; min-height: 100vh; max-width: 900px; margin: 0 auto;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;" class="no-print">
          <button id="btn-close-report" style="padding: 10px; background: #f4f4f5; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; color: var(--primary);">${icons.back}</button>
          <button onclick="window.print()" style="padding: 10px; background: #1a1a1a; color: white; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;">${icons.print}</button>
@@ -1917,18 +1964,6 @@ function renderMonthlyReport() {
       </div>
       
     </div>
-    <style>
-      .report-in { color: #16a34a; }
-      .report-out { color: #dc2626; }
-      .report-total.in { color: #16a34a; }
-      .report-total.out { color: #dc2626; }
-      @media print {
-        .no-print { display: none; }
-        body { margin: 0; padding: 20px; background: white; }
-        .report-in, .report-out, .report-total.in, .report-total.out { color: #000 !important; }
-        @page { margin: 0; size: auto; }
-      }
-    </style>
   `
 }
 
@@ -1948,13 +1983,11 @@ function renderAnnualReport() {
   const yearBalance = yearEnt - yearSai;
 
   return `
-    <div style="padding: 0; background: #f4f4f5; min-height: 100vh;">
-      <div style="max-width: 900px; margin: 0 auto; background: white; box-shadow: 0 10px 30px rgba(0,0,0,0.05); min-height: 100vh; padding: 40px 20px;" id="report-container">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;" class="no-print">
-             <button id="btn-close-report" style="padding: 10px; background: #f4f4f5; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; color: var(--primary);">${icons.back}</button>
-             <button onclick="window.print()" style="padding: 10px; background: #1a1a1a; color: white; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;">${icons.print}</button>
-        </div>
+    <div id="printable-report" style="padding: 40px 20px; color: #1a1a1a; font-family: 'Inter', sans-serif; background: white; min-height: 100vh; max-width: 900px; margin: 0 auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;" class="no-print">
+           <button id="btn-close-report" style="padding: 10px; background: #f4f4f5; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none; color: var(--primary);">${icons.back}</button>
+           <button onclick="window.print()" style="padding: 10px; background: #1a1a1a; color: white; border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: none;">${icons.print}</button>
+      </div>
 
         <div style="text-align: center; margin-bottom: 60px;">
           <h1 style="font-size: 1.8rem; letter-spacing: 4px; font-weight: 900; margin-bottom: 10px; font-family: serif;">RESUMO ANUAL FINANCEIRO</h1>
@@ -2001,18 +2034,6 @@ function renderAnnualReport() {
           </tbody>
         </table>
       </div>
-      <style>
-        .report-in { color: #16a34a; }
-        .report-out { color: #dc2626; }
-        .report-total.in { color: #16a34a; }
-        .report-total.out { color: #dc2626; }
-        @media print {
-          .no-print { display: none; }
-          body { margin: 0; padding: 20px; background: white; }
-          .report-in, .report-out, .report-total.in, .report-total.out { color: #000 !important; }
-          @page { margin: 0; size: auto; }
-        }
-      </style>
     </div>
   `
 }
@@ -2788,18 +2809,25 @@ function attachAgendaEvents() {
     })
   }
 
-  // Agendar Manualmente FAB
+  // Agendar Manualmente FAB - Instant Open
   const btnOpenModal = document.getElementById('btn-open-agenda-modal')
   if (btnOpenModal) {
-    btnOpenModal.addEventListener('click', async () => {
-      btnOpenModal.disabled = true
-      if (appState.user) {
-        const { data } = await supabase.from('servicos').select('id, nome, preco, cobra_reserva, taxa_reserva').eq('estabelecimento_id', appState.user.id).order('nome')
-        if (data) appState.servicosAtivos = data
-      }
+    btnOpenModal.addEventListener('click', () => {
       appState.showModal = 'new-agendamento'
-      btnOpenModal.disabled = false
       render()
+      
+      // Load services in background if needed
+      if (appState.user) {
+        supabase.from('servicos').select('id, nome, preco, cobra_reserva, taxa_reserva')
+          .eq('estabelecimento_id', appState.user.id).order('nome')
+          .then(({ data }) => {
+            if (data) {
+              appState.servicosAtivos = data
+              // If modal is still open, re-render just to refresh service list
+              if (appState.showModal === 'new-agendamento') render()
+            }
+          })
+      }
     })
   }
 
@@ -3003,10 +3031,18 @@ function attachNewAgendamentoEvents() {
       valorTotal: valorTotal
     }
 
-    appState.agendaData[dayKey].push(newEntry)
-    appState.agendaData[dayKey].sort((a, b) => a.time.localeCompare(b.time))
+    // Optimistic Save
+    appState.selectedDate = date
+    appState.showModal = null
+    btnSave.disabled = false
+    
+    if (cobraReserva) {
+      alert('Reserva criada! Aguardando o cliente enviar o comprovante do PIX para confirmar.')
+    }
+    render()
 
-    const { data: dbData, error } = await supabase.from('agendamentos').insert([{
+    // Background DB Sync
+    supabase.from('agendamentos').insert([{
       estabelecimento_id: appState.user?.id,
       cliente_nome: name,
       cliente_telefone: phone,
@@ -3018,22 +3054,14 @@ function attachNewAgendamentoEvents() {
       pagamento_status: !cobraReserva,
       taxa_reserva: cobraReserva ? taxaTotalReserva : 0,
       valor_total: valorTotal
-    }]).select().single()
-
-    if (error) {
-      console.error('Erro ao salvar agendamento no bd', error)
-    } else if (dbData) {
-      newEntry.id = dbData.id
-    }
-
-    appState.selectedDate = date
-    appState.showModal = null
-    btnSave.disabled = false
-    
-    if (cobraReserva) {
-      alert('Reserva criada! Aguardando o cliente enviar o comprovante do PIX para confirmar.')
-    }
-    render()
+    }]).select().single().then(({ data: dbData, error }) => {
+      if (error) {
+        console.error('Erro ao salvar agendamento no bd', error)
+        alert('Erro ao sincronizar com o banco de dados. Verifique sua conexão.')
+      } else if (dbData) {
+        newEntry.id = dbData.id
+      }
+    })
   })
 }
 
@@ -3055,25 +3083,30 @@ function attachAgendaActionsEvents() {
     const dayKey = getAgendaDayKey(appState.selectedDate)
     const idx = appState.agendaData[dayKey].findIndex(i => i.id === appState.activeAgendaItem.id || (i.client === appState.activeAgendaItem.client && i.time === appState.activeAgendaItem.time))
     
+    // Optimistic Update
+    appState.showModal = null
+    alert('Pagamento confirmado e agendamento efetivado!')
+    
     if (idx > -1) {
       appState.agendaData[dayKey][idx] = { ...appState.activeAgendaItem, status: 'confirmado' }
     }
+    render()
 
+    // Background Sync
     if (appState.activeAgendaItem?.id) {
-      const { error } = await supabase.from('agendamentos').update({ 
+      supabase.from('agendamentos').update({ 
         pagamento_status: true,
         agendamento_status: 'Confirmado'
-      }).eq('id', appState.activeAgendaItem.id)
-      
-      if (error) console.error('Erro ao confirmar pagamento:', error)
-      else {
-        appState.agendaLoaded = false
-        appState.agendaData = {} 
-      }
+      }).eq('id', appState.activeAgendaItem.id).then(({ error }) => {
+        if (error) {
+          console.error('Erro ao confirmar pagamento:', error)
+          alert('Erro ao sincronizar pagamento. Verifique sua conexão.')
+        } else {
+          appState.agendaLoaded = false
+          appState.agendaData = {} 
+        }
+      })
     }
-    
-    alert('Pagamento confirmado e agendamento efetivado!')
-    close()
   })
 
   if (btnConclude) btnConclude.addEventListener('click', async () => {
@@ -3765,21 +3798,22 @@ function attachNewTransactionEvents() {
       return
     }
 
-    btnConfirm.textContent = 'SALVANDO...'
-    btnConfirm.disabled = true
-
-    const payload = localTransToDb(desc, val, typeFull, dateInput, appState.user.id)
-    const { data, error } = await supabase.from('transacoes_financeiras').insert([payload]).select()
-
-    if (error) {
-      alert('Erro ao salvar: ' + error.message)
-      btnConfirm.textContent = 'LANÇAR TRANSAÇÃO'
-      btnConfirm.disabled = false
-      return
-    }
-
-    appState.financasData.transactions.unshift(dbTransToLocal(data[0]))
+    // Optimistic Save
+    appState.financasData.transactions.unshift(dbTransToLocal(payload)) // Use payload as temporary visual data
     close()
+    alert('Transação lançada com sucesso!')
+
+    // Background DB Sync
+    supabase.from('transacoes_financeiras').insert([payload]).select().then(({ data: dbData, error }) => {
+      if (error) {
+        alert('Erro ao sincronizar transação: ' + error.message)
+        console.error('Sync Error:', error)
+      } else if (dbData) {
+        // Replace temp with real db data if needed for IDs
+        const idx = appState.financasData.transactions.findIndex(t => t.desc === payload.descricao && t.val === payload.valor)
+        if (idx > -1) appState.financasData.transactions[idx] = dbTransToLocal(dbData[0])
+      }
+    })
   })
 }
 
@@ -3852,16 +3886,6 @@ function attachEditTransactionEvents() {
     })
   }
 
-  // Capitalize description
-  const descInput = document.getElementById('edit-trans-desc')
-  if (descInput) {
-    descInput.addEventListener('input', () => {
-      const pos = descInput.selectionStart
-      descInput.value = descInput.value.replace(/(?:^|\\s)\\S/g, c => c.toUpperCase())
-      descInput.setSelectionRange(pos, pos)
-    })
-  }
-
   if (btnSave) btnSave.addEventListener('click', async () => {
     const desc = document.getElementById('edit-trans-desc').value.trim()
     const rawVal = document.getElementById('edit-trans-val').value
@@ -3875,24 +3899,25 @@ function attachEditTransactionEvents() {
       return
     }
 
-    btnSave.textContent = 'SALVANDO...'
-    btnSave.disabled = true
-
     const payload = localTransToDb(desc, val, typeFull, dateInput, appState.user.id)
-    const { data, error } = await supabase.from('transacoes_financeiras').update(payload).eq('id', dbId).select()
 
-    if (error) {
-      alert('Erro ao editar: ' + error.message)
-      btnSave.textContent = 'SALVAR ALTERAÇÕES'
-      btnSave.disabled = false
-      return
-    }
-
+    // Optimistic Edit
     const idx = appState.financasData.transactions.findIndex(t => t.id === dbId)
     if (idx !== -1) {
-      appState.financasData.transactions[idx] = dbTransToLocal(data[0])
+      appState.financasData.transactions[idx] = dbTransToLocal(payload)
+      appState.financasData.transactions[idx].id = dbId // Keep ID
     }
     close()
+    
+    // Background Sync
+    supabase.from('transacoes_financeiras').update(payload).eq('id', dbId).select().then(({ data, error }) => {
+      if (error) {
+        alert('Erro ao sincronizar edição: ' + error.message)
+      } else if (data) {
+        const i = appState.financasData.transactions.findIndex(t => t.id === dbId)
+        if (i !== -1) appState.financasData.transactions[i] = dbTransToLocal(data[0])
+      }
+    })
   })
 }
 function attachServicosEvents() {
@@ -3987,29 +4012,27 @@ function attachServicosEvents() {
         taxa_reserva: appState.servicosForm.chargeReserva ? parseCurrency(appState.servicosForm.reservaValue) : 0
       }
 
-      const { data, error } = await supabase.from('servicos').insert([payload]).select()
-
-      if (error) {
-        alert('Erro ao salvar serviço: ' + error.message)
-        btnSalvar.textContent = 'SALVAR NO CATÁLOGO'
-        btnSalvar.disabled = false
-        return
-      }
-
-      // Atualiza a chave pix no estabelecimentos se for informada / alterada
-      if (appState.servicosForm.chargeReserva && chavePixValue && chavePixValue !== appState.profile?.chave_pix) {
-        const { error: updateError } = await supabase.from('estabelecimentos').update({
-          chave_pix: chavePixValue
-        }).eq('id', appState.user.id)
-        if (!updateError) {
-          appState.profile.chave_pix = chavePixValue
-        }
-      }
-
-      appState.servicosAtivos.unshift(data[0])
+      // Optimistic state cleanup
       appState.servicosForm = { name: '', price: '', duration: '00:00', chargeReserva: false, reservaValue: '', chavePix: '' }
-      alert('Serviço salvo em seu catálogo!')
+      alert('Serviço sendo salvo em seu catálogo!')
       render()
+
+      // Background DB operations
+      supabase.from('servicos').insert([payload]).select().then(({ data: dbData, error }) => {
+        if (error) {
+           alert('Erro ao sincronizar novo serviço: ' + error.message)
+           return
+        }
+        if (dbData) appState.servicosAtivos.unshift(dbData[0])
+        
+        // Update chave pix if needed
+        if (payload.cobra_reserva && chavePixValue && chavePixValue !== appState.profile?.chave_pix) {
+          supabase.from('estabelecimentos').update({ chave_pix: chavePixValue }).eq('id', appState.user.id).then(({ error: upErr }) => {
+            if (!upErr) appState.profile.chave_pix = chavePixValue
+          })
+        }
+        render()
+      })
     })
   }
 
@@ -4100,32 +4123,36 @@ function attachServicosEvents() {
         return alert('Por favor, informe a Chave PIX para receber a taxa de reserva.')
       }
 
-      const { data, error } = await supabase.from('servicos').update({
+      const payload = {
         nome, preco, duracao_minutos: duracao, cobra_reserva: cobraReserva, taxa_reserva: taxaReserva
-      }).eq('id', id).select()
-
-      // Atualiza a chave pix na tabela estabelecimentos se informada e alterada
-      if (cobraReserva && chave_pix && chave_pix !== appState.profile?.chave_pix) {
-        const { error: updateError } = await supabase.from('estabelecimentos').update({
-          chave_pix: chave_pix
-        }).eq('id', appState.user.id)
-        if (!updateError) {
-          appState.profile.chave_pix = chave_pix
-        }
       }
 
-      if (error) {
-        alert('Erro ao editar serviço: ' + error.message)
-        btn.textContent = 'SALVAR'
-        btn.disabled = false
-        return
-      }
-
+      // Optimistic Update
       const idx = appState.servicosAtivos.findIndex(x => x.id === id)
-      if (idx !== -1) appState.servicosAtivos[idx] = data[0]
+      if (idx !== -1) {
+        appState.servicosAtivos[idx] = { ...appState.servicosAtivos[idx], ...payload }
+      }
       appState.editingServicoId = null
       appState.editingServicoForm = {}
       render()
+
+      // Background Sync
+      supabase.from('servicos').update(payload).eq('id', id).select().then(({ data, error }) => {
+        if (error) {
+          alert('Erro ao sincronizar edição do serviço: ' + error.message)
+        } else if (data) {
+          const i = appState.servicosAtivos.findIndex(x => x.id === id)
+          if (i !== -1) appState.servicosAtivos[i] = data[0]
+        }
+        render()
+      })
+
+      // Background Chave Pix update
+      if (cobraReserva && chave_pix && chave_pix !== appState.profile?.chave_pix) {
+        supabase.from('estabelecimentos').update({ chave_pix: chave_pix }).eq('id', appState.user.id).then(({ error: upErr }) => {
+          if (!upErr) appState.profile.chave_pix = chave_pix
+        })
+      }
     })
   })
 
