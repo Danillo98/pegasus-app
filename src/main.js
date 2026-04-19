@@ -1482,19 +1482,6 @@ function attachServiceSearchSelect(inputId, listId) {
     }
   })
 }
-  listEl.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', updateSelected)
-  })
-
-  listEl.querySelectorAll('.service-opt').forEach(opt => {
-    opt.addEventListener('mouseenter', () => { 
-      opt.style.background = 'var(--surface-hover)'
-    })
-    opt.addEventListener('mouseleave', () => { 
-      opt.style.background = ''
-    })
-  })
-}
 
 function renderQuickBookModal() {
   const item = appState.activeAgendaItem
