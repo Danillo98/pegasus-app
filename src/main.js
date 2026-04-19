@@ -1429,9 +1429,17 @@ function attachServiceSearchSelect(inputId, listId) {
 
   searchInput.addEventListener('input', () => {
     const q = searchInput.value.toLowerCase()
-    listEl.querySelectorAll('.service-opt').forEach(opt => {
-      opt.style.display = opt.dataset.nome.toLowerCase().includes(q) ? 'flex' : 'none'
-    })
+    const selectedText = hiddenInput.value ? JSON.parse(hiddenInput.value).join(', ').toLowerCase() : ''
+    
+    // Se o que está escrito no input for exatamente a lista de selecionados, mostra tudo.
+    // Caso contrário, o usuário está digitando algo novo para filtrar.
+    if (q === selectedText || q === '') {
+      listEl.querySelectorAll('.service-opt').forEach(opt => opt.style.display = 'flex')
+    } else {
+      listEl.querySelectorAll('.service-opt').forEach(opt => {
+        opt.style.display = opt.dataset.nome.toLowerCase().includes(q) ? 'flex' : 'none'
+      })
+    }
   })
 
   // Visual Check Logic
