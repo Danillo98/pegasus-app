@@ -344,12 +344,53 @@ select:focus {
 }
 
 .service-opt input[type="checkbox"] {
-  width: 20px !important;
-  height: 20px !important;
-  margin: 0 !important;
-  accent-color: var(--primary);
-  border-radius: 6px;
+  position: absolute;
+  opacity: 0;
   cursor: pointer;
+  height: 0; width: 0;
+}
+
+.checkbox-wrapper {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.custom-checkbox {
+  position: absolute;
+  top: 0; left: 0;
+  height: 24px; width: 24px;
+  background-color: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.service-opt:hover .custom-checkbox {
+  border-color: var(--primary);
+}
+
+.service-opt input:checked ~ .custom-checkbox {
+  background-color: var(--primary);
+  border-color: var(--primary);
+}
+
+.custom-checkbox:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 8px;
+  top: 3px;
+  width: 6px;
+  height: 12px;
+  border: solid white;
+  border-width: 0 3px 3px 0;
+  transform: rotate(45deg);
+}
+
+.service-opt input:checked ~ .custom-checkbox:after {
+  display: block;
 }
 
 .service-opt span {

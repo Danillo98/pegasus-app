@@ -1397,7 +1397,10 @@ function renderServiceSearchSelect(inputId, listId, services) {
       <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:280px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 1000; box-shadow: var(--shadow-lg);">
         ${services.map(s => `
           <label class="service-opt" data-nome="${s.nome}">
-            <input type="checkbox" value="${s.nome}">
+            <div class="checkbox-wrapper">
+              <input type="checkbox" value="${s.nome}">
+              <span class="custom-checkbox"></span>
+            </div>
             <span>${s.nome} <span class="price-tag">(R$ ${parseFloat(s.preco || 0).toFixed(2).replace('.', ',')})</span></span>
           </label>
         `).join('')}
