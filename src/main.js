@@ -1444,12 +1444,12 @@ function attachServiceSearchSelect(inputId, listId) {
       label.classList.add('selected')
     }
 
-    label.onclick = (e) => {
-      if (e.target !== chk) {
-        chk.checked = !chk.checked
-        chk.dispatchEvent(new Event('change'))
-      }
-    }
+    label.addEventListener('click', (e) => {
+      // Prevent double trigger if clicking near the hidden input or if multiple events fire
+      e.preventDefault();
+      chk.checked = !chk.checked;
+      chk.dispatchEvent(new Event('change'));
+    })
 
     chk.onchange = () => {
       const allChecks = Array.from(listEl.querySelectorAll('input[type="checkbox"]'))

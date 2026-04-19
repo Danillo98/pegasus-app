@@ -350,8 +350,7 @@ select:focus {
 .service-opt {
   display: flex !important;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px !important;
+  padding: 14px 44px 14px 16px !important; /* Leave space for check on right */
   cursor: pointer;
   transition: all 0.2s ease;
   border-bottom: 1px solid var(--border);
@@ -359,20 +358,25 @@ select:focus {
   user-select: none;
   border-radius: 8px;
   margin: 2px 0;
+  position: relative; /* Essential for checkmark pos */
 }
 
 .service-opt.selected {
   background: var(--surface-hover) !important;
-  border-color: var(--primary) !important;
+  border-left: 4px solid var(--primary);
 }
 
 /* Custom Checkmark on the Right */
 .service-opt::after {
   content: '✓';
   color: var(--primary);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   font-weight: 900;
   display: none;
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .service-opt.selected::after {
@@ -383,7 +387,7 @@ select:focus {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-main);
-  flex: 1;
+  width: 100%;
 }
 
 .service-opt .price-tag {
