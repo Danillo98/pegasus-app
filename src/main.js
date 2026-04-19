@@ -1394,7 +1394,7 @@ function renderServiceSearchSelect(inputId, listId, services) {
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
         </svg>
       </div>
-      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:280px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 1000; box-shadow: var(--shadow-lg);">
+      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:225px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 1000; box-shadow: var(--shadow-lg);">
         ${services.map(s => `
           <label class="service-opt" data-nome="${s.nome}">
             <input type="checkbox" value="${s.nome}">
@@ -1428,16 +1428,21 @@ function attachServiceSearchSelect(inputId, listId) {
   })
 
   searchInput.addEventListener('input', () => {
-    const q = searchInput.value.toLowerCase()
+    const q = searchInput.value.toLowerCase().trim()
     const selectedText = hiddenInput.value ? JSON.parse(hiddenInput.value).join(', ').toLowerCase() : ''
     
-    // Se o que está escrito no input for exatamente a lista de selecionados, mostra tudo.
-    // Caso contrário, o usuário está digitando algo novo para filtrar.
-    if (q === selectedText || q === '') {
-      listEl.querySelectorAll('.service-opt').forEach(opt => opt.style.display = 'flex')
+    const items = listEl.querySelectorAll('.service-opt')
+    
+    // Se o campo estiver vazio ou contiver exatamente a lista de selecionados, mostra tudo
+    if (q === '' || q === selectedText) {
+      items.forEach(opt => opt.style.display = 'flex')
     } else {
-      listEl.querySelectorAll('.service-opt').forEach(opt => {
-        opt.style.display = opt.dataset.nome.toLowerCase().includes(q) ? 'flex' : 'none'
+      // Caso contrário, filtra pelo que o usuário digitou
+      // Se houver vírgulas (múltiplas seleções), pegamos o último pedaço após a última vírgula? 
+      // Não, vamos filtrar o texto inteiro do input para ser mais simples e intuitivo.
+      items.forEach(opt => {
+        const text = opt.innerText.toLowerCase()
+        opt.style.display = text.includes(q) ? 'flex' : 'none'
       })
     }
   })
