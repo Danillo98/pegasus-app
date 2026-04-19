@@ -1511,44 +1511,47 @@ function renderQuickBookModal() {
 
 function renderNewAgendamentoModal() {
   return `
-    <div class="card animate-fade-in" style="max-width: 450px; width: 90%; padding: 32px; align-items: stretch; text-align: left; border-radius: 24px;">
-      <button id="btn-close-modal" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
-      <div class="flex justify-between items-center" style="margin-bottom: 24px;">
-        <h3 style="font-family: var(--font-alt); font-size: 1.2rem; color: var(--primary);">NOVO AGENDAMENTO</h3>
-      </div>
+    <div class="card animate-fade-in" style="max-width: 450px; width: 90%; padding: 32px; border-radius: 24px; position: relative; display: flex !important; flex-direction: column !important;">
+      <button id="btn-close-modal" style="position: absolute; top: 1.5rem; right: 1.5rem; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); z-index: 99;">✕</button>
       
-
-      
-      <div class="flex flex-col gap-md">
-        <div class="flex flex-col gap-xs">
-          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Serviço Desejado</label>
-          ${renderServiceSearchSelect('modal-service-search', 'modal-service-list', appState.servicosAtivos)}
-        </div>
-
-        <div class="flex flex-col gap-xs">
-          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Nome do Cliente</label>
-          <input type="text" id="modal-client-name" placeholder="Ex: João Silva" maxlength="50" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
-        </div>
+      <div class="flex flex-col w-full" style="text-align: left;">
+        <h3 style="font-family: var(--font-alt); font-size: 1.25rem; color: var(--primary); margin-bottom: 24px; font-weight: 800;">NOVO AGENDAMENTO</h3>
         
-        <div class="flex flex-col gap-xs">
-          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Telefone (Opcional)</label>
-          <input type="tel" id="modal-client-phone" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
-        </div>
-        
-        <div class="modal-grid">
+        <div class="flex flex-col gap-md">
+          <!-- Servico -->
           <div class="flex flex-col gap-xs">
-            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Data</label>
-            <input type="date" id="modal-date" style="padding: 14px; border-radius: 12px; font-family: inherit;">
+            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Serviço Desejado</label>
+            ${renderServiceSearchSelect('modal-service-search', 'modal-service-list', appState.servicosAtivos)}
           </div>
+
+          <!-- Nome -->
           <div class="flex flex-col gap-xs">
-            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Horário</label>
-            <input type="time" id="modal-time" style="padding: 14px 10px; border-radius: 12px; font-family: inherit; text-align: center;">
+            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Nome do Cliente</label>
+            <input type="text" id="modal-client-name" placeholder="Ex: João Silva" maxlength="50" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
           </div>
+          
+          <!-- Telefone -->
+          <div class="flex flex-col gap-xs">
+            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Telefone (Opcional)</label>
+            <input type="tel" id="modal-client-phone" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
+          </div>
+          
+          <!-- Grid Data/Hora -->
+          <div class="modal-grid">
+            <div class="flex flex-col gap-xs">
+              <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Data</label>
+              <input type="date" id="modal-date" style="padding: 14px; border-radius: 12px; font-family: inherit;">
+            </div>
+            <div class="flex flex-col gap-xs">
+              <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Horário</label>
+              <input type="time" id="modal-time" style="padding: 14px 10px; border-radius: 12px; font-family: inherit; text-align: center;">
+            </div>
+          </div>
+          
+          <button id="btn-save-agendamento" style="background: var(--primary); color: var(--on-primary); padding: 18px; border-radius: 12px; font-weight: 800; margin-top: 10px; letter-spacing: 1px; width: 100%;">
+            CONFIRMAR AGENDAMENTO
+          </button>
         </div>
-        
-        <button id="btn-save-agendamento" style="background: var(--primary); color: var(--on-primary); padding: 18px; border-radius: 12px; font-weight: 800; margin-top: 10px; letter-spacing: 1px;">
-          CONFIRMAR AGENDAMENTO
-        </button>
       </div>
     </div>
   `

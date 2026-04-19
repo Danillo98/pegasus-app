@@ -352,15 +352,15 @@ select:focus {
 
 .checkbox-wrapper {
   position: relative;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
 }
 
 .custom-checkbox {
   position: absolute;
   top: 0; left: 0;
-  height: 24px; width: 24px;
+  height: 26px; width: 26px;
   background-color: var(--surface);
   border: 2px solid var(--border);
   border-radius: 6px;
@@ -380,12 +380,12 @@ select:focus {
   content: "";
   position: absolute;
   display: none;
-  left: 8px;
-  top: 3px;
+  left: 9px;
+  top: 4px;
   width: 6px;
   height: 12px;
   border: solid white;
-  border-width: 0 3px 3px 0;
+  border-width: 0 4px 4px 0;
   transform: rotate(45deg);
 }
 
