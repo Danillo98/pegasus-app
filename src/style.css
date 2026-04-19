@@ -347,35 +347,35 @@ select:focus {
   display: none;
 }
 
-/* Custom Checkbox Design */
-.service-opt .custom-chk {
-  width: 22px;
-  height: 22px;
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  background: var(--background);
-  display: flex;
+.service-opt {
+  display: flex !important;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 14px 16px !important;
+  cursor: pointer;
   transition: all 0.2s ease;
-  flex-shrink: 0;
-  position: relative;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  user-select: none;
+  border-radius: 8px;
+  margin: 2px 0;
 }
 
-.service-opt.selected .custom-chk {
-  background: var(--primary);
-  border-color: var(--primary);
+.service-opt.selected {
+  background: var(--surface-hover) !important;
+  border-color: var(--primary) !important;
 }
 
-.service-opt .custom-chk::after {
+/* Custom Checkmark on the Right */
+.service-opt::after {
   content: '✓';
-  color: var(--on-primary);
-  font-size: 1.1rem;
+  color: var(--primary);
+  font-size: 1.2rem;
   font-weight: 900;
   display: none;
 }
 
-.service-opt.selected .custom-chk::after {
+.service-opt.selected::after {
   display: block;
 }
 
@@ -383,6 +383,7 @@ select:focus {
   font-size: 0.95rem;
   font-weight: 600;
   color: var(--text-main);
+  flex: 1;
 }
 
 .service-opt .price-tag {

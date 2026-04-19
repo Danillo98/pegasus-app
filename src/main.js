@@ -1398,7 +1398,6 @@ function renderServiceSearchSelect(inputId, listId, services) {
         ${services.map(s => `
           <label class="service-opt" data-nome="${s.nome}">
             <input type="checkbox" value="${s.nome}">
-            <div class="custom-chk"></div>
             <span>${s.nome} <span class="price-tag">(R$ ${parseFloat(s.preco || 0).toFixed(2).replace('.', ',')})</span></span>
           </label>
         `).join('')}
