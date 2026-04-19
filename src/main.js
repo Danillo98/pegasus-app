@@ -370,10 +370,6 @@ function render() {
       root.innerHTML = renderAssinaturas()
       attachAssinaturasEvents()
       break
-    case 'config-agendamento':
-      container.innerHTML = renderConfigAgendamento()
-      attachConfigAgendamentoEvents()
-      break
     case 'suporte':
       root.innerHTML = renderSupport()
       attachSupportEvents()
@@ -1061,16 +1057,10 @@ function renderDashboard() {
             <div class="card" id="card-servicos">
               <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
               <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços Fornecidos</h3>
-            </div>
-            <!-- Novo card: Link de Agendamento -->
-            <div class="card" id="card-link-agendamento" style="border: 2px solid var(--primary); background: var(--surface);">
-              <div class="icon-container" style="transform: scale(1.2); color: var(--primary);">${icons.agenda}</div>
-              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Agendamento Online</h3>
-              <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 600;">LINK PARA WHATSAPP</p>
-            </div>
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
+    </div>
 
       <!-- Botão Suporte Flutuante (Extreme Corner) - OUTSIDE animation to fix position:fixed -->
       <button id="btn-floating-support" style="
@@ -2492,14 +2482,12 @@ function attachDashboardEvents() {
   const financas = document.getElementById('card-financas')
   const servicos = document.getElementById('card-servicos')
   const assinaturas = document.getElementById('card-assinaturas')
-  const agendamento = document.getElementById('card-link-agendamento')
 
   if (logout) logout.addEventListener('click', () => { appState.showModal = 'confirm-logout'; render() })
   if (agenda) agenda.addEventListener('click', () => { appState.screen = 'agenda'; render() })
   if (financas) financas.addEventListener('click', () => { appState.screen = 'financas'; render() })
   if (servicos) servicos.addEventListener('click', () => { appState.screen = 'servicos'; render() })
   if (assinaturas) assinaturas.addEventListener('click', () => { appState.screen = 'assinaturas'; render() })
-  if (agendamento) agendamento.addEventListener('click', () => { appState.screen = 'config-agendamento'; render() })
 
   const btnSupport = document.getElementById('btn-floating-support')
   if (btnSupport) btnSupport.addEventListener('click', () => {
