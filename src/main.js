@@ -1394,12 +1394,11 @@ function renderServiceSearchSelect(inputId, listId, services) {
           <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
         </svg>
       </div>
-      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:160px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 100; box-shadow: var(--shadow-lg);">
+      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:280px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 1000; box-shadow: var(--shadow-lg);">
         ${services.map(s => `
-          <label class="service-opt" data-nome="${s.nome}"
-            style="padding:15px 16px; cursor:pointer; font-size:0.95rem; font-weight:600; border-bottom: 1px solid var(--border); color: var(--text-main); transition: all 0.2s; display:flex; align-items:center; gap: 10px; margin:0;">
-            <input type="checkbox" value="${s.nome}" style="width: 18px; height: 18px; accent-color: var(--primary); flex-shrink:0;">
-            <span>${s.nome} <span style="color:var(--text-secondary); font-size:0.8rem;">(R$ ${parseFloat(s.preco || 0).toFixed(2).replace('.', ',')})</span></span>
+          <label class="service-opt" data-nome="${s.nome}">
+            <input type="checkbox" value="${s.nome}">
+            <span>${s.nome} <span class="price-tag">(R$ ${parseFloat(s.preco || 0).toFixed(2).replace('.', ',')})</span></span>
           </label>
         `).join('')}
       </div>
@@ -1466,14 +1465,9 @@ function attachServiceSearchSelect(inputId, listId) {
         if (c.checked) {
           parent.style.background = 'var(--surface-hover)'
           parent.style.borderColor = 'var(--primary)'
-          if (!parent.querySelector('.chk-icon')) {
-            parent.insertAdjacentHTML('beforeend', `<span class="chk-icon" style="color:var(--primary); font-size:1.1rem; margin-left:auto; font-weight:900;">✓</span>`)
-          }
         } else {
-          parent.style.background = 'transparent'
-          parent.style.borderColor = 'var(--border)'
-          const icon = parent.querySelector('.chk-icon')
-          if (icon) icon.remove()
+          parent.style.background = ''
+          parent.style.borderColor = ''
         }
       })
 
@@ -4339,6 +4333,22 @@ handleMpCallback().then(async () => {
       history.back();
     }
   });
+
+  // --- Update Check & Splash (Auto-update like Spartan App) ---
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      reg.update()
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            // New version ready, force refresh
+            window.location.reload()
+          }
+        })
+      })
+    })
+  }
 
   setTimeout(() => {
     const splash = document.getElementById('pwa-splash-container');

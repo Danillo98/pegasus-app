@@ -322,6 +322,48 @@ select:focus {
   border-color: var(--primary);
 }
 
+/* ── Service Picker Improvements ── */
+.service-opt {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px !important;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  user-select: none;
+}
+
+.service-opt:last-child {
+  border-bottom: none;
+}
+
+.service-opt:hover {
+  background: var(--surface-hover) !important;
+}
+
+.service-opt input[type="checkbox"] {
+  width: 20px !important;
+  height: 20px !important;
+  margin: 0 !important;
+  accent-color: var(--primary);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.service-opt span {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.service-opt .price-tag {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
 /* ── Print Styles (Relatórios) ── */
 @media print {
   @page {
