@@ -244,9 +244,16 @@ input[type="date"], input[type="time"] {
   width: 100%;
 }
 
-@media (max-width: 480px) {
+/* Prevent iOS auto-linking phone numbers */
+[href^="tel"] {
+  color: inherit !important;
+  text-decoration: none !important;
+}
+
+@media (max-width: 520px) {
   .modal-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
 

@@ -1520,7 +1520,7 @@ function renderNewAgendamentoModal() {
         <h3 style="font-family: var(--font-alt); font-size: 1.2rem; color: var(--primary);">NOVO AGENDAMENTO</h3>
       </div>
       
-      </div>
+
       
       <div class="flex flex-col gap-md">
         <div class="flex flex-col gap-xs">
