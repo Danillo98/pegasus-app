@@ -344,52 +344,38 @@ select:focus {
 }
 
 .service-opt input[type="checkbox"] {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0; width: 0;
+  display: none;
 }
 
-.checkbox-wrapper {
-  position: relative;
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
-}
-
-.custom-checkbox {
-  position: absolute;
-  top: 0; left: 0;
-  height: 26px; width: 26px;
-  background-color: var(--surface);
+/* Custom Checkbox Design */
+.service-opt .custom-chk {
+  width: 22px;
+  height: 22px;
   border: 2px solid var(--border);
   border-radius: 6px;
+  background: var(--background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+  position: relative;
 }
 
-.service-opt:hover .custom-checkbox {
+.service-opt.selected .custom-chk {
+  background: var(--primary);
   border-color: var(--primary);
 }
 
-.service-opt input:checked ~ .custom-checkbox {
-  background-color: var(--primary);
-  border-color: var(--primary);
-}
-
-.custom-checkbox:after {
-  content: "";
-  position: absolute;
+.service-opt .custom-chk::after {
+  content: '✓';
+  color: var(--on-primary);
+  font-size: 1.1rem;
+  font-weight: 900;
   display: none;
-  left: 9px;
-  top: 4px;
-  width: 6px;
-  height: 12px;
-  border: solid white;
-  border-width: 0 4px 4px 0;
-  transform: rotate(45deg);
 }
 
-.service-opt input:checked ~ .custom-checkbox:after {
+.service-opt.selected .custom-chk::after {
   display: block;
 }
 
