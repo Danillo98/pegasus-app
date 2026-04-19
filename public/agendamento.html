@@ -139,10 +139,18 @@
       font-size: 1rem;
       padding: .85rem 1rem;
       outline: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
       transition: border-color .2s;
     }
-    .input:focus { border-color: var(--primary); }
+    .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,0,0,0.05); }
     .input::placeholder { color: var(--muted); }
+    
+    /* Specific fix for date/time/tel inputs on iOS */
+    input[type="date"], input[type="time"], input[type="tel"], input[type="text"] {
+       font-size: 16px; /* Prevents auto-zoom on iOS */
+    }
 
     /* ── Service item ── */
     .service-item {
@@ -259,6 +267,13 @@
       font-size: 1rem;
       font-weight: 700;
       cursor: pointer;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       transition: opacity .2s, transform .1s;
       margin-top: .75rem;
       letter-spacing: .2px;
@@ -460,6 +475,7 @@
         </div>`;
 
       const input = document.getElementById('nome-input');
+      const phone = document.getElementById('phone-input');
       const btn = document.getElementById('btn-step1');
       if (state.clienteName) input.value = state.clienteName;
       if (state.clientePhone) phone.value = state.clientePhone;

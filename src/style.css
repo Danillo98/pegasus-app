@@ -80,6 +80,26 @@ body {
 
 h1, h2, h3, h4 {
   font-family: var(--font-heading);
+  color: inherit;
+}
+
+/* ── Cross-Device Normalization (iOS / Android / PC) ── */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent !important;
+  outline: none !important;
+}
+
+button, a, input, select, textarea {
+  color: inherit;
+  font-family: inherit;
+  text-decoration: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 button {
@@ -90,8 +110,11 @@ button {
   transition: all var(--transition-fast);
 }
 
-ul { list-style: none; }
-a { text-decoration: none; color: inherit; }
+a { 
+  text-decoration: none; 
+  color: inherit; 
+  -webkit-appearance: none;
+}
 
 /* Utils */
 .flex { display: flex; }
@@ -129,18 +152,31 @@ a { text-decoration: none; color: inherit; }
 }
 
 /* Input Styles */
-input {
+input, select, textarea {
   background: var(--background);
   color: var(--text-main);
   border: 1px solid var(--border);
   outline: none;
   font-size: inherit;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
-input:focus {
+input:focus, select:focus, textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 4px var(--glow);
+}
+
+/* Specific fix for date/time on iOS */
+input[type="date"], input[type="time"] {
+  min-height: 3rem;
+  display: flex;
+  align-items: center;
 }
 
 /* Login Screen Specific Scaling */
@@ -195,6 +231,23 @@ input:focus {
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.25);
   border: 4px solid var(--primary);
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  margin: auto;
+}
+
+/* Modal Input Groups */
+.modal-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+}
+
+@media (max-width: 480px) {
+  .modal-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Dashboard Grid */

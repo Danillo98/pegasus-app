@@ -370,6 +370,10 @@ function render() {
       root.innerHTML = renderAssinaturas()
       attachAssinaturasEvents()
       break
+    case 'config-agendamento':
+      container.innerHTML = renderConfigAgendamento()
+      attachConfigAgendamentoEvents()
+      break
     case 'suporte':
       root.innerHTML = renderSupport()
       attachSupportEvents()
@@ -1058,6 +1062,12 @@ function renderDashboard() {
               <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
               <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços Fornecidos</h3>
             </div>
+            <!-- Novo card: Link de Agendamento -->
+            <div class="card" id="card-link-agendamento" style="border: 2px solid var(--primary); background: var(--surface);">
+              <div class="icon-container" style="transform: scale(1.2); color: var(--primary);">${icons.agenda}</div>
+              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Agendamento Online</h3>
+              <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; font-weight: 600;">LINK PARA WHATSAPP</p>
+            </div>
           </div>
         </main>
       </div>
@@ -1499,14 +1509,14 @@ function renderNewAgendamentoModal() {
           <input type="tel" id="modal-client-phone" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
         </div>
         
-        <div class="grid" style="display: grid; grid-template-columns: 1fr 120px; gap: 16px; width: 100%; box-sizing: border-box;">
-          <div class="flex flex-col gap-xs" style="width: 100%; box-sizing: border-box; min-width: 0;">
+        <div class="modal-grid">
+          <div class="flex flex-col gap-xs">
             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Data</label>
-            <input type="date" id="modal-date" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box; font-family: inherit;">
+            <input type="date" id="modal-date" style="padding: 14px; border-radius: 12px; font-family: inherit;">
           </div>
-          <div class="flex flex-col gap-xs" style="width: 100%; box-sizing: border-box; min-width: 0;">
+          <div class="flex flex-col gap-xs">
             <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Horário</label>
-            <input type="time" id="modal-time" style="padding: 14px 10px; border-radius: 12px; width: 100%; box-sizing: border-box; font-family: inherit; text-align: center;">
+            <input type="time" id="modal-time" style="padding: 14px 10px; border-radius: 12px; font-family: inherit; text-align: center;">
           </div>
         </div>
         
@@ -2034,14 +2044,14 @@ function renderEditTransactionModal() {
           <input type="text" id="edit-trans-desc" value="${t.desc}" autocapitalize="words" style="padding: 14px; border-radius: 12px; text-transform: capitalize;">
         </div>
         
-        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%;">
-           <div class="flex flex-col gap-xs" style="min-width: 0;">
+        <div class="modal-grid">
+           <div class="flex flex-col gap-xs">
             <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">VALOR (R$)</label>
-            <input type="text" id="edit-trans-val" value="R$ ${Number(t.val).toFixed(2).replace('.', ',')}" placeholder="R$ 0,00" style="padding: 14px 10px; border-radius: 12px; width: 100%; box-sizing: border-box; font-weight: 700;">
+            <input type="text" id="edit-trans-val" value="R$ ${Number(t.val).toFixed(2).replace('.', ',')}" placeholder="R$ 0,00" style="padding: 14px 10px; border-radius: 12px; width: 100%; font-weight: 700;">
           </div>
-          <div class="flex flex-col gap-xs" style="min-width: 0;">
+          <div class="flex flex-col gap-xs">
             <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">DATA</label>
-            <button id="btn-edit-trans-date" style="padding: 14px 10px; border-radius: 12px; width: 100%; box-sizing: border-box; font-size: 0.8rem; border: 1px solid var(--border); background: var(--background); font-weight: 700; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+            <button id="btn-edit-trans-date" style="padding: 14px 10px; border-radius: 12px; width: 100%; font-size: 0.8rem; border: 1px solid var(--border); background: var(--background); font-weight: 700; text-align: left; display: flex; align-items: center; justify-content: space-between;">
               ${t.fullDate.split('-').reverse().join('/')}
               ${icons.calendar}
             </button>
@@ -2076,14 +2086,14 @@ function renderNewTransactionModal() {
           <input type="text" id="trans-desc" placeholder="Ex: Pagamento Fornecedor" autocapitalize="words" style="padding: 14px; border-radius: 12px; text-transform: capitalize;">
         </div>
         
-        <div class="grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%;">
-           <div class="flex flex-col gap-xs" style="min-width: 0;">
+        <div class="modal-grid">
+           <div class="flex flex-col gap-xs">
             <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">VALOR (R$)</label>
-            <input type="text" id="trans-val" placeholder="R$ 0,00" style="padding: 14px 10px; border-radius: 12px; width: 100%; box-sizing: border-box; font-weight: 700;">
+            <input type="text" id="trans-val" placeholder="R$ 0,00" style="padding: 14px 10px; border-radius: 12px; width: 100%; font-weight: 700;">
           </div>
-          <div class="flex flex-col gap-xs" style="min-width: 0;">
+          <div class="flex flex-col gap-xs">
             <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">DATA</label>
-            <button id="btn-new-trans-date" style="padding: 14px 10px; border-radius: 12px; width: 100%; box-sizing: border-box; font-size: 0.8rem; border: 1px solid var(--border); background: var(--background); font-weight: 700; text-align: left; display: flex; align-items: center; justify-content: space-between;">
+            <button id="btn-new-trans-date" style="padding: 14px 10px; border-radius: 12px; width: 100%; font-size: 0.8rem; border: 1px solid var(--border); background: var(--background); font-weight: 700; text-align: left; display: flex; align-items: center; justify-content: space-between;">
               ${appState.financasData.tempDate.split('-').reverse().join('/')}
               ${icons.calendar}
             </button>
@@ -2482,18 +2492,96 @@ function attachDashboardEvents() {
   const financas = document.getElementById('card-financas')
   const servicos = document.getElementById('card-servicos')
   const assinaturas = document.getElementById('card-assinaturas')
+  const agendamento = document.getElementById('card-link-agendamento')
 
   if (logout) logout.addEventListener('click', () => { appState.showModal = 'confirm-logout'; render() })
   if (agenda) agenda.addEventListener('click', () => { appState.screen = 'agenda'; render() })
   if (financas) financas.addEventListener('click', () => { appState.screen = 'financas'; render() })
   if (servicos) servicos.addEventListener('click', () => { appState.screen = 'servicos'; render() })
   if (assinaturas) assinaturas.addEventListener('click', () => { appState.screen = 'assinaturas'; render() })
+  if (agendamento) agendamento.addEventListener('click', () => { appState.screen = 'config-agendamento'; render() })
 
   const btnSupport = document.getElementById('btn-floating-support')
   if (btnSupport) btnSupport.addEventListener('click', () => {
     appState.screen = 'suporte'
     render()
   })
+}
+
+function renderConfigAgendamento() {
+  const profile = appState.profile || {}
+  const link = `https://pegasusapp.com.br/agendamento.html?estab=${profile.id}`
+  const whatsAppText = `Olá! 👋 Para agendar seu horário de forma rápida e ver nossos serviços, clique no link abaixo:\n\n${link}`
+
+  return renderTabHeader('Agendamento Online', `
+    <div class="animate-fade-in" style="max-width: 40rem; margin: 0 auto; padding: 1.5rem;">
+      
+      <div class="card" style="align-items: flex-start; text-align: left; gap: 1.5rem; padding: 2rem;">
+        <div>
+          <h2 style="font-family: var(--font-alt); font-size: 1.4rem; margin-bottom: 0.5rem;">Seu Link Exclusivo</h2>
+          <p style="color: var(--text-secondary); font-size: 0.95rem;">Copie o link abaixo e coloque na mensagem de saudação automática do seu <b>WhatsApp Business</b>.</p>
+        </div>
+
+        <div style="width: 100%; background: var(--surface2); padding: 1rem; border-radius: 12px; border: 1px dashed var(--border); word-break: break-all; font-family: monospace; font-size: 0.9rem; color: var(--primary);">
+          ${link}
+        </div>
+
+        <button id="btn-copy-link" class="btn" style="background: var(--primary); color: var(--on-primary); padding: 1rem; border-radius: 0.8rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+          <span>📋</span> COPIAR LINK
+        </button>
+      </div>
+
+      <div class="card" style="margin-top: 1.5rem; align-items: flex-start; text-align: left; gap: 1rem; padding: 2rem; border-left: 4px solid #25D366;">
+        <h3 style="font-family: var(--font-alt); font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span style="color: #25D366; font-size: 1.5rem;">💬</span> Sugestão para WhatsApp
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">Copie este texto para usar como sua "Mensagem de Saudação":</p>
+        
+        <div style="width: 100%; background: #f0fdf4; padding: 1rem; border-radius: 12px; border: 1px solid #dcfce7; font-size: 0.95rem; color: #166534; line-height: 1.4; white-space: pre-wrap;">${whatsAppText}</div>
+        
+        <button id="btn-copy-msg" style="color: var(--primary); font-weight: 700; font-size: 0.85rem; background: none; border: none; cursor: pointer; text-decoration: underline;">Copiar texto da mensagem</button>
+      </div>
+
+      <div style="margin-top: 2rem; padding: 1rem; background: rgba(0,0,0,0.03); border-radius: 12px; font-size: 0.85rem; color: var(--text-secondary);">
+        <p><b>Como configurar no WhatsApp Business?</b></p>
+        <ol style="margin-top: 0.5rem; padding-left: 1.25rem; display: flex; flex-direction: column; gap: 0.4rem;">
+          <li>Abra o WhatsApp Business</li>
+          <li>Vá em <b>Ferramentas Comerciais</b></li>
+          <li>Clique em <b>Mensagem de Saudação</b></li>
+          <li>Ative e cole o texto acima!</li>
+        </ol>
+      </div>
+    </div>
+  `)
+}
+
+function attachConfigAgendamentoEvents() {
+  const profile = appState.profile || {}
+  const link = `https://pegasusapp.com.br/agendamento.html?estab=${profile.id}`
+  const whatsAppText = `Olá! 👋 Para agendar seu horário de forma rápida e ver nossos serviços, clique no link abaixo:\n\n${link}`
+  
+  const btnBack = document.getElementById('btn-back-dashboard')
+  if (btnBack) btnBack.onclick = () => { appState.screen = 'dashboard'; render(); }
+
+  const btnCopyLink = document.getElementById('btn-copy-link')
+  if (btnCopyLink) btnCopyLink.onclick = () => {
+    navigator.clipboard.writeText(link).then(() => {
+      const original = btnCopyLink.innerHTML
+      btnCopyLink.innerHTML = '✅ LINK COPIADO!'
+      btnCopyLink.style.background = '#10b981'
+      setTimeout(() => {
+        btnCopyLink.innerHTML = original
+        btnCopyLink.style.background = 'var(--primary)'
+      }, 2000)
+    })
+  }
+
+  const btnCopyMsg = document.getElementById('btn-copy-msg')
+  if (btnCopyMsg) btnCopyMsg.onclick = () => {
+    navigator.clipboard.writeText(whatsAppText).then(() => {
+      alert('Texto da mensagem copiado!')
+    })
+  }
 }
 
 function renderSupport() {
