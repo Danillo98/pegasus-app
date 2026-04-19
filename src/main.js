@@ -1395,6 +1395,7 @@ function renderServiceSearchSelect(inputId, listId, services) {
         </svg>
       </div>
       <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:280px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 1000; box-shadow: var(--shadow-lg);">
+        ${services.map(s => `
           <label class="service-opt" data-nome="${s.nome}">
             <input type="checkbox" value="${s.nome}">
             <div class="custom-chk"></div>
