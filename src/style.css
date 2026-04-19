@@ -348,7 +348,7 @@ select:focus {
 }
 
 .service-opt {
-  display: flex !important;
+  display: flex;
   align-items: center;
   padding: 14px 44px 14px 16px !important; /* Leave space for check on right */
   cursor: pointer;

@@ -1407,7 +1407,7 @@ function renderServiceSearchSelect(inputId, listId, services) {
   `
 }
 
-function attachServiceSearchSelect(inputId, listId) {
+function attachServiceSearchSelect(inputId, listId, onSelectionChange) {
   const searchInput = document.getElementById(inputId)
   const listEl = document.getElementById(listId)
   const hiddenInput = document.getElementById(inputId + '-selected')
@@ -1480,6 +1480,7 @@ function attachServiceSearchSelect(inputId, listId) {
 
       hiddenInput.value = JSON.stringify(selected)
       searchInput.value = selected.join(', ')
+      if (onSelectionChange) onSelectionChange(selected)
     }
   })
 }
@@ -2958,9 +2959,39 @@ function attachNewAgendamentoEvents() {
     }
   })
 
-  attachServiceSearchSelect('modal-service-search', 'modal-service-list')
-
+  const nameInput = document.getElementById('modal-client-name')
+  const dateInputEl = document.getElementById('modal-date')
+  const timeInputEl = document.getElementById('modal-time')
   const phoneInput = document.getElementById('modal-client-phone')
+
+  const checkFormValidity = () => {
+    const name = nameInput ? nameInput.value.trim() : ''
+    const date = dateInputEl ? dateInputEl.value : ''
+    const time = timeInputEl ? timeInputEl.value : ''
+    const serviceHidden = document.getElementById('modal-service-search-selected')
+    let selectedCount = 0
+    try { selectedCount = JSON.parse(serviceHidden ? serviceHidden.value : '[]').length } catch(e) {}
+
+    const isValid = name !== '' && date !== '' && time !== '' && selectedCount > 0
+    
+    if (btnSave) {
+      btnSave.disabled = !isValid
+      btnSave.style.opacity = isValid ? '1' : '0.5'
+      btnSave.style.cursor = isValid ? 'pointer' : 'not-allowed'
+    }
+  }
+
+  // Initial check
+  checkFormValidity()
+
+  if (nameInput) nameInput.addEventListener('input', checkFormValidity)
+  if (dateInputEl) dateInputEl.addEventListener('input', checkFormValidity)
+  if (timeInputEl) timeInputEl.addEventListener('input', checkFormValidity)
+
+  attachServiceSearchSelect('modal-service-search', 'modal-service-list', () => {
+    checkFormValidity()
+  })
+
   if (phoneInput) {
     phoneInput.addEventListener('input', (e) => {
       e.target.value = formatPhone(e.target.value)
@@ -3440,7 +3471,28 @@ function attachQuickBookEvents() {
   if (btnCloseX) btnCloseX.addEventListener('click', close)
   if (btnClose) btnClose.addEventListener('click', close)
 
-  attachServiceSearchSelect('quick-service-search', 'quick-service-list')
+  const quickNameInput = document.getElementById('quick-client-name')
+  const checkQuickValidity = () => {
+    const name = quickNameInput ? quickNameInput.value.trim() : ''
+    const serviceHidden = document.getElementById('quick-service-search-selected')
+    let selectedCount = 0
+    try { selectedCount = JSON.parse(serviceHidden ? serviceHidden.value : '[]').length } catch(e) {}
+
+    const isValid = name !== '' && selectedCount > 0
+    if (btnConfirm) {
+      btnConfirm.disabled = !isValid
+      btnConfirm.style.opacity = isValid ? '1' : '0.5'
+      btnConfirm.style.cursor = isValid ? 'pointer' : 'not-allowed'
+    }
+  }
+
+  // Initial
+  checkQuickValidity()
+  if (quickNameInput) quickNameInput.addEventListener('input', checkQuickValidity)
+
+  attachServiceSearchSelect('quick-service-search', 'quick-service-list', () => {
+    checkQuickValidity()
+  })
 
   const phoneInputQuick = document.getElementById('quick-client-phone')
   if (phoneInputQuick) {
