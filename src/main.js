@@ -3050,7 +3050,10 @@ function attachNewAgendamentoEvents() {
       valorTotal: valorTotal
     }
 
-    // Optimistic Save
+    appState.agendaData[dayKey].push(newEntry)
+    appState.agendaData[dayKey].sort((a,b) => a.time.localeCompare(b.time))
+
+    // Optimistic Save complete
     appState.selectedDate = date
     appState.showModal = null
     btnSave.disabled = false
