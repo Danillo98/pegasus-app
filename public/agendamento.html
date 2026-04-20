@@ -569,23 +569,29 @@
       const now = new Date();
       const end = new Date(now); end.setDate(end.getDate() + 21);
 
-      // Working schedule from DB (fallback to defaults if not configured)
-      const diasFunc = state.estab.dias_funcionamento || [1,2,3,4,5,6]; // Mon-Sat default
+      // Working schedule from DB
+      const diasFunc = state.estab.dias_funcionamento || [1,2,3,4,5,6];
       const [aberH, aberM] = (state.estab.horario_abertura || '09:00').split(':').map(Number);
       const [fechH, fechM] = (state.estab.horario_fechamento || '18:00').split(':').map(Number);
-      const WORK_START_MIN = aberH * 60 + aberM; // working start in minutes from midnight
+      const WORK_START_MIN = aberH * 60 + aberM;
       const WORK_END_MIN   = fechH * 60 + fechM;
       const pausasPadrao   = state.estab.pausas_padrao || [];
 
-      // Fetch existing bookings (already filtered for specific estab and non-cancelled statuses)
-      // Fetch existing bookings (already filtered for specific estab and non-cancelled statuses)
+      // HELPER: Convert HH:mm to minutes
+      function toMinutes(timeStr) {
+        if (!timeStr) return null;
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
+      }
+
+      // 1. Fetch existing bookings (CORRECT COLUMN: agendamento_status)
       const { data: bookings } = await sb
         .from('agendamentos')
-        .select('data_agendamento, hora_agendamento, status, servicos(duracao_minutos)')
+        .select('data_agendamento, hora_agendamento, agendamento_status, servico_id')
         .eq('estabelecimento_id', state.estabId)
-        .not('status', 'in', '(cancelado,recusado)');
+        .not('agendamento_status', 'in', '("cancelado","recusado","excluido")');
 
-      // Fetch day-specific exceptions (pauses & closures) covering the next 21 days
+      // 2. Fetch day-specific exceptions
       const startStr = now.toISOString().split('T')[0];
       const endStr   = end.toISOString().split('T')[0];
       const { data: excecoes } = await sb
@@ -601,24 +607,17 @@
         excecoesMap[e.data_excecao].push(e);
       });
 
+      // 3. Calculate duration for current request
       const totalDuration = state.servicos
         .filter(s => state.selectedIds.has(s.id))
         .reduce((acc, s) => acc + (s.duracao_minutos || 30), 0) || 30;
 
-      function toMinutes(timeStr) {
-        if (!timeStr) return null;
-        const [h, m] = timeStr.split(':').map(Number);
-        return h * 60 + m;
-      }
-
-      // Pre-process bookings into a list of busy ranges per day
-      // Using client-side state.servicos to ensure we get the right duration even if DB join differs
+      // 4. Pre-process existing bookings into busy ranges
       const dailyBusyRanges = {};
       (bookings || []).forEach(b => {
         const d = b.data_agendamento;
         if (!dailyBusyRanges[d]) dailyBusyRanges[d] = [];
         const start = toMinutes(b.hora_agendamento);
-        // Find duration from our local services list (safe)
         const servico = state.servicos.find(s => s.id === b.servico_id);
         const dur = servico ? Number(servico.duracao_minutos || 30) : 30;
         dailyBusyRanges[d].push({ start, end: start + dur });
@@ -630,12 +629,14 @@
         const dow    = cursor.getDay();
         const curEnd = curMin + totalDuration;
 
+        // Block past times
+        if (cursor.getTime() < (now.getTime() + 5 * 60000)) return true;
+
         if (!diasFunc.includes(dow)) return true;
         if (curMin < WORK_START_MIN || curEnd > WORK_END_MIN) return true;
 
         const dayBookings = dailyBusyRanges[dayKey] || [];
         for (const b of dayBookings) {
-          // If the intervals overlap
           if (curMin < b.end && curEnd > b.start) return true;
         }
 
@@ -664,20 +665,14 @@
       const slots = [];
       let cursor = new Date(now);
       
-      // More granular start: round up to nearest 15 mins for more adaptive slots
+      // Round to next 15-min interval
       const m = cursor.getMinutes();
-      if (m % 15 !== 0) {
-        cursor.setMinutes(m + (15 - (m % 15)), 0, 0);
-      } else {
-        cursor.setSeconds(0, 0);
-      }
+      cursor.setMinutes(m % 15 === 0 ? m : m + (15 - (m % 15)), 0, 0);
 
-      // Max search 21 days
       while (slots.length < 2 && cursor < end) {
         if (!isBlocked(cursor)) {
           slots.push(new Date(cursor));
         }
-        // Increment by 15 mins to be more "adaptive" to fill gaps
         cursor = new Date(cursor.getTime() + 15 * 60000);
 
         const curMin = cursor.getHours() * 60 + cursor.getMinutes();
@@ -697,14 +692,24 @@
 
       const slotsHtml = state.slots.length === 0
         ? '<p style="color:var(--muted);text-align:center;padding:1.5rem 0">Nenhum horário disponível nos próximos dias. Entre em contato diretamente.</p>'
-        : state.slots.map((slot, i) => `
+        : state.slots.map((slot, i) => {
+          const today = new Date();
+          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+          
+          let dateFinal = fmtDate(slot);
+          if (slot.toDateString() === tomorrow.toDateString()) {
+            dateFinal += ' (Amanhã)';
+          }
+
+          return `
           <div class="slot-item ${state.selectedSlot?.getTime() === slot.getTime() ? 'selected' : ''}" data-i="${i}">
             <div class="slot-icon">🗓</div>
             <div class="slot-info">
-              <div class="s-date">${fmtDate(slot)}</div>
+              <div class="s-date">${dateFinal}</div>
               <div class="s-time">${fmtTime(slot)}</div>
             </div>
-          </div>`).join('');
+          </div>`;
+        }).join('');
 
       document.getElementById('main').innerHTML = `
         <div class="card">
