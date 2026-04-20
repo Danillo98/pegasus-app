@@ -407,6 +407,8 @@
     /* ── Init ── */
     const params = new URLSearchParams(location.search);
     state.estabId = params.get('estab');
+    state.clienteName = params.get('nome') || '';
+    state.clientePhone = formatPhone(params.get('telefone') || params.get('phone') || '');
 
     if (!state.estabId) {
       document.getElementById('main').innerHTML = `
@@ -465,12 +467,12 @@
       updateStepBar();
       document.getElementById('main').innerHTML = `
         <div class="card">
-          <div class="section-title">👋 Seu nome</div>
+          <div class="section-title">👋 Confirmar seus dados</div>
           <p style="font-size:.9rem;color:var(--muted);margin-bottom:1.1rem;">
-            Como podemos te chamar?
+            Seu agendamento será identificado com essas informações.
           </p>
           <input id="nome-input" class="input" type="text" placeholder="Seu nome completo" maxlength="50" autocomplete="given-name" autofocus />
-          <input id="phone-input" class="input" type="tel" placeholder="Seu WhatsApp (Opcional)" maxlength="15" style="margin-top:0.7rem;" />
+          <input id="phone-input" class="input" type="tel" placeholder="Seu WhatsApp (Ex: 11 99999-9999)" maxlength="15" style="margin-top:0.7rem;" />
           <button class="btn" id="btn-step1" style="margin-top:1rem;">Próximo →</button>
         </div>`;
 
@@ -489,8 +491,9 @@
 
       function next1() {
         const v = input.value.trim();
-        const ph = document.getElementById('phone-input').value.trim();
-        if (!v || v.length < 2) { input.style.borderColor = 'var(--red)'; return; }
+        const ph = phone.value.trim();
+        if (!v || v.length < 2) { input.style.borderColor = 'var(--red)'; return; } else { input.style.borderColor = ''; }
+        if (!ph || ph.length < 10) { phone.style.borderColor = 'var(--red)'; return; } else { phone.style.borderColor = ''; }
         state.clienteName = v;
         state.clientePhone = ph;
         renderStep2();
@@ -574,13 +577,13 @@
       const WORK_END_MIN   = fechH * 60 + fechM;
       const pausasPadrao   = state.estab.pausas_padrao || [];
 
-      // Fetch existing bookings
+      // Fetch existing bookings (already filtered for specific estab and non-cancelled statuses)
+      // Fetch existing bookings (already filtered for specific estab and non-cancelled statuses)
       const { data: bookings } = await sb
         .from('agendamentos')
-        .select('data_agendamento, hora_agendamento, status')
+        .select('data_agendamento, hora_agendamento, status, servicos(duracao_minutos)')
         .eq('estabelecimento_id', state.estabId)
         .not('status', 'in', '(cancelado,recusado)');
-      const bookedSet = new Set((bookings || []).map(b => `${b.data_agendamento}|${b.hora_agendamento?.slice(0,5)}`));
 
       // Fetch day-specific exceptions (pauses & closures) covering the next 21 days
       const startStr = now.toISOString().split('T')[0];
@@ -591,7 +594,8 @@
         .eq('estabelecimento_id', state.estabId)
         .gte('data_excecao', startStr)
         .lte('data_excecao', endStr);
-      const excecoesMap = {}; // dayKey -> array of exceptions
+      
+      const excecoesMap = {}; 
       (excecoes || []).forEach(e => {
         if (!excecoesMap[e.data_excecao]) excecoesMap[e.data_excecao] = [];
         excecoesMap[e.data_excecao].push(e);
@@ -607,29 +611,43 @@
         return h * 60 + m;
       }
 
+      // Pre-process bookings into a list of busy ranges per day
+      const dailyBusyRanges = {};
+      (bookings || []).forEach(b => {
+        const d = b.data_agendamento;
+        if (!dailyBusyRanges[d]) dailyBusyRanges[d] = [];
+        const start = toMinutes(b.hora_agendamento);
+        // If service duration is somehow missing from join, default to 30 min
+        const dur = (b.servicos && b.servicos.duracao_minutos) ? Number(b.servicos.duracao_minutos) : 30;
+        dailyBusyRanges[d].push({ start, end: start + dur });
+      });
+
       function isBlocked(cursor) {
         const dayKey = cursor.toISOString().split('T')[0];
         const curMin = cursor.getHours() * 60 + cursor.getMinutes();
         const dow    = cursor.getDay();
-        const hhmm   = `${String(cursor.getHours()).padStart(2,'0')}:${String(cursor.getMinutes()).padStart(2,'0')}`;
+        const curEnd = curMin + totalDuration;
 
         // Not a working day
         if (!diasFunc.includes(dow)) return true;
 
         // Outside working hours
-        if (curMin < WORK_START_MIN || curMin + totalDuration > WORK_END_MIN) return true;
+        if (curMin < WORK_START_MIN || curEnd > WORK_END_MIN) return true;
 
-        // Already booked
-        if (bookedSet.has(`${dayKey}|${hhmm}`)) return true;
+        // Overlap with existing Bookings
+        const dayBookings = dailyBusyRanges[dayKey] || [];
+        for (const b of dayBookings) {
+          if (curMin < b.end && curEnd > b.start) return true;
+        }
 
-        // Pre-defined lunch/recurring breaks
+        // Overlap with Pre-defined breaks
         for (const p of pausasPadrao) {
           const ps = toMinutes(p.inicio);
           const pe = toMinutes(p.fim);
-          if (ps !== null && pe !== null && curMin < pe && curMin + totalDuration > ps) return true;
+          if (ps !== null && pe !== null && curMin < pe && curEnd > ps) return true;
         }
 
-        // Day-specific exceptions
+        // Overlap with Day-specific exceptions
         const dayExcecoes = excecoesMap[dayKey] || [];
         for (const exc of dayExcecoes) {
           if (exc.tipo === 'fechado_dia_todo') return true;
@@ -640,7 +658,7 @@
           if (exc.tipo === 'pausa') {
             const es = toMinutes(exc.inicio);
             const ee = toMinutes(exc.fim);
-            if (es !== null && ee !== null && curMin < ee && curMin + totalDuration > es) return true;
+            if (es !== null && ee !== null && curMin < ee && curEnd > es) return true;
           }
         }
 
@@ -654,7 +672,7 @@
       if (mins < 30) { cursor.setMinutes(30, 0, 0); }
       else { cursor.setHours(cursor.getHours() + 1, 0, 0, 0); }
 
-      while (slots.length < 20 && cursor < end) {
+      while (slots.length < 2 && cursor < end) {
         if (!isBlocked(cursor)) {
           slots.push(new Date(cursor));
         }
