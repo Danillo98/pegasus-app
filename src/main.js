@@ -3075,8 +3075,7 @@ function attachAgendaActionsEvents() {
           console.error('Erro ao confirmar pagamento:', error)
           alert('Erro ao sincronizar pagamento. Verifique sua conexão.')
         } else {
-          appState.agendaLoaded = false
-          appState.agendaData = {} 
+          // No need to wipe local data, keep it smooth
         }
       })
     }
@@ -3126,9 +3125,7 @@ function attachAgendaActionsEvents() {
            .then(({ error }) => { if (error) console.warn('agendamento_id não vinculado:', error.message) })
        }
        
-       appState.agendaLoaded = false
-       appState.agendaData = {}
-       appState.financasLoaded = false
+       // Silent background reload will happen naturally or we just stay optimistic
        render()
     }
   })
@@ -3154,14 +3151,13 @@ function attachConfirmCancelEvents() {
     const dayKey = getAgendaDayKey(appState.selectedDate)
     const idx = appState.agendaData[dayKey].indexOf(appState.activeAgendaItem)
     if (idx > -1) appState.agendaData[dayKey].splice(idx, 1)
+    
     if (appState.activeAgendaItem?.id) {
        const { error } = await supabase.from('agendamentos').delete().eq('id', appState.activeAgendaItem.id)
        if (error) {
          console.error('Error deleting:', error)
          alert('Erro ao cancelar: ' + error.message)
        } else {
-         appState.agendaLoaded = false
-         appState.agendaData = {}
          alert('Agendamento cancelado com sucesso!')
        }
     }
