@@ -409,7 +409,10 @@ function attachAgendaEvents() {
   }
 
   document.querySelectorAll('.agenda-item').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', (e) => {
+      // Ignore click if it was on action buttons
+      if (e.target.closest('.btn-ag-accept') || e.target.closest('.btn-ag-reject')) return;
+
       const idx = parseInt(el.dataset.index)
       const dayKey = getAgendaDayKey(appState.selectedDate)
       appState.activeAgendaItem = appState.agendaData[dayKey][idx]
@@ -417,6 +420,43 @@ function attachAgendaEvents() {
       render()
     })
   })
+
+  document.querySelectorAll('.btn-ag-accept').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const { error } = await supabase.from('agendamentos').update({ 
+        agendamento_status: 'Confirmado', 
+        pagamento_status: true 
+      }).eq('id', id);
+      
+      if (!error) {
+         // Optimistic UI: update local state
+         const dayKey = getAgendaDayKey(appState.selectedDate);
+         const item = appState.agendaData[dayKey].find(i => i.id == id);
+         if (item) { item.status = 'confirmado'; item.pagamento_status = true; }
+         render();
+      } else {
+         alert('Erro ao confirmar: ' + error.message);
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-ag-reject').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const dayKey = getAgendaDayKey(appState.selectedDate);
+      const clickedItem = appState.agendaData[dayKey].find(i => i.id == id);
+      if (clickedItem) {
+        appState.activeAgendaItem = clickedItem;
+        appState.showModal = 'confirm-cancel';
+        render();
+      }
+    });
+  });
+
+  attachGenericBack()
 }
 
 function render() {
@@ -2801,205 +2841,7 @@ function attachGenericBack() {
   })
 }
 
-function attachAgendaEvents() {
-  attachGenericBack()
 
-  // ─── Pull-to-refresh ───────────────────────────────────────
-  const ptrContainer = document.getElementById('ptr-container');
-  const ptrIndicator = document.getElementById('ptr-indicator');
-  const ptrSpinner   = document.getElementById('ptr-spinner');
-  let ptrStartY = 0;
-  let ptrActive = false;
-  let ptrTriggered = false;
-
-  if (ptrContainer) {
-    ptrContainer.addEventListener('touchstart', (e) => {
-      if (ptrContainer.scrollTop === 0) {
-        ptrStartY = e.touches[0].clientY;
-        ptrActive = true;
-        ptrTriggered = false;
-      }
-    }, { passive: true });
-
-    ptrContainer.addEventListener('touchmove', (e) => {
-      if (!ptrActive) return;
-      const dy = e.touches[0].clientY - ptrStartY;
-      if (dy > 0 && ptrContainer.scrollTop === 0) {
-        ptrIndicator.style.display = 'flex';
-        const pct = Math.min(dy / 80, 1);
-        ptrSpinner.style.transform = `rotate(${pct * 720}deg)`;
-        if (dy > 70) ptrTriggered = true;
-      }
-    }, { passive: true });
-
-    ptrContainer.addEventListener('touchend', async () => {
-      if (ptrActive && ptrTriggered) {
-        ptrSpinner.style.animation = 'spin 0.6s linear infinite';
-        appState.agendaLoaded = false;
-        await new Promise(r => {
-          supabase.from('agendamentos').select('*').eq('estabelecimento_id', appState.user.id).neq('agendamento_status', 'Concluído').order('hora_agendamento', { ascending: true })
-            .then(({ data, error }) => {
-              if (!error && data) {
-                appState.agendaData = {};
-                data.forEach(dbItem => {
-                  const dayKey = dbItem.data_agendamento;
-                  if (!appState.agendaData[dayKey]) appState.agendaData[dayKey] = [];
-                  const timeKey = dbItem.hora_agendamento.slice(0, 5);
-                  const status = (dbItem.agendamento_status || 'Pendente').toLowerCase();
-                  const newItem = { id: dbItem.id, time: timeKey, client: dbItem.cliente_nome || 'Cliente', service: dbItem.servico_nome, status: status, valor_total: dbItem.valor_total };
-                  appState.agendaData[dayKey].push(newItem);
-                });
-                // Sort each day
-                Object.keys(appState.agendaData).forEach(k => appState.agendaData[k].sort((a,b) => a.time.localeCompare(b.time)));
-              }
-              r();
-            });
-        });
-
-        // Pull-to-refresh ALSO reloads exceptions for today
-        const todayKey = getAgendaDayKey(new Date());
-        const { data: excData } = await supabase.from('excecoes_agenda').select('*').eq('estabelecimento_id', appState.user.id).eq('data_excecao', todayKey);
-        if (excData) appState.excecoesDia = excData;
-
-        appState.agendaLoaded = true;
-        render();
-      } else {
-        ptrIndicator.style.display = 'none';
-      }
-      ptrActive = false;
-      ptrTriggered = false;
-    });
-  }
-
-  const trigger = document.getElementById('btn-calendar-trigger')
-  if (trigger) {
-    trigger.addEventListener('click', () => {
-      appState.showModal = 'calendar'
-      appState.viewingDate = new Date(appState.selectedDate)
-      render()
-    })
-  }
-
-  // Edit schedule pencil button
-  const btnEditHorario = document.getElementById('btn-edit-horario')
-  if (btnEditHorario) {
-    btnEditHorario.addEventListener('click', () => {
-      appState.showModal = 'horario-funcionamento'
-      render()
-    })
-  }
-
-  // Fazer Pausa FAB
-  const btnFazerPausa = document.getElementById('btn-fazer-pausa')
-  if (btnFazerPausa) {
-    btnFazerPausa.addEventListener('click', () => {
-      appState.showModal = 'fazer-pausa'
-      render()
-    })
-  }
-
-  // Badge de pausa — abre popup gerenciar
-  const btnGerenciarPausa = document.getElementById('btn-gerenciar-pausa')
-  if (btnGerenciarPausa) {
-    btnGerenciarPausa.addEventListener('click', () => {
-      appState.showModal = 'gerenciar-pausa'
-      render()
-    })
-  }
-
-  // Agendar Manualmente FAB - Instant Open
-  const btnOpenModal = document.getElementById('btn-open-agenda-modal')
-  if (btnOpenModal) {
-    btnOpenModal.addEventListener('click', () => {
-      appState.showModal = 'new-agendamento'
-      render()
-      
-      // Load services in background if needed
-      if (appState.user) {
-        supabase.from('servicos').select('id, nome, preco, cobra_reserva, taxa_reserva')
-          .eq('estabelecimento_id', appState.user.id).order('nome')
-          .then(({ data }) => {
-            if (data) {
-              appState.servicosAtivos = data
-              // If modal is still open, re-render just to refresh service list
-              if (appState.showModal === 'new-agendamento') render()
-            }
-          })
-      }
-    })
-  }
-
-  const items = document.querySelectorAll('.agenda-item')
-  items.forEach(el => {
-    el.addEventListener('click', async (e) => {
-      // Ignore click if it was on action buttons
-      if (e.target.closest('.btn-ag-accept') || e.target.closest('.btn-ag-reject')) return;
-
-      const idx = el.dataset.index
-      const dayKey = getAgendaDayKey(appState.selectedDate)
-      const item = appState.agendaData[dayKey][idx]
-      appState.activeAgendaItem = item
-
-      if (item.status !== 'livre') {
-        appState.showModal = 'agenda-actions'
-        render()
-      } else {
-        if (appState.user) {
-          const { data } = await supabase.from('servicos').select('id, nome, preco').eq('estabelecimento_id', appState.user.id).order('nome')
-          if (data) appState.servicosAtivos = data
-        }
-        appState.showModal = 'quick-book'
-        render()
-      }
-    })
-  })
-
-  document.querySelectorAll('.card-footer-pendente').forEach(foot => {
-    foot.addEventListener('click', (e) => {
-      if (e.target.closest('button')) return;
-      const id = foot.dataset.id;
-      const dayKey = getAgendaDayKey(appState.selectedDate);
-      const item = appState.agendaData[dayKey].find(i => i.id == id);
-      if (item) {
-        appState.activeAgendaItem = item;
-        appState.showModal = 'agenda-actions'; 
-        render();
-      }
-    });
-  });
-
-  document.querySelectorAll('.btn-ag-accept').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.id;
-      const { error } = await supabase.from('agendamentos').update({ 
-        agendamento_status: 'Confirmado', 
-        pagamento_status: true 
-      }).eq('id', id);
-      
-      if (!error) {
-         appState.agendaLoaded = false;
-         render();
-      } else {
-         alert('Erro ao confirmar agendamento: ' + error.message);
-      }
-    });
-  });
-
-  document.querySelectorAll('.btn-ag-reject').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.id;
-      const dayKey = getAgendaDayKey(appState.selectedDate);
-      const clickedItem = appState.agendaData[dayKey].find(i => i.id == id);
-      if (clickedItem) {
-        appState.activeAgendaItem = clickedItem;
-        appState.showModal = 'confirm-cancel';
-        render();
-      }
-    });
-  });
-}
 
 function attachCalendarModalEvents() {
   const overlay = document.querySelector('.overlay')
