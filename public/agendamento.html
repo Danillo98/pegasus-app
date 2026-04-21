@@ -788,6 +788,7 @@
 
       const selected = state.servicos.filter(s => state.selectedIds.has(s.id));
       const totalTaxa = selected.reduce((acc, s) => acc + (s.cobra_reserva ? Number(s.taxa_reserva) : 0), 0);
+      const totalPreco = selected.reduce((acc, s) => acc + Number(s.preco), 0);
       const precisaPix = totalTaxa > 0;
 
       // Build payload with all required fields
@@ -801,7 +802,7 @@
         agendamento_status: precisaPix ? 'Pendente' : 'Confirmado',
         pagamento_status: !precisaPix,
         taxa_reserva: totalTaxa,
-        valor_total: total,
+        valor_total: totalPreco,
       };
 
       // servico_id — passa o primeiro serviço selecionado quando disponível
