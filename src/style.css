@@ -74,8 +74,38 @@ body {
   transition: background-color var(--transition-normal), color var(--transition-normal);
   overflow-x: hidden;
   
+  /* Prevent native pull-to-refresh */
+  overscroll-behavior-y: contain;
+  
   /* Fluid Typography: Scales from 14px (mobile) to 18px (desktop) */
   font-size: clamp(0.875rem, 0.77rem + 0.45vw, 1.125rem);
+}
+
+.pull-to-refresh {
+  height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface);
+  transition: height 0.2s ease, opacity 0.2s ease;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--primary);
+  gap: 0.5rem;
+  opacity: 0;
+}
+.pull-to-refresh.visible {
+  height: 60px;
+  opacity: 1;
+}
+.pull-to-refresh-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
 }
 
 h1, h2, h3, h4 {

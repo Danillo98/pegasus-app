@@ -266,6 +266,159 @@ const icons = {
   suporte: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a2 2 0 0 1-2 2h-5"/></svg>',
 }
 
+async function syncAgendaData() {
+  if (!appState.user) return;
+  
+  // 1) Load profile schedule settings
+  const { data: prof } = await supabase.from('estabelecimentos')
+    .select('dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao, chave_pix')
+    .eq('id', appState.user.id).single();
+    
+  if (prof) {
+    appState.profile = { ...(appState.profile || {}), ...prof };
+    if (!prof.dias_funcionamento || prof.dias_funcionamento.length === 0) {
+      appState.showModal = 'horario-funcionamento';
+    }
+  }
+
+  // 2) Load booked appointments
+  const { data } = await supabase.from('agendamentos')
+    .select('*')
+    .eq('estabelecimento_id', appState.user.id)
+    .neq('agendamento_status', 'Concluído')
+    .order('hora_agendamento', { ascending: true });
+
+  if (data) {
+    appState.agendaData = {};
+    data.forEach(dbItem => {
+      const dayKey = dbItem.data_agendamento;
+      if (!appState.agendaData[dayKey]) appState.agendaData[dayKey] = [];
+      appState.agendaData[dayKey].push({
+        id: dbItem.id,
+        time: dbItem.hora_agendamento?.slice(0, 5),
+        client: dbItem.cliente_nome || 'Cliente',
+        service: dbItem.servico_nome,
+        status: (dbItem.agendamento_status || 'Pendente').toLowerCase(),
+        valor_total: dbItem.valor_total
+      });
+    });
+  }
+
+  // 3) Load today's exceptions
+  const todayKey = getAgendaDayKey(new Date());
+  const { data: exc } = await supabase.from('excecoes_agenda').select('*')
+    .eq('estabelecimento_id', appState.user.id)
+    .eq('data_excecao', todayKey);
+  if (exc) appState.excecoesDia = exc;
+
+  appState.agendaLoaded = true;
+  window._lastAgendaSync = Date.now();
+}
+
+let _ptr = { active: false, startY: 0, threshold: 80 };
+
+function attachAgendaEvents() {
+  const container = document.getElementById('ptr-container')
+  if (!container) return
+
+  container.addEventListener('touchstart', (e) => {
+    if (container.scrollTop <= 0) {
+      _ptr.active = true
+      _ptr.startY = e.touches[0].pageY
+    }
+  }, { passive: true })
+
+  container.addEventListener('touchmove', (e) => {
+    if (!_ptr.active) return
+    const y = e.touches[0].pageY
+    const dist = y - _ptr.startY
+    if (dist > 0) {
+      const el = document.getElementById('ptr-indicator')
+      if (el) {
+        el.style.display = 'flex'
+        const h = Math.min(dist * 0.5, _ptr.threshold)
+        el.style.height = h + 'px'
+        el.style.opacity = Math.min(h / _ptr.threshold, 1)
+        const span = el.querySelector('span')
+        const spinner = document.getElementById('ptr-spinner')
+        if (h >= _ptr.threshold - 10) {
+          span.textContent = '↑ Solte para atualizar'
+          if(spinner) spinner.style.animation = 'spin 0.8s linear infinite'
+        } else {
+          span.textContent = '↓ Puxe para atualizar'
+          if(spinner) spinner.style.animation = 'none'
+        }
+      }
+    }
+  }, { passive: true })
+
+  container.addEventListener('touchend', async () => {
+    if (!_ptr.active) return
+    _ptr.active = false
+    const el = document.getElementById('ptr-indicator')
+    if (el && el.offsetHeight >= _ptr.threshold - 15) {
+      el.querySelector('span').textContent = 'Sincronizando...'
+      await syncAgendaData()
+      render()
+    } else if (el) {
+      el.style.height = '0'
+      el.style.opacity = '0'
+      setTimeout(() => { el.style.display = 'none' }, 200)
+    }
+  })
+
+  // Re-attach other agenda-specific listeners
+  const btnCalendar = document.getElementById('btn-calendar-trigger')
+  if (btnCalendar) {
+    btnCalendar.addEventListener('click', () => {
+      appState.showModal = 'calendar'
+      render()
+    })
+  }
+
+  const btnOpenModal = document.getElementById('btn-open-agenda-modal')
+  if (btnOpenModal) {
+    btnOpenModal.addEventListener('click', () => {
+      appState.showModal = 'new-agendamento'
+      render()
+    })
+  }
+
+  const btnEditHorario = document.getElementById('btn-edit-horario')
+  if (btnEditHorario) {
+    btnEditHorario.addEventListener('click', () => {
+      appState.showModal = 'horario-funcionamento'
+      render()
+    })
+  }
+
+  const btnPausa = document.getElementById('btn-fazer-pausa')
+  if (btnPausa) {
+    btnPausa.addEventListener('click', () => {
+      appState.showModal = 'fazer-pausa'
+      render()
+    })
+  }
+
+  const btnManPausa = document.getElementById('btn-gerenciar-pausa')
+  if (btnManPausa) {
+    btnManPausa.addEventListener('click', () => {
+      appState.showModal = 'gerenciar-pausa'
+      render()
+    })
+  }
+
+  document.querySelectorAll('.agenda-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.index)
+      const dayKey = getAgendaDayKey(appState.selectedDate)
+      appState.activeAgendaItem = appState.agendaData[dayKey][idx]
+      appState.showModal = 'agenda-actions'
+      render()
+    })
+  })
+}
+
 function render() {
   const root = document.getElementById('app')
   document.body.className = `mode-${appState.theme}`
@@ -274,55 +427,14 @@ function render() {
   if (appState.previousScreen !== appState.screen) {
     window.scrollTo(0, 0)
     appState.previousScreen = appState.screen
-  }
-
-  // Auto-fetch agenda
-  if (appState.screen === 'agenda' && !appState.agendaLoaded && appState.user) {
-    appState.agendaLoaded = true; // prevent loop
-
-    // 1) Load profile schedule settings (dias, horarios, pausas)
-    supabase.from('estabelecimentos')
-      .select('dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao')
-      .eq('id', appState.user.id).single()
-      .then(({ data: prof }) => {
-        if (prof) {
-          appState.profile = { ...(appState.profile || {}), ...prof };
-          // If not configured yet → open setup modal
-          if (!prof.dias_funcionamento || prof.dias_funcionamento.length === 0) {
-            appState.showModal = 'horario-funcionamento';
-            render();
-          }
-        }
-      });
-
-    // 2) Load booked appointments only (no "livre" slots)
-    supabase.from('agendamentos').select('*').eq('estabelecimento_id', appState.user.id).neq('agendamento_status', 'Concluído')
-      .order('hora_agendamento', { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data) {
-          appState.agendaData = {};
-          data.forEach(dbItem => {
-            const dayKey = dbItem.data_agendamento;
-            if (!appState.agendaData[dayKey]) appState.agendaData[dayKey] = [];
-            appState.agendaData[dayKey].push({
-              id: dbItem.id,
-              time: dbItem.hora_agendamento?.slice(0, 5),
-              client: dbItem.cliente_nome || 'Cliente',
-              service: dbItem.servico_nome,
-              status: (dbItem.agendamento_status || 'Pendente').toLowerCase(),
-              valor_total: dbItem.valor_total
-            });
-          });
-          render();
-        }
-      });
-
-    // 3) Load today's exceptions (pauses / closed)
-    const todayKey = getAgendaDayKey(new Date());
-    supabase.from('excecoes_agenda').select('*')
-      .eq('estabelecimento_id', appState.user.id)
-      .eq('data_excecao', todayKey)
-      .then(({ data }) => { if (data) { appState.excecoesDia = data; render(); } });
+    
+    // Auto-sync when entering agenda if stale (> 30s)
+    if (appState.screen === 'agenda') {
+      const isStale = !window._lastAgendaSync || (Date.now() - window._lastAgendaSync > 30000);
+      if (isStale) {
+        syncAgendaData().then(render);
+      }
+    }
   }
 
   // Auto-fetch servicos
