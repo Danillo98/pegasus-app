@@ -428,12 +428,9 @@ function render() {
     window.scrollTo(0, 0)
     appState.previousScreen = appState.screen
     
-    // Auto-sync when entering agenda if stale (> 30s)
+    // Always sync when entering agenda for maximum accuracy
     if (appState.screen === 'agenda') {
-      const isStale = !window._lastAgendaSync || (Date.now() - window._lastAgendaSync > 30000);
-      if (isStale) {
-        syncAgendaData().then(render);
-      }
+      syncAgendaData().then(render);
     }
   }
 
