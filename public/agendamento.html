@@ -215,13 +215,17 @@
     .slot-item.selected { border-color: var(--primary); background: var(--surface2); }
 
     .slot-icon {
-      width: 40px; height: 40px;
+      width: 44px; height: 44px;
+      background: #f3f4f6;
+      color: #374151;
+      border-radius: .75rem;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .slot-item.selected .slot-icon {
       background: var(--primary);
       color: var(--surface);
-      border-radius: .65rem;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.1rem;
-      flex-shrink: 0;
     }
     .slot-info .s-date { font-size: .95rem; font-weight: 600; }
     .slot-info .s-time { font-size: .8rem; color: var(--muted); margin-top: 2px; }
@@ -703,7 +707,13 @@
 
           return `
           <div class="slot-item ${state.selectedSlot?.getTime() === slot.getTime() ? 'selected' : ''}" data-i="${i}">
-            <div class="slot-icon">🗓</div>
+            <div class="slot-icon">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+                <text x="12" y="19" text-anchor="middle" font-size="9" font-weight="900" fill="currentColor" stroke="none" style="font-family: 'Inter', sans-serif;">${slot.getDate()}</text>
+              </svg>
+            </div>
             <div class="slot-info">
               <div class="s-date">${dateFinal}</div>
               <div class="s-time">${fmtTime(slot)}</div>
