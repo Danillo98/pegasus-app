@@ -1448,10 +1448,11 @@ function renderWhatsAppModal() {
 
       <div style="background: var(--surface); padding: 0.75rem 1rem; border-radius: 1rem; border: 1px solid var(--border);">
         <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.5px;">Passo a Passo:</h4>
-        <ol style="padding-left: 1.1rem; font-size: 0.85rem; line-height: 1.8; color: var(--text-secondary); font-weight: 600; margin: 0;">
-          <li style="margin-bottom: 0.6rem;">WhatsApp Business > <b>Ferramentas Comerciais</b></li>
-          <li style="margin-bottom: 0.6rem;">Mensagem de Ausência > <b>"Enviar Sempre"</b></li>
-          <li><b>Cole a mensagem abaixo:</b></li>
+        <ol style="padding-left: 1rem; font-size: 0.72rem; line-height: 2.2; color: var(--text-secondary); font-weight: 700; margin: 0; white-space: nowrap;">
+          <li>1. Abrir o WhatsApp Business</li>
+          <li>2. Clicar em Ferramentas Comerciais</li>
+          <li>3. Mensagem de Ausência: selecione 'Enviar Sempre'</li>
+          <li>4. Para o texto, copie e cole a mensagem abaixo:</li>
         </ol>
       </div>
 
