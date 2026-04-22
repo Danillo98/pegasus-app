@@ -472,13 +472,6 @@ function render() {
   const root = document.getElementById('app')
   document.body.className = `mode-${appState.theme}`
 
-  // Controle de Refresh: Dashboard = Nativo | Outras telas = Bloqueado
-  if (appState.screen === 'dashboard') {
-    document.body.style.overscrollBehaviorY = 'auto';
-  } else {
-    document.body.style.overscrollBehaviorY = 'none';
-  }
-
   // Only scroll to top if screen actually changed
   if (appState.previousScreen !== appState.screen) {
     window.scrollTo(0, 0)
@@ -1216,11 +1209,17 @@ function renderDashboard() {
           <button id="btn-logout" style="color: var(--text-secondary); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-left: 2rem;">Sair</button>
         </header>
 
-        <main style="padding-top: 3rem; padding-bottom: 4rem;">
-          <div class="text-center" style="margin-bottom: 3rem; padding: 0 1.25rem;">
-             <h1 style="font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 0.6rem; font-family: var(--font-heading);">PAINEL GERAL</h1>
-             <p style="color: var(--text-secondary); font-weight: 600; font-size: 1.1rem;">O que vamos fazer hoje?</p>
+        <div id="dash-ptr-container" style="overflow-y:auto;height:calc(100vh - 80px);">
+          <div id="dash-ptr-indicator" style="display:none;flex-direction:column;align-items:center;gap:0.5rem;padding:1rem 0 0.5rem;">
+            <div id="dash-ptr-spinner" style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:none;"></div>
+            <span style="font-size:0.75rem;color:var(--text-secondary);font-weight:700;">↓ Puxe para atualizar tudo</span>
           </div>
+
+          <main style="padding-top: 1rem; padding-bottom: 6rem;">
+            <div class="text-center" style="margin-bottom: 3rem; padding: 0 1.25rem;">
+               <h1 style="font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 0.6rem; font-family: var(--font-heading);">PAINEL GERAL</h1>
+               <p style="color: var(--text-secondary); font-weight: 600; font-size: 1.1rem;">O que vamos fazer hoje?</p>
+            </div>
 
           <div class="dashboard-grid">
             <div class="card" id="card-financas">
@@ -1238,10 +1237,12 @@ function renderDashboard() {
             <div class="card" id="card-servicos">
               <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
               <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços Fornecidos</h3>
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
+  </div>
 
       <!-- Botão Suporte Flutuante (Extreme Corner) - OUTSIDE animation to fix position:fixed -->
       <button id="btn-floating-support" style="
@@ -1435,29 +1436,32 @@ function renderWhatsAppModal() {
   const message = `Olá, é um prazer te atender! Para adiantar seu atendimento, acesse este link e selecione o serviço e horário que deseja: https://pegasusapp.com.br/agendamento.html?estab=${estabId}`
   
   return `
-    <div class="card animate-fade-in" style="max-width: 380px; width: 94%; padding: 1rem; border-radius: 1rem; position: relative;">
-      <button id="btn-close-wa-x" style="position:absolute;top:0.3rem;right:0.3rem;background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--text-secondary);padding:0.4rem;">×</button>
+    <div class="card animate-fade-in custom-scroll" style="max-width: 440px; width: 92%; padding: 1.5rem; border-radius: 1.5rem; max-height: 90vh; overflow-y: auto;">
+      <button id="btn-close-wa-x" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">×</button>
       
-      <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem; justify-content: center;">
-        <div style="background: #25D366; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(37,211,102,0.2);">
-          ${icons.whatsapp.replace('width="24"', 'width="18"').replace('height="24"', 'height="18"')}
+      <div style="text-align: center; margin-bottom: 1rem;">
+        <div style="background: #25D366; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; box-shadow: 0 4px 15px rgba(37,211,102,0.3);">
+          ${icons.whatsapp.replace('width="24"', 'width="28"').replace('height="24"', 'height="28"')}
         </div>
-        <h2 style="font-family:var(--font-alt); font-size: 1rem; font-weight: 900; color: #128C7E; margin: 0;">WHATSAPP BUSINESS</h2>
+        <h2 style="font-family:var(--font-alt); font-size: 1.2rem; font-weight: 900; line-height: 1.2; color: #128C7E;">CONFIGURAR<br>WHATSAPP BUSINESS</h2>
       </div>
 
-      <div style="background: var(--surface); padding: 0.6rem 0.8rem; border-radius: 0.7rem; border: 1px solid var(--border); margin-bottom: 0.75rem;">
-        <ol style="padding-left: 1rem; font-size: 0.75rem; line-height: 1.3; color: var(--text-secondary); font-weight: 700; margin: 0;">
-          <li><b>WhatsApp Business</b> > <b>Ferramentas Comerciais</b></li>
-          <li><b>Mensagem de Ausência</b> > <b>"Enviar Sempre"</b></li>
-          <li>Cole a mensagem abaixo:</li>
+      <div style="background: var(--surface); padding: 1rem; border-radius: 1rem; border: 1px solid var(--border); margin-bottom: 0.75rem;">
+        <h4 style="font-size: 0.7rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.5px;">Passo a Passo:</h4>
+        <ol style="padding-left: 1.1rem; font-size: 0.85rem; line-height: 1.4; color: var(--text-secondary); font-weight: 500;">
+          <li style="margin-bottom: 0.25rem;">Abra o <b>WhatsApp Business</b></li>
+          <li style="margin-bottom: 0.25rem;">Vá em <b>Ferramentas Comerciais</b></li>
+          <li style="margin-bottom: 0.25rem;">Selecione <b>Mensagem de Ausência</b></li>
+          <li style="margin-bottom: 0.25rem;">Ative e defina para <b>"Enviar Sempre"</b></li>
+          <li>Cole a mensagem abaixo</li>
         </ol>
       </div>
 
-      <div style="background: #f0fdf4; border: 1px dashed #22c55e; padding: 0.6rem; border-radius: 0.5rem; margin-bottom: 0.75rem;">
-        <p id="wa-message-text" style="font-size: 0.7rem; color: #166534; font-weight: 600; line-height: 1.3; margin: 0; word-break: break-all;">${message}</p>
+      <div style="position: relative; background: #f0fdf4; border: 1.5px dashed #22c55e; padding: 0.75rem; border-radius: 0.75rem; margin-bottom: 1rem;">
+        <p id="wa-message-text" style="font-size: 0.8rem; color: #166534; font-weight: 600; line-height: 1.4; margin: 0;">${message}</p>
       </div>
 
-      <button id="btn-copy-wa-message" style="width: 100%; background: #25D366; color: white; padding: 0.8rem; border-radius: 0.5rem; font-weight: 900; border: none; cursor: pointer; font-size: 0.8rem;">
+      <button id="btn-copy-wa-message" style="width: 100%; background: #25D366; color: white; padding: 0.9rem; border-radius: 0.75rem; font-weight: 800; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.2); transition: all 0.2s;">
         COPIAR MENSAGEM
       </button>
     </div>
@@ -2715,6 +2719,61 @@ function attachDashboardEvents() {
     appState.screen = 'suporte'
     render()
   })
+
+  // --- PULL-TO-REFRESH DASHBOARD ---
+  const container = document.getElementById('dash-ptr-container')
+  if (container) {
+    container.addEventListener('touchstart', (e) => {
+      if (container.scrollTop <= 0) {
+        _ptr.active = true
+        _ptr.startY = e.touches[0].pageY
+      }
+    }, { passive: true })
+
+    container.addEventListener('touchmove', (e) => {
+      if (!_ptr.active) return
+      const y = e.touches[0].pageY
+      const dist = y - _ptr.startY
+      if (dist > 0) {
+        const el = document.getElementById('dash-ptr-indicator')
+        if (el) {
+          el.style.display = 'flex'
+          const h = Math.min(dist * 0.5, _ptr.threshold)
+          el.style.height = h + 'px'
+          el.style.opacity = Math.min(h / _ptr.threshold, 1)
+          const span = el.querySelector('span')
+          const spinner = document.getElementById('dash-ptr-spinner')
+          if (h >= _ptr.threshold - 10) {
+            span.textContent = '↑ Solte para atualizar tudo'
+            if(spinner) spinner.style.animation = 'spin 0.8s linear infinite'
+          } else {
+            span.textContent = '↓ Puxe para atualizar tudo'
+            if(spinner) spinner.style.animation = 'none'
+          }
+        }
+      }
+    }, { passive: true })
+
+    container.addEventListener('touchend', async () => {
+      if (!_ptr.active) return
+      _ptr.active = false
+      const el = document.getElementById('dash-ptr-indicator')
+      if (el && el.offsetHeight >= _ptr.threshold - 15) {
+        el.querySelector('span').textContent = 'Sincronizando tudo...'
+        
+        // Full System Sync
+        appState.servicosLoaded = false // Force reload servicos
+        appState.financasData.loaded = false // Force reload financas
+        await syncAgendaData() // Sync agenda
+        
+        render()
+      } else if (el) {
+        el.style.height = '0'
+        el.style.opacity = '0'
+        setTimeout(() => { el.style.display = 'none' }, 200)
+      }
+    })
+  }
 }
 
 function renderConfigAgendamento() {
