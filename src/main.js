@@ -1436,32 +1436,31 @@ function renderWhatsAppModal() {
   const message = `Olá, é um prazer te atender! Para adiantar seu atendimento, acesse este link e selecione o serviço e horário que deseja: https://pegasusapp.com.br/agendamento.html?estab=${estabId}`
   
   return `
-    <div class="card animate-fade-in custom-scroll" style="max-width: 440px; width: 92%; padding: 1.5rem; border-radius: 1.5rem; max-height: 90vh; overflow-y: auto;">
-      <button id="btn-close-wa-x" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">×</button>
+    <div class="card animate-fade-in custom-scroll" style="max-width: 400px; width: 92%; padding: 1.25rem; border-radius: 1.5rem; max-height: 95vh; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem;">
+      <button id="btn-close-wa-x" style="position:absolute;top:0.5rem;right:0.5rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">×</button>
       
-      <div style="text-align: center; margin-bottom: 1rem;">
-        <div style="background: #25D366; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; box-shadow: 0 4px 15px rgba(37,211,102,0.3);">
-          ${icons.whatsapp.replace('width="24"', 'width="28"').replace('height="24"', 'height="28"')}
+      <div style="text-align: center;">
+        <div style="background: #25D366; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.25rem; box-shadow: 0 4px 12px rgba(37,211,102,0.3);">
+          ${icons.whatsapp.replace('width="24"', 'width="24"').replace('height="24"', 'height="24"')}
         </div>
-        <h2 style="font-family:var(--font-alt); font-size: 1.2rem; font-weight: 900; line-height: 1.2; color: #128C7E;">CONFIGURAR<br>WHATSAPP BUSINESS</h2>
+        <h2 style="font-family:var(--font-alt); font-size: 1.1rem; font-weight: 900; line-height: 1.1; color: #128C7E; margin: 0;">CONFIGURAR WHATSAPP</h2>
       </div>
 
-      <div style="background: var(--surface); padding: 1rem; border-radius: 1rem; border: 1px solid var(--border); margin-bottom: 0.75rem;">
-        <h4 style="font-size: 0.7rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.5px;">Passo a Passo:</h4>
-        <ol style="padding-left: 1.1rem; font-size: 0.85rem; line-height: 1.4; color: var(--text-secondary); font-weight: 500;">
-          <li style="margin-bottom: 0.25rem;">Abra o <b>WhatsApp Business</b></li>
-          <li style="margin-bottom: 0.25rem;">Vá em <b>Ferramentas Comerciais</b></li>
-          <li style="margin-bottom: 0.25rem;">Selecione <b>Mensagem de Ausência</b></li>
-          <li style="margin-bottom: 0.25rem;">Ative e defina para <b>"Enviar Sempre"</b></li>
+      <div style="background: var(--surface); padding: 0.75rem 1rem; border-radius: 1rem; border: 1px solid var(--border);">
+        <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.5px;">Passo a Passo:</h4>
+        <ol style="padding-left: 1.1rem; font-size: 0.8rem; line-height: 1.3; color: var(--text-secondary); font-weight: 500; margin: 0;">
+          <li style="margin-bottom: 0.15rem;">No WhatsApp, vá em <b>Ferramentas Comerciais</b></li>
+          <li style="margin-bottom: 0.15rem;">Ative <b>Mensagem de Ausência</b></li>
+          <li style="margin-bottom: 0.15rem;">Defina Envio para <b>"Sempre"</b></li>
           <li>Cole a mensagem abaixo</li>
         </ol>
       </div>
 
-      <div style="position: relative; background: #f0fdf4; border: 1.5px dashed #22c55e; padding: 0.75rem; border-radius: 0.75rem; margin-bottom: 1rem;">
-        <p id="wa-message-text" style="font-size: 0.8rem; color: #166534; font-weight: 600; line-height: 1.4; margin: 0;">${message}</p>
+      <div style="background: #f0fdf4; border: 1.2px dashed #22c55e; padding: 0.6rem 0.8rem; border-radius: 0.75rem;">
+        <p id="wa-message-text" style="font-size: 0.75rem; color: #166534; font-weight: 600; line-height: 1.3; margin: 0; text-align: center;">${message}</p>
       </div>
 
-      <button id="btn-copy-wa-message" style="width: 100%; background: #25D366; color: white; padding: 0.9rem; border-radius: 0.75rem; font-weight: 800; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.2); transition: all 0.2s;">
+      <button id="btn-copy-wa-message" style="width: 100%; background: #25D366; color: white; padding: 0.85rem; border-radius: 0.75rem; font-weight: 800; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.2); transition: all 0.2s; font-size: 0.85rem;">
         COPIAR MENSAGEM
       </button>
     </div>
