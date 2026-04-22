@@ -1197,8 +1197,8 @@ function renderLogin() {
 
 function renderDashboard() {
   return `
-    <div class="dashboard-container" style="height: 100vh; overflow: hidden;">
-      <div class="animate-fade-in flex flex-col h-full">
+    <div class="dashboard-container min-h-screen">
+      <div class="animate-fade-in">
         <header class="flex justify-between items-center" style="padding: 1.25rem var(--spacing-lg) 1.25rem 2.5%; border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100;">
           <div class="flex items-center">
              <img src="/logo_pegasus_sem_nome.png" alt="Pegasus Logo" style="height: 4.5rem; width: auto; object-fit: contain; margin-right: 0.5rem; ">
@@ -1209,7 +1209,7 @@ function renderDashboard() {
           <button id="btn-logout" style="color: var(--text-secondary); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-left: 2rem;">Sair</button>
         </header>
 
-        <div id="dash-ptr-container" style="overflow-y:auto; flex: 1;">
+        <div id="dash-ptr-container" style="overflow-y:auto;height:calc(100vh - 80px);">
           <div id="dash-ptr-indicator" style="display:none;flex-direction:column;align-items:center;gap:0.5rem;padding:1rem 0 0.5rem;">
             <div id="dash-ptr-spinner" style="width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:none;"></div>
             <span style="font-size:0.75rem;color:var(--text-secondary);font-weight:700;">↓ Puxe para atualizar tudo</span>
@@ -1446,14 +1446,14 @@ function renderWhatsAppModal() {
         <h2 style="font-family:var(--font-alt); font-size: 1.2rem; font-weight: 900; line-height: 1.2; color: #128C7E;">CONFIGURAR<br>WHATSAPP BUSINESS</h2>
       </div>
 
-      <div style="background: var(--surface); padding: 1.25rem; border-radius: 1rem; border: 1px solid var(--border); margin-bottom: 0.75rem;">
-        <h4 style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 1rem; letter-spacing: 0.5px; text-align: center; line-height: 1.3;">Siga os passos abaixo para configurar a mensagem automática:</h4>
-        <ol style="padding-left: 1.1rem; font-size: 0.85rem; line-height: 1.8; color: var(--text-secondary); font-weight: 500;">
-          <li style="margin-bottom: 0.6rem;">Abra o <b>WhatsApp Business</b></li>
-          <li style="margin-bottom: 0.6rem;">Vá em <b>Ferramentas Comerciais</b></li>
-          <li style="margin-bottom: 0.6rem;">Selecione <b>Mensagem de Ausência</b></li>
-          <li style="margin-bottom: 0.6rem;">Ative e defina para <b>"Enviar Sempre"</b></li>
-          <li>Cole a mensagem abaixo no campo de texto</li>
+      <div style="background: var(--surface); padding: 1rem; border-radius: 1rem; border: 1px solid var(--border); margin-bottom: 0.75rem;">
+        <h4 style="font-size: 0.7rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.5px;">Passo a Passo:</h4>
+        <ol style="padding-left: 1.1rem; font-size: 0.85rem; line-height: 1.4; color: var(--text-secondary); font-weight: 500;">
+          <li style="margin-bottom: 0.25rem;">Abra o <b>WhatsApp Business</b></li>
+          <li style="margin-bottom: 0.25rem;">Vá em <b>Ferramentas Comerciais</b></li>
+          <li style="margin-bottom: 0.25rem;">Selecione <b>Mensagem de Ausência</b></li>
+          <li style="margin-bottom: 0.25rem;">Ative e defina para <b>"Enviar Sempre"</b></li>
+          <li>Cole a mensagem abaixo</li>
         </ol>
       </div>
 
