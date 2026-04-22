@@ -1448,11 +1448,10 @@ function renderWhatsAppModal() {
 
       <div style="background: var(--surface); padding: 0.75rem 1rem; border-radius: 1rem; border: 1px solid var(--border);">
         <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.5px;">Passo a Passo:</h4>
-        <ol style="padding-left: 1.1rem; font-size: 0.8rem; line-height: 1.3; color: var(--text-secondary); font-weight: 500; margin: 0;">
-          <li style="margin-bottom: 0.15rem;">No WhatsApp, vá em <b>Ferramentas Comerciais</b></li>
-          <li style="margin-bottom: 0.15rem;">Ative <b>Mensagem de Ausência</b></li>
-          <li style="margin-bottom: 0.15rem;">Defina Envio para <b>"Sempre"</b></li>
-          <li>Cole a mensagem abaixo</li>
+        <ol style="padding-left: 1.1rem; font-size: 0.85rem; line-height: 1.8; color: var(--text-secondary); font-weight: 600; margin: 0;">
+          <li style="margin-bottom: 0.6rem;">WhatsApp Business > <b>Ferramentas Comerciais</b></li>
+          <li style="margin-bottom: 0.6rem;">Mensagem de Ausência > <b>"Enviar Sempre"</b></li>
+          <li><b>Cole a mensagem abaixo:</b></li>
         </ol>
       </div>
 
