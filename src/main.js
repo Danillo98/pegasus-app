@@ -1443,17 +1443,17 @@ function renderWhatsAppModal() {
         <div style="background: #25D366; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.25rem; box-shadow: 0 4px 12px rgba(37,211,102,0.3);">
           ${icons.whatsapp.replace('width="24"', 'width="24"').replace('height="24"', 'height="24"')}
         </div>
-        <h2 style="font-family:var(--font-alt); font-size: 1.1rem; font-weight: 900; line-height: 1.1; color: #128C7E; margin: 0;">CONFIGURAR WHATSAPP</h2>
+        <h2 style="font-family:var(--font-alt); font-size: 1.1rem; font-weight: 900; line-height: 1.1; color: #128C7E; margin: 0;">CONFIGURAR WHATSAPP BUSINESS</h2>
       </div>
 
       <div style="background: var(--surface); padding: 0.75rem 1rem; border-radius: 1rem; border: 1px solid var(--border);">
         <h4 style="font-size: 0.65rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.5px;">Passo a Passo:</h4>
-        <ol style="padding-left: 1rem; font-size: 0.72rem; line-height: 2.2; color: var(--text-secondary); font-weight: 700; margin: 0; white-space: nowrap;">
+        <ul style="list-style: none; padding-left: 0; font-size: 0.72rem; line-height: 2.2; color: var(--text-secondary); font-weight: 700; margin: 0; white-space: nowrap;">
           <li>1. Abrir o WhatsApp Business</li>
           <li>2. Clicar em Ferramentas Comerciais</li>
           <li>3. Mensagem de Ausência: selecione 'Enviar Sempre'</li>
           <li>4. Para o texto, copie e cole a mensagem abaixo:</li>
-        </ol>
+        </ul>
       </div>
 
       <div style="background: #f0fdf4; border: 1.2px dashed #22c55e; padding: 0.6rem 0.8rem; border-radius: 0.75rem;">
