@@ -263,8 +263,8 @@ const icons = {
   edit: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-pencil"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>',
   trash: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
   calendar: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-days"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>',
-  suporte: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a2 2 0 0 1-2 2h-5"/></svg>',
-  whatsapp: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-11.7 8.38 8.38 0 0 1 3.8.9L22 2l-1.5 6.5Z"/></svg>',
+  suporte: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/></svg>',
+  whatsapp: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .018 5.396.015 12.035c0 2.123.554 4.197 1.604 6.023L0 24l6.135-1.61a11.757 11.757 0 005.91 1.583h.005c6.637 0 12.032-5.397 12.035-12.035a11.794 11.794 0 00-3.483-8.497"/></svg>',
 }
 
 async function syncAgendaData() {
@@ -1098,11 +1098,6 @@ function renderTabHeader(title, content, showPrint = false, showCalendar = true)
       <header class="flex items-center" style="padding: 0.75rem var(--spacing-sm); border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100; gap: 0.75rem;">
         <button id="btn-back-dashboard" style="padding: 0.5rem; border-radius: 50%; background: var(--surface); color: var(--primary); display: flex; align-items: center; justify-content: center;">${icons.back}</button>
         <h2 style="font-size: clamp(0.85rem, 3.8vw, 1.2rem); flex: 1; font-family: var(--font-alt); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 800;">${title}</h2>
-        ${appState.screen === 'agenda' ? `
-          <button id="btn-whatsapp-business" style="display:flex; align-items:center; gap:6px; background:#25D366; color:white; border:none; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; cursor:pointer; box-shadow: 0 2px 10px rgba(37,211,102,0.3);">
-            ${icons.whatsapp} <span style="white-space:nowrap">WHATSAPP BUSINESS</span>
-          </button>
-        ` : ''}
         ${showCalendar ? `<button id="btn-calendar-trigger" style="padding: 0.5rem; color: var(--primary); display: flex; align-items: center; justify-content: center;">${icons.agenda}</button>` : ''}
         ${showPrint ? `<button id="btn-print" style="padding: 0.5rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">${icons.print}</button>` : ''}
       </header>
@@ -1394,12 +1389,16 @@ function renderAgenda() {
       </div>
 
       <div class="flex justify-between items-center" style="margin-bottom:2rem;">
-        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.25rem;">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.4rem;">
           <h2 style="font-family:var(--font-alt);font-size:1.1rem;font-weight:800;letter-spacing:1px;color:var(--text-secondary);">PROGRAMAÇÃO DO DIA</h2>
+          <button id="btn-edit-horario" title="Editar horário de funcionamento" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:0.25rem;display:flex;align-items:center;opacity:0.6;">
+            ${icons.edit}
+          </button>
           ${pausaBadge}
         </div>
-        <button id="btn-edit-horario" title="Editar horário de funcionamento" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:0.25rem;display:flex;align-items:center;">
-          ${icons.edit}
+        <button id="btn-whatsapp-business" title="Mensagem Automática WhatsApp" style="background:none;border:none;cursor:pointer;color:#25D366;padding:0.5rem;display:flex;align-items:center;transition:transform 0.2s;">
+          ${icons.whatsapp}
+          <style>#btn-whatsapp-business:active { transform: scale(1.2); }</style>
         </button>
       </div>
 
