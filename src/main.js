@@ -472,19 +472,17 @@ function render() {
   const root = document.getElementById('app')
   document.body.className = `mode-${appState.theme}`
 
+  // Control native pull-to-refresh
+  if (appState.screen === 'dashboard') {
+    document.body.style.overscrollBehaviorY = 'auto'; // Ativa o refresh azul do navegador
+  } else {
+    document.body.style.overscrollBehaviorY = 'none'; // Bloqueia o refresh azul
+  }
+
   // Only scroll to top if screen actually changed
   if (appState.previousScreen !== appState.screen) {
     window.scrollTo(0, 0)
     appState.previousScreen = appState.screen
-    
-    // Habilitar refresh nativo apenas na Dashboard
-    if (appState.screen === 'dashboard') {
-      document.documentElement.style.overscrollBehaviorY = 'auto';
-      document.body.style.overscrollBehaviorY = 'auto';
-    } else {
-      document.documentElement.style.overscrollBehaviorY = 'none';
-      document.body.style.overscrollBehaviorY = 'none';
-    }
     
     // Always sync when entering agenda for maximum accuracy
     if (appState.screen === 'agenda') {
@@ -1437,32 +1435,31 @@ function renderWhatsAppModal() {
   const message = `Olá, é um prazer te atender! Para adiantar seu atendimento, acesse este link e selecione o serviço e horário que deseja: https://pegasusapp.com.br/agendamento.html?estab=${estabId}`
   
   return `
-    <div class="card animate-fade-in custom-scroll" style="max-width: 400px; width: 92%; padding: 1.25rem; border-radius: 1.25rem; max-height: 95vh; overflow-y: auto;">
-      <button id="btn-close-wa-x" style="position:absolute;top:0.75rem;right:0.75rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.4rem;z-index:99;">×</button>
+    <div class="card animate-fade-in" style="max-width: 400px; width: 92%; padding: 1.25rem; border-radius: 1.2rem; position: relative; box-shadow: var(--shadow-lg);">
+      <button id="btn-close-wa-x" style="position:absolute;top:0.5rem;right:0.5rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">×</button>
       
-      <div style="text-align: center; margin-bottom: 0.75rem;">
-        <div style="background: #25D366; width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; box-shadow: 0 4px 12px rgba(37,211,102,0.25);">
+      <div style="text-align: center; margin-bottom: 1rem;">
+        <div style="background: #25D366; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 0.5rem; box-shadow: 0 4px 10px rgba(37,211,102,0.25);">
           ${icons.whatsapp.replace('width="24"', 'width="24"').replace('height="24"', 'height="24"')}
         </div>
-        <h2 style="font-family:var(--font-alt); font-size: 1.1rem; font-weight: 900; line-height: 1.1; color: #128C7E; letter-spacing: 0.5px;">CONFIGURAR<br>WHATSAPP BUSINESS</h2>
+        <h2 style="font-family:var(--font-alt); font-size: 1.1rem; font-weight: 900; line-height: 1.1; color: #128C7E;">WHATSAPP BUSINESS</h2>
       </div>
 
-      <div style="background: var(--surface); padding: 0.85rem; border-radius: 0.85rem; border: 1px solid var(--border); margin-bottom: 0.75rem;">
-        <h4 style="font-size: 0.7rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.4rem; letter-spacing: 0.5px; text-align:center;">Passo a Passo:</h4>
+      <div style="background: var(--surface); padding: 0.85rem; border-radius: 0.8rem; border: 1px solid var(--border); margin-bottom: 1rem;">
+        <h4 style="font-size: 0.7rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.5rem; letter-spacing: 0.5px;">Ative a Mensagem Automática:</h4>
         <ol style="padding-left: 1.1rem; font-size: 0.8rem; line-height: 1.4; color: var(--text-secondary); font-weight: 600;">
           <li style="margin-bottom: 0.25rem;">Abra o <b>WhatsApp Business</b></li>
-          <li style="margin-bottom: 0.25rem;">Vá em <b>Ferramentas Comerciais</b></li>
-          <li style="margin-bottom: 0.25rem;">Selecione <b>Mensagem de Ausência</b></li>
-          <li style="margin-bottom: 0.25rem;">Ative p/ <b>"Enviar Sempre"</b></li>
-          <li>Cole a mensagem abaixo:</li>
+          <li style="margin-bottom: 0.25rem;"><b>Ferramentas Comerciais</b> > <b>Mensagem de Ausência</b></li>
+          <li style="margin-bottom: 0.25rem;">Defina o horário para <b>"Enviar Sempre"</b></li>
+          <li>Cole o texto abaixo no campo de mensagem</li>
         </ol>
       </div>
 
-      <div style="position: relative; background: #f0fdf4; border: 1px dashed #22c55e; padding: 0.75rem; border-radius: 0.6rem; margin-bottom: 0.75rem;">
-        <p id="wa-message-text" style="font-size: 0.75rem; color: #166534; font-weight: 600; line-height: 1.4; margin: 0;">${message}</p>
+      <div style="background: #f0fdf4; border: 1.2px dashed #22c55e; padding: 0.75rem; border-radius: 0.6rem; margin-bottom: 1rem;">
+        <p id="wa-message-text" style="font-size: 0.75rem; color: #166534; font-weight: 600; line-height: 1.4; margin: 0; word-break: break-all;">${message}</p>
       </div>
 
-      <button id="btn-copy-wa-message" style="width: 100%; background: #25D366; color: white; padding: 0.9rem; border-radius: 0.75rem; font-weight: 900; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(37,211,102,0.2); transition: all 0.2s; font-size: 0.85rem; letter-spacing: 0.5px;">
+      <button id="btn-copy-wa-message" style="width: 100%; background: #25D366; color: white; padding: 0.9rem; border-radius: 0.6rem; font-weight: 800; border: none; cursor: pointer; box-shadow: 0 4px 10px rgba(37,211,102,0.15);">
         COPIAR MENSAGEM
       </button>
     </div>
