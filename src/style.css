@@ -64,6 +64,7 @@
   padding: 0;
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
 
 body {
@@ -75,7 +76,7 @@ body {
   overflow-x: hidden;
   
   /* Prevent native pull-to-refresh */
-  overscroll-behavior-y: contain;
+  overscroll-behavior-y: none;
   
   /* Fluid Typography: Scales from 14px (mobile) to 18px (desktop) */
   font-size: clamp(0.875rem, 0.77rem + 0.45vw, 1.125rem);

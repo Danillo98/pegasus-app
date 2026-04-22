@@ -264,6 +264,7 @@ const icons = {
   trash: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
   calendar: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-days"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>',
   suporte: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a2 2 0 0 1-2 2h-5"/></svg>',
+  whatsapp: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-11.7 8.38 8.38 0 0 1 3.8.9L22 2l-1.5 6.5Z"/></svg>',
 }
 
 async function syncAgendaData() {
@@ -318,6 +319,14 @@ async function syncAgendaData() {
 let _ptr = { active: false, startY: 0, threshold: 80 };
 
 function attachAgendaEvents() {
+  const btnWA = document.getElementById('btn-whatsapp-business')
+  if (btnWA) {
+    btnWA.addEventListener('click', () => {
+      appState.showModal = 'whatsapp'
+      render()
+    })
+  }
+
   const container = document.getElementById('ptr-container')
   if (!container) return
 
@@ -591,6 +600,14 @@ function render() {
     modalOverlay.innerHTML = renderHorarioFuncionamentoModal()
     root.appendChild(modalOverlay)
     attachHorarioFuncionamentoEvents()
+  }
+
+  if (appState.showModal === 'whatsapp') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = renderWhatsAppModal()
+    root.appendChild(modalOverlay)
+    attachWhatsAppEvents()
   }
 
   if (appState.showModal === 'fazer-pausa') {
@@ -1081,6 +1098,11 @@ function renderTabHeader(title, content, showPrint = false, showCalendar = true)
       <header class="flex items-center" style="padding: 0.75rem var(--spacing-sm); border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100; gap: 0.75rem;">
         <button id="btn-back-dashboard" style="padding: 0.5rem; border-radius: 50%; background: var(--surface); color: var(--primary); display: flex; align-items: center; justify-content: center;">${icons.back}</button>
         <h2 style="font-size: clamp(0.85rem, 3.8vw, 1.2rem); flex: 1; font-family: var(--font-alt); text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 800;">${title}</h2>
+        ${appState.screen === 'agenda' ? `
+          <button id="btn-whatsapp-business" style="display:flex; align-items:center; gap:6px; background:#25D366; color:white; border:none; padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; cursor:pointer; box-shadow: 0 2px 10px rgba(37,211,102,0.3);">
+            ${icons.whatsapp} <span style="white-space:nowrap">WHATSAPP BUSINESS</span>
+          </button>
+        ` : ''}
         ${showCalendar ? `<button id="btn-calendar-trigger" style="padding: 0.5rem; color: var(--primary); display: flex; align-items: center; justify-content: center;">${icons.agenda}</button>` : ''}
         ${showPrint ? `<button id="btn-print" style="padding: 0.5rem; color: var(--text-secondary); display: flex; align-items: center; justify-content: center;">${icons.print}</button>` : ''}
       </header>
@@ -1400,6 +1422,43 @@ function renderAgenda() {
     </button>
     ` : ''}
   `)
+}
+
+function renderWhatsAppModal() {
+  const estabId = appState.user?.id || 'SEU_ID_AQUI'
+  const message = `Olá, é um prazer te atender! Para adiantar seu atendimento, acesse este link e selecione o serviço e horário que deseja: https://pegasusapp.com.br/agendamento.html?estab=${estabId}`
+  
+  return `
+    <div class="card animate-fade-in custom-scroll" style="max-width: 440px; width: 92%; padding: 2rem; border-radius: 1.5rem; max-height: 90vh; overflow-y: auto;">
+      <button id="btn-close-wa-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">×</button>
+      
+      <div style="text-align: center; margin-bottom: 1.5rem;">
+        <div style="background: #25D366; width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem; box-shadow: 0 4px 15px rgba(37,211,102,0.3);">
+          ${icons.whatsapp.replace('width="20"', 'width="32"').replace('height="20"', 'height="32"')}
+        </div>
+        <h2 style="font-family:var(--font-alt); font-size: 1.4rem; font-weight: 900; line-height: 1.2; color: #128C7E;">CONFIGURAR<br>WHATSAPP BUSINESS</h2>
+      </div>
+
+      <div style="background: var(--surface); padding: 1.25rem; border-radius: 1rem; border: 1px solid var(--border); margin-bottom: 1.5rem;">
+        <h4 style="font-size: 0.8rem; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 0.75rem; letter-spacing: 0.5px;">Passo a Passo:</h4>
+        <ol style="padding-left: 1.2rem; font-size: 0.9rem; line-height: 1.6; color: var(--text-secondary); font-weight: 500;">
+          <li style="margin-bottom: 0.5rem;">Abra o <b>WhatsApp Business</b></li>
+          <li style="margin-bottom: 0.5rem;">Vá em <b>Ferramentas Comerciais</b></li>
+          <li style="margin-bottom: 0.5rem;">Selecione <b>Mensagem de Ausência</b></li>
+          <li style="margin-bottom: 0.5rem;">Ative e defina o horário para <b>"Enviar Sempre"</b></li>
+          <li>Cole a mensagem abaixo no campo de texto</li>
+        </ol>
+      </div>
+
+      <div style="position: relative; background: #f0fdf4; border: 1.5px dashed #22c55e; padding: 1rem; border-radius: 0.75rem; margin-bottom: 1.5rem;">
+        <p id="wa-message-text" style="font-size: 0.85rem; color: #166534; font-weight: 600; line-height: 1.5; margin: 0;">${message}</p>
+      </div>
+
+      <button id="btn-copy-wa-message" style="width: 100%; background: #25D366; color: white; padding: 1.1rem; border-radius: 0.75rem; font-weight: 800; border: none; cursor: pointer; box-shadow: 0 4px 15px rgba(37,211,102,0.2); transition: all 0.2s;">
+        COPIAR MENSAGEM
+      </button>
+    </div>
+  `
 }
 
 function renderAgendaActionsModal() {
@@ -3088,9 +3147,13 @@ function attachAgendaActionsEvents() {
     btnConclude.textContent = '...'
     
     const dayKey = getAgendaDayKey(appState.selectedDate)
-    const itemSnapshot = { ...appState.activeAgendaItem } // capture before close
+    const itemSnapshot = { ...appState.activeAgendaItem }
     
-    // Close modal immediately to prevent multiple clicks
+    // Optimistic: remove from local list immediately
+    const idx = appState.agendaData[dayKey].findIndex(i => i.id === itemSnapshot.id)
+    if (idx > -1) appState.agendaData[dayKey].splice(idx, 1)
+
+    // Close modal immediately
     close()
     
     if (itemSnapshot?.id) {
@@ -3134,6 +3197,36 @@ function attachAgendaActionsEvents() {
     appState.showModal = 'confirm-cancel'
     render()
   })
+}
+
+function attachWhatsAppEvents() {
+  const overlay = document.querySelector('.overlay')
+  const btnCloseX = document.getElementById('btn-close-wa-x')
+  const btnCopy = document.getElementById('btn-copy-wa-message')
+  const messageText = document.getElementById('wa-message-text')
+
+  const close = () => { appState.showModal = null; render() }
+
+  if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
+  if (btnCloseX) btnCloseX.addEventListener('click', close)
+
+  if (btnCopy) {
+    btnCopy.addEventListener('click', () => {
+      const text = messageText.textContent
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btnCopy.textContent
+        btnCopy.textContent = 'COPIADO! ✅'
+        btnCopy.style.background = '#128C7E'
+        setTimeout(() => {
+          btnCopy.textContent = originalText
+          btnCopy.style.background = '#25D366'
+        }, 2000)
+      }).catch(err => {
+        console.error('Erro ao copiar:', err)
+        alert('Erro ao copiar mensagem. Tente selecionar o texto manualmente.')
+      })
+    })
+  }
 }
 
 function attachConfirmCancelEvents() {
