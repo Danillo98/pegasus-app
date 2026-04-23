@@ -230,6 +230,18 @@ function calculateEndTime(startTime, durationMinutes) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
+function ensureCountryCode(ph) {
+  if (!ph) return '';
+  const cleaned = ph.replace(/\D/g, '');
+  if (cleaned.length === 10 || cleaned.length === 11) {
+    return '+55' + cleaned;
+  }
+  if (cleaned.length === 12 || cleaned.length === 13) {
+    return '+' + cleaned;
+  }
+  return ph;
+}
+
 function getInitialDayData() {
   return [
     { time: '09:00', client: 'Disponível', service: '', status: 'livre' },
@@ -3166,7 +3178,7 @@ function attachAgendamentoModalEvents() {
   if (btnSave) btnSave.addEventListener('click', async () => {
     btnSave.disabled = true
     const name = nameInput.value.trim()
-    const phone = phoneInput ? phoneInput.value.trim() : ''
+    const phone = phoneInput ? ensureCountryCode(phoneInput.value.trim()) : ''
     const dateInput = dateInputEl.value
     const time = timeInputEl.value
     const serviceHidden = document.getElementById('modal-service-search-selected')

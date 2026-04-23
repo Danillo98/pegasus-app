@@ -434,11 +434,12 @@
       showLoading();
       try {
         const [estabRes, servicosRes] = await Promise.all([
-          sb.from('estabelecimentos').select('nome_completo, tipo, chave_pix, dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao').eq('id', state.estabId).single(),
+          sb.from('estabelecimentos').select('nome_completo, tipo, chave_pix, dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao').eq('id', state.estabId).maybeSingle(),
           sb.from('servicos').select('id, nome, preco, duracao_minutos, cobra_reserva, taxa_reserva').eq('estabelecimento_id', state.estabId).order('nome')
         ]);
         
         if (estabRes.error) throw estabRes.error;
+        if (!estabRes.data) throw new Error('Estabelecimento não encontrado ou ID inválido.');
         if (servicosRes.error) throw servicosRes.error;
 
         state.estab = estabRes.data;
@@ -822,11 +823,25 @@
       const totalDuracao = selected.reduce((acc, s) => acc + (Number(s.duracao_minutos) || 30), 0);
       const precisaPix = totalTaxa > 0;
 
+      function ensureCountryCode(ph) {
+        if (!ph) return '';
+        const cleaned = ph.replace(/\D/g, '');
+        // If it's a standard BR mobile (11 digits) or landline (10 digits) without country code
+        if (cleaned.length === 10 || cleaned.length === 11) {
+          return '+55' + cleaned;
+        }
+        // If it already seems to have country code (e.g. starting with 55)
+        if (cleaned.length === 12 || cleaned.length === 13) {
+          return '+' + cleaned;
+        }
+        return ph;
+      }
+
       // Build payload with all required fields
       const obj = {
         estabelecimento_id: state.estabId,
         cliente_nome: state.clienteName,
-        cliente_telefone: state.clientePhone || '',
+        cliente_telefone: ensureCountryCode(state.clientePhone || ''),
         servico_nome: selected.map(s => s.nome).join(' + '),
         data_agendamento: state.selectedSlot.toISOString().split('T')[0],
         hora_agendamento: `${state.selectedSlot.getHours().toString().padStart(2,'0')}:${state.selectedSlot.getMinutes().toString().padStart(2,'0')}`,
@@ -843,7 +858,7 @@
       }
 
       console.log('[agendamento] inserindo:', obj);
-      const { data, error } = await sb.from('agendamentos').insert(obj).select().single();
+      const { data, error } = await sb.from('agendamentos').insert(obj).select().maybeSingle();
 
       if (error) {
         console.error('[agendamento] ERRO:', error);
@@ -881,9 +896,9 @@
         // Polling para checar se o estabelecimento confirmou
         if (agendamento && agendamento.id) {
           setInterval(async () => {
-             const { data } = await sb.from('agendamentos').select('status').eq('id', agendamento.id).single();
-             if (data && data.status === 'confirmado') {
-                location.reload(); // Recarrega ou pode mostrar mensagem de sucesso
+             const { data } = await sb.from('agendamentos').select('agendamento_status').eq('id', agendamento.id).maybeSingle();
+             if (data && (data.agendamento_status === 'Confirmado' || data.agendamento_status === 'confirmado')) {
+                location.reload(); 
              }
           }, 5000);
         }
