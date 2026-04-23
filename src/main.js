@@ -1700,20 +1700,21 @@ function renderFazPausaModal() {
         </div>
       </div>
       <label style="display:flex;align-items:flex-start;gap:0.75rem;padding:1rem;border-radius:0.85rem;border:1.5px solid var(--border);cursor:pointer;margin-bottom:1.25rem;">
-        <div style="position:relative; width:20px; height:20px; flex-shrink:0; margin-top:2px;">
-          <input type="checkbox" id="encerrar-dia" style="position:absolute; opacity:0; cursor:pointer; height:20px; width:20px; z-index: 2; margin:0;">
-          <div id="custom-check" style="position:absolute; top:0; left:0; height:20px; width:20px; background-color:var(--surface); border:2px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; transition: all 0.2s; z-index: 1;"></div>
+        <div style="position:relative; width:22px; height:22px; flex-shrink:0; margin-top:2px;">
+          <input type="checkbox" id="encerrar-dia" style="position:absolute; opacity:0; cursor:pointer; height:22px; width:22px; z-index: 2; margin:0;">
+          <div id="custom-check" style="position:absolute; top:0; left:0; height:22px; width:22px; background-color:var(--surface); border:2px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; transition: all 0.2s; z-index: 1; pointer-events: none;">
+            <svg class="check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" style="display:none; transform: scale(0.8); transition: all 0.2s;">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
           <style>
             #encerrar-dia:checked + #custom-check { 
               background-color: var(--primary) !important; 
               border-color: var(--primary) !important; 
             }
-            #encerrar-dia:checked + #custom-check::after { 
-              content: '✓'; 
-              color: white; 
-              font-size: 14px; 
-              font-weight: 900; 
-              display: block;
+            #encerrar-dia:checked + #custom-check .check-icon { 
+              display: block !important;
+              transform: scale(1) !important;
             }
           </style>
         </div>
