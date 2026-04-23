@@ -388,8 +388,8 @@
       selectedIds: new Set(),
       slots: [],
       selectedSlot: null,
-      clienteName: '',
-      clientePhone: '',
+      clienteName: localStorage.getItem('pegasus_cliente_name') || '',
+      clientePhone: localStorage.getItem('pegasus_cliente_phone') || '',
     };
 
     function formatPhone(value) {
@@ -411,8 +411,13 @@
     /* ── Init ── */
     const params = new URLSearchParams(location.search);
     state.estabId = params.get('estab')?.trim();
-    state.clienteName = params.get('nome') || '';
-    state.clientePhone = formatPhone(params.get('telefone') || params.get('phone') || '');
+    
+    // Prioritize URL parameters, then localStorage
+    const urlName = params.get('nome');
+    const urlPhone = params.get('telefone') || params.get('phone');
+    
+    if (urlName) state.clienteName = urlName;
+    if (urlPhone) state.clientePhone = formatPhone(urlPhone);
 
     if (!state.estabId) {
       document.getElementById('main').innerHTML = `
@@ -507,6 +512,11 @@
         if (!ph || ph.length < 10) { phone.style.borderColor = 'var(--red)'; return; } else { phone.style.borderColor = ''; }
         state.clienteName = v;
         state.clientePhone = ph;
+        
+        // Save for next time
+        localStorage.setItem('pegasus_cliente_name', v);
+        localStorage.setItem('pegasus_cliente_phone', ph);
+        
         renderStep2();
       }
     }
