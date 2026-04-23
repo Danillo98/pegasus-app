@@ -9,6 +9,14 @@
   <meta http-equiv="Expires" content="0" />
   <title>Agendamento – Pegasus</title>
   <meta name="description" content="Agende seu serviço de forma rápida e fácil." />
+  <!-- Force refresh if old version -->
+  <script>
+    const APP_VERSION = '1.0.8';
+    if (localStorage.getItem('pegasus_app_v') !== APP_VERSION) {
+      localStorage.setItem('pegasus_app_v', APP_VERSION);
+      location.reload(true);
+    }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
@@ -412,11 +420,32 @@
       return value
     }
 
+    function ensureCountryCode(ph) {
+      if (!ph) return '';
+      const cleaned = ph.replace(/\D/g, '');
+      // If it's a standard BR number (10/11 digits), ALWAYS prepend +55
+      if (cleaned.length === 10 || cleaned.length === 11) {
+        return '+55' + cleaned;
+      }
+      // If it has 12/13 digits, assume it already has a country code (like 55...)
+      if (cleaned.length === 12 || cleaned.length === 13) {
+        return '+' + cleaned;
+      }
+      return ph;
+    }
+
     /* ── Init ── */
     const params = new URLSearchParams(location.search);
-    state.estabId = params.get('estab')?.trim();
+    let urlEstab = params.get('estab')?.trim() || params.get('id')?.trim();
     
-    // Prioritize URL parameters, then localStorage
+    // Recovery Logic: Use URL or fallback to last known EstabId
+    if (urlEstab) {
+      state.estabId = urlEstab;
+      localStorage.setItem('pegasus_last_estab_id', urlEstab);
+    } else {
+      state.estabId = localStorage.getItem('pegasus_last_estab_id');
+    }
+    
     const urlName = params.get('nome');
     const urlPhone = params.get('telefone') || params.get('phone');
     
@@ -425,7 +454,11 @@
 
     if (!state.estabId) {
       document.getElementById('main').innerHTML = `
-        <div class="error-msg">❌ Link inválido. Solicite o link correto ao estabelecimento.</div>`;
+        <div class="error-msg" style="text-align:center; padding: 2rem;">
+          <div style="font-size: 3rem; margin-bottom: 1rem;">❌</div>
+          <h3 style="margin-bottom: 0.5rem;">Link Inválido</h3>
+          <p style="color: var(--muted); font-size: 0.9rem;">Solicite o link de agendamento correto ao estabelecimento.</p>
+        </div>`;
     } else {
       bootstrap();
     }
@@ -822,20 +855,6 @@
       const totalPreco = selected.reduce((acc, s) => acc + Number(s.preco), 0);
       const totalDuracao = selected.reduce((acc, s) => acc + (Number(s.duracao_minutos) || 30), 0);
       const precisaPix = totalTaxa > 0;
-
-      function ensureCountryCode(ph) {
-        if (!ph) return '';
-        const cleaned = ph.replace(/\D/g, '');
-        // If it's a standard BR mobile (11 digits) or landline (10 digits) without country code
-        if (cleaned.length === 10 || cleaned.length === 11) {
-          return '+55' + cleaned;
-        }
-        // If it already seems to have country code (e.g. starting with 55)
-        if (cleaned.length === 12 || cleaned.length === 13) {
-          return '+' + cleaned;
-        }
-        return ph;
-      }
 
       // Build payload with all required fields
       const obj = {
