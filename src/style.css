@@ -64,7 +64,6 @@
   padding: 0;
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
 }
 
 body {
@@ -74,9 +73,7 @@ body {
   line-height: 1.5;
   transition: background-color var(--transition-normal), color var(--transition-normal);
   overflow-x: hidden;
-  
-  /* Prevent native pull-to-refresh */
-  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
   
   /* Fluid Typography: Scales from 14px (mobile) to 18px (desktop) */
   font-size: clamp(0.875rem, 0.77rem + 0.45vw, 1.125rem);
@@ -210,7 +207,6 @@ input[type="date"], input[type="time"] {
   align-items: center;
 }
 
-/* Login Screen Specific Scaling */
 .login-container {
   width: 100%;
   min-height: 100vh;
@@ -431,8 +427,9 @@ select:focus {
 .agenda-item.card {
   transform: none !important;
   transition: background-color 0.2s ease !important;
-  touch-action: pan-y !important; /* Allow vertical scroll even when touching the card */
+  touch-action: auto !important; /* Let browser decide, usually better than forcing pan-y if container has pan-y */
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .agenda-item.card:hover {
