@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <!-- Anti-Cache Tags -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Agendamento – Pegasus</title>
   <meta name="description" content="Agende seu serviço de forma rápida e fácil." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -608,7 +612,7 @@
       // 1. Fetch existing bookings (CORRECT COLUMN: agendamento_status)
       const { data: bookings } = await sb
         .from('agendamentos')
-        .select('data_agendamento, hora_agendamento, agendamento_status, servico_id')
+        .select('data_agendamento, hora_agendamento, agendamento_status, duracao_minutos')
         .eq('estabelecimento_id', state.estabId)
         .not('agendamento_status', 'in', '(cancelado,recusado,excluido)');
 
@@ -639,8 +643,7 @@
         const d = b.data_agendamento;
         if (!dailyBusyRanges[d]) dailyBusyRanges[d] = [];
         const start = toMinutes(b.hora_agendamento);
-        const servico = state.servicos.find(s => s.id === b.servico_id);
-        const dur = servico ? Number(servico.duracao_minutos || 30) : 30;
+        const dur = Number(b.duracao_minutos || 30);
         dailyBusyRanges[d].push({ start, end: start + dur });
       });
 
@@ -816,6 +819,7 @@
       const selected = state.servicos.filter(s => state.selectedIds.has(s.id));
       const totalTaxa = selected.reduce((acc, s) => acc + (s.cobra_reserva ? Number(s.taxa_reserva) : 0), 0);
       const totalPreco = selected.reduce((acc, s) => acc + Number(s.preco), 0);
+      const totalDuracao = selected.reduce((acc, s) => acc + (Number(s.duracao_minutos) || 30), 0);
       const precisaPix = totalTaxa > 0;
 
       // Build payload with all required fields
@@ -830,6 +834,7 @@
         pagamento_status: !precisaPix,
         taxa_reserva: totalTaxa,
         valor_total: totalPreco,
+        duracao_minutos: totalDuracao,
       };
 
       // servico_id — passa o primeiro serviço selecionado quando disponível

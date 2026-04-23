@@ -217,7 +217,16 @@ let appState = {
 window.appState = appState;
 
 function getAgendaDayKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  const d = new Date(date)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function calculateEndTime(startTime, durationMinutes) {
+  if (!startTime) return '--:--'
+  const [h, m] = startTime.split(':').map(Number)
+  const date = new Date()
+  date.setHours(h, m + (durationMinutes || 30), 0, 0)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 function getInitialDayData() {
@@ -297,6 +306,7 @@ async function syncAgendaData() {
       appState.agendaData[dayKey].push({
         id: dbItem.id,
         time: dbItem.hora_agendamento?.slice(0, 5),
+        duracao: dbItem.duracao_minutos || 30,
         client: dbItem.cliente_nome || 'Cliente',
         service: dbItem.servico_nome,
         status: (dbItem.agendamento_status || 'Pendente').toLowerCase(),
@@ -1330,8 +1340,8 @@ function renderAgenda() {
         <div class="agenda-item card ripple" data-index="${index}" style="cursor:pointer; padding:0; align-items:stretch; overflow:hidden; display:flex; flex-direction:column; border-radius:18px; ${cardStyle}">
           <!-- Header: Time | Price -->
           <div style="display:flex; border-bottom: 1px solid var(--border); background:rgba(0,0,0,0.01);">
-            <div style="flex:1; padding:12px; text-align:center; border-right:1px solid var(--border); font-weight:800; font-size:1.1rem; color:var(--text-main); display:flex; align-items:center; justify-content:center; gap:6px;">
-              <span>🕒</span> ${item.time}
+            <div style="flex:1.4; padding:12px; text-align:center; border-right:1px solid var(--border); font-weight:800; font-size:1.1rem; color:var(--text-main); display:flex; align-items:center; justify-content:center; gap:6px;">
+              <span>🕒</span> ${item.time} <span style="opacity:0.3; margin: 0 2px;">—</span> ${calculateEndTime(item.time, item.duracao)}
             </div>
             <div style="flex:1; padding:12px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--text-main);">${valorDisplay}</div>
           </div>
@@ -1473,7 +1483,7 @@ function renderAgendaActionsModal() {
     <div class="card animate-fade-in" style="max-width: 400px; width: 90%; padding: 32px; border-radius: 24px;">
       <button id="btn-close-actions-x" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
       <h3 style="margin-bottom: 10px; font-family: var(--font-alt); color: var(--primary);">${item.client}</h3>
-      <p style="color: var(--text-secondary); margin-bottom: 30px; font-weight: 600;">${item.time} - ${item.service}</p>
+      <p style="color: var(--text-secondary); margin-bottom: 30px; font-weight: 600;">${item.time} — ${calculateEndTime(item.time, item.duracao)} | ${item.service}</p>
       
       <div class="flex flex-col gap-md w-full">
         ${item.status === 'pendente' ? `
