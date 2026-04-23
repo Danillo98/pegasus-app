@@ -242,6 +242,27 @@ function ensureCountryCode(ph) {
   return ph;
 }
 
+function getTrialStatus() {
+  if (!appState.profile || !appState.profile.created_at) return { isExpired: false, remainingDays: 7 }
+  
+  // If user has an active subscription, they are not on trial
+  if (appState.profile.subscription_status === 'active') {
+    return { isExpired: false, isSubscriber: true }
+  }
+
+  const createdDate = new Date(appState.profile.created_at)
+  const now = new Date()
+  const diffTime = now - createdDate
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+  const remaining = 7 - diffDays
+  
+  return { 
+    isExpired: remaining <= 0, 
+    remainingDays: Math.max(0, remaining),
+    isSubscriber: false
+  }
+}
+
 function getInitialDayData() {
   return [
     { time: '09:00', client: 'Disponível', service: '', status: 'livre' },
@@ -522,6 +543,16 @@ function attachAgendaEvents() {
 
 function render() {
   const root = document.getElementById('app')
+  if (!root) return
+
+  // ── Global Subscription/Trial Lock ──
+  if (appState.user && appState.profile && appState.screen !== 'assinaturas') {
+     const trial = getTrialStatus()
+     if (trial.isExpired) {
+        appState.screen = 'assinaturas'
+     }
+  }
+
   document.body.className = `mode-${appState.theme}`
 
   // Only scroll to top if screen actually changed
@@ -1258,7 +1289,16 @@ function renderDashboard() {
               ${appState.theme === 'salao' ? 'Salão' : appState.theme}
              </span>
           </div>
-          <button id="btn-logout" style="color: var(--text-secondary); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; margin-left: 2rem;">Sair</button>
+          <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 1rem;">
+            ${(() => {
+              const trial = getTrialStatus()
+              if (trial.isSubscriber) return ''
+              return `<span style="font-size: 0.65rem; font-weight: 800; color: ${trial.remainingDays <= 2 ? 'var(--red)' : 'var(--text-secondary)'}; background: ${trial.remainingDays <= 2 ? 'rgba(239,68,68,0.08)' : 'var(--surface)'}; padding: 4px 10px; border-radius: 999px; letter-spacing: 0.5px;">
+                FALTAM ${trial.remainingDays} DIA${trial.remainingDays !== 1 ? 'S' : ''} GRÁTIS
+              </span>`
+            })()}
+            <button id="btn-logout" style="color: var(--text-secondary); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">Sair</button>
+          </div>
         </header>
 
         <div id="dash-ptr-container" style="overflow-y:auto;height:calc(100vh - 80px);">
@@ -1471,14 +1511,18 @@ function renderAgenda() {
           <h2 style="font-family:var(--font-alt);font-size:1.1rem;font-weight:800;letter-spacing:1px;color:var(--text-secondary);">PROGRAMAÇÃO DO DIA</h2>
           <button id="btn-edit-horario" title="Editar horário de funcionamento" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:0.25rem;display:flex;align-items:center;opacity:0.6;">
             ${icons.edit}
+            <style>#btn-edit-horario:hover { opacity:1; }</style>
+          </button>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:0.4rem; align-items:flex-start;">
+          <button id="btn-whatsapp-business" style="background:var(--surface2); color:var(--text-secondary); border:1px solid var(--border); padding:4px 10px; border-radius:999px; font-weight:700; font-size:0.55rem; display:flex; align-items:center; gap:5px; align-self:flex-start; cursor:pointer; transition:all 0.2s; opacity:0.75; letter-spacing:0.3px;">
+            <div style="transform:scale(0.6); display:flex; color:#25D366;">${icons.whatsapp}</div>
+            AUTOMATIZAR WHATSAPP BUSINESS
+            <style>#btn-whatsapp-business:active { transform: scale(0.96); background:var(--border); }</style>
           </button>
           ${pausaBadge}
         </div>
-        <button id="btn-whatsapp-business" style="background:var(--surface2); color:var(--text-secondary); border:1px solid var(--border); padding:4px 10px; border-radius:999px; font-weight:700; font-size:0.55rem; display:flex; align-items:center; gap:5px; align-self:flex-start; cursor:pointer; transition:all 0.2s; opacity:0.75; letter-spacing:0.3px;">
-          <div style="transform:scale(0.6); display:flex; color:#25D366;">${icons.whatsapp}</div>
-          AUTOMATIZAR WHATSAPP BUSINESS
-          <style>#btn-whatsapp-business:active { transform: scale(0.96); background:var(--border); }</style>
-        </button>
       </div>
 
       <div class="agenda-list flex flex-col gap-md" style="padding-bottom:10rem;">
@@ -1656,7 +1700,14 @@ function renderFazPausaModal() {
         </div>
       </div>
       <label style="display:flex;align-items:flex-start;gap:0.75rem;padding:1rem;border-radius:0.85rem;border:1.5px solid var(--border);cursor:pointer;margin-bottom:1.25rem;">
-        <input type="checkbox" id="encerrar-dia" style="width:18px;height:18px;accent-color:var(--primary);margin-top:2px;flex-shrink:0;">
+        <div style="position:relative; width:20px; height:20px; flex-shrink:0; margin-top:2px;">
+          <input type="checkbox" id="encerrar-dia" style="position:absolute; opacity:0; cursor:pointer; height:0; width:0;">
+          <div id="custom-check" style="height:20px; width:20px; background-color:var(--surface); border:2px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; color:white; font-size:14px; font-weight:900; transition: all 0.2s;"></div>
+          <style>
+            #encerrar-dia:checked ~ #custom-check { background-color:var(--primary); border-color:var(--primary); }
+            #encerrar-dia:checked ~ #custom-check::after { content: '✓'; }
+          </style>
+        </div>
         <span style="font-size:0.875rem;font-weight:600;color:var(--text-main);">Encerrar o dia a partir deste horário<br><span style="color:var(--text-secondary);font-size:0.78rem;">Nenhum agendamento será aceito pelo restante do dia</span></span>
       </label>
       <button id="btn-confirmar-pausa" style="width:100%;padding:1.1rem;border-radius:1rem;background:var(--primary);color:var(--on-primary);font-weight:900;font-size:0.88rem;letter-spacing:1.5px;border:none;cursor:pointer;">CONFIRMAR PAUSA</button>
