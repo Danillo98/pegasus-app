@@ -1445,7 +1445,7 @@ function renderAgenda() {
 
   return renderTabHeader(formatDate(appState.selectedDate), `
     <div id="ptr-container" style="overflow-y:auto;height:calc(100vh - 120px);">
-    <div class="agenda-content p-lg animate-fade-in" style="max-width:50rem;margin:0 auto;padding:1.25rem;">
+    <div class="agenda-content p-lg animate-fade-in" style="max-width:50rem;margin:0 auto;padding:1.25rem;padding-bottom:140px;">
 
       <!-- Pull-to-refresh indicator -->
       <div id="ptr-indicator" style="display:none;flex-direction:column;align-items:center;gap:0.5rem;padding:1rem 0 0.5rem;">
