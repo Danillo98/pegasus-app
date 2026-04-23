@@ -180,8 +180,9 @@ let appState = {
   mpConnectError: null,
   selectedDate: new Date(),
   viewingDate: new Date(), // For calendar navigation
-  showModal: null,
+  showModal: null, // 'perfil', 'pausa', 'whatsapp', 'novo-agendamento', 'edit-agendamento'
   activeAgendaItem: null,
+  editingAgendamento: null,
   agendaData: {},
   excecoesDia: [], // pauses / blocks for current day from excecoes_agenda table
   pixModal: null, // { qr_code, qr_code_b64, ticket_url, valor, agendamento_id }
@@ -308,6 +309,7 @@ async function syncAgendaData() {
         time: dbItem.hora_agendamento?.slice(0, 5),
         duracao: dbItem.duracao_minutos || 30,
         client: dbItem.cliente_nome || 'Cliente',
+        phone: dbItem.cliente_telefone || '',
         service: dbItem.servico_nome,
         status: (dbItem.agendamento_status || 'Pendente').toLowerCase(),
         valor_total: dbItem.valor_total
@@ -336,6 +338,21 @@ function attachAgendaEvents() {
       render()
     })
   }
+
+  // Edit Reservation
+  document.querySelectorAll('.btn-ag-edit').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation()
+      const index = el.dataset.index
+      const dayKey = getAgendaDayKey(appState.selectedDate)
+      const item = appState.agendaData[dayKey][index]
+      if (item) {
+        appState.editingAgendamento = { ...item, dayKey }
+        appState.showModal = 'edit-agendamento'
+        render()
+      }
+    })
+  })
 
   const container = document.getElementById('ptr-container')
   if (!container) return
@@ -494,7 +511,7 @@ function render() {
   }
 
   // Auto-fetch servicos
-  if (appState.screen === 'servicos' && !appState.servicosLoaded && appState.user) {
+  if ((appState.screen === 'servicos' || appState.screen === 'agenda') && !appState.servicosLoaded && appState.user) {
     supabase.from('servicos').select('*').eq('estabelecimento_id', appState.user.id).order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (!error && data) appState.servicosAtivos = data;
@@ -573,12 +590,12 @@ function render() {
     })
   }
 
-  if (appState.showModal === 'new-agendamento') {
+  if (appState.showModal === 'new-agendamento' || appState.showModal === 'edit-agendamento') {
     const modalOverlay = document.createElement('div')
     modalOverlay.className = 'overlay'
-    modalOverlay.innerHTML = renderNewAgendamentoModal()
+    modalOverlay.innerHTML = appState.showModal === 'new-agendamento' ? renderNewAgendamentoModal() : renderEditAgendamentoModal()
     root.appendChild(modalOverlay)
-    attachNewAgendamentoEvents()
+    attachAgendamentoModalEvents()
   }
 
   if (appState.showModal === 'calendar') {
@@ -1340,21 +1357,39 @@ function renderAgenda() {
         <div class="agenda-item card ripple" data-index="${index}" style="cursor:pointer; padding:0; align-items:stretch; overflow:hidden; display:flex; flex-direction:column; border-radius:18px; ${cardStyle}">
           <!-- Header: Time | Price -->
           <div style="display:flex; border-bottom: 1px solid var(--border); background:rgba(0,0,0,0.01);">
-            <div style="flex:1.4; padding:12px; text-align:center; border-right:1px solid var(--border); font-weight:800; font-size:1.1rem; color:var(--text-main); display:flex; align-items:center; justify-content:center; gap:6px;">
+            <div style="flex:1.4; padding:12px; text-align:center; border-right:1px solid var(--border); font-weight:800; font-size:1.1rem; color:var(--text-main); display:flex; align-items:center; justify-content:center; gap:8px; position:relative;">
               <span>🕒</span> ${item.time} <span style="opacity:0.3; margin: 0 2px;">—</span> ${calculateEndTime(item.time, item.duracao)}
+              <!-- Edit Button (Next to time) -->
+              <button class="btn-ag-edit" data-index="${index}" onclick="event.stopPropagation()" style="background:none; border:none; cursor:pointer; color:var(--text-secondary); opacity:0.4; display:flex; transform:scale(0.8); transition:opacity 0.2s; margin-left:4px;">
+                ${icons.edit}
+                <style>.btn-ag-edit:hover { opacity:1; }</style>
+              </button>
             </div>
             <div style="flex:1; padding:12px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--text-main);">${valorDisplay}</div>
           </div>
 
-          <!-- Body: Name & Services -->
-          <div style="padding: 0.4rem 1rem 0.75rem 1rem; display:flex; flex-direction:column; gap:0.6rem; text-align:center;">
-            <h4 style="font-family:var(--font-body); font-weight:800; font-size:1.15rem; color:var(--text-main); margin:0; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding: 0 5px;">
-              ${item.client}
-            </h4>
-            ${item.service ? `
-              <p style="color:var(--text-secondary); font-size:0.85rem; font-weight:600; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.4; opacity:0.8;">
-                ${item.service}
-              </p>` : ''}
+          <div style="display:flex; align-items:stretch; flex:1; position:relative;">
+            <!-- Body: Name & Services -->
+            <div style="padding: 0.4rem 1rem 0.75rem 1rem; display:flex; flex-direction:column; gap:0.4rem; text-align:center; flex:1; justify-content:center;">
+              <h4 style="font-family:var(--font-body); font-weight:800; font-size:1.1rem; color:var(--text-main); margin:0; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                ${item.client}
+              </h4>
+              ${item.service ? `
+                <p style="color:var(--text-secondary); font-size:0.8rem; font-weight:600; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.3; opacity:0.8;">
+                  ${item.service}
+                </p>` : ''}
+            </div>
+
+            <!-- Sidebar Actions (Right Side) -->
+            <div style="width:40px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:10px 0;">
+              <!-- WhatsApp Contact Button -->
+              ${item.phone ? `
+                <a href="https://wa.me/${item.phone.replace(/\D/g,'')}" target="_blank" onclick="event.stopPropagation()" style="color:#25D366; width:22px; height:22px; display:flex; align-items:center; justify-content:center; transition:transform 0.2s; opacity:0.9;">
+                  <div style="display:flex;">${icons.whatsapp}</div>
+                  <style>a[href^="https://wa.me"]:active { transform: scale(1.2); }</style>
+                </a>
+              ` : ''}
+            </div>
           </div>
 
           <!-- Footer: overdue warning OR pending confirm -->
@@ -1406,7 +1441,7 @@ function renderAgenda() {
         <span style="font-size:0.75rem;color:var(--text-secondary);font-weight:700;">↓ Solte para atualizar</span>
       </div>
 
-      <div class="flex justify-between items-center" style="margin-bottom:2rem;">
+      <div class="flex flex-col gap-sm" style="margin-bottom:2rem;">
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.4rem;">
           <h2 style="font-family:var(--font-alt);font-size:1.1rem;font-weight:800;letter-spacing:1px;color:var(--text-secondary);">PROGRAMAÇÃO DO DIA</h2>
           <button id="btn-edit-horario" title="Editar horário de funcionamento" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:0.25rem;display:flex;align-items:center;opacity:0.6;">
@@ -1414,9 +1449,10 @@ function renderAgenda() {
           </button>
           ${pausaBadge}
         </div>
-        <button id="btn-whatsapp-business" title="Mensagem Automática WhatsApp" style="background:none;border:none;cursor:pointer;color:#25D366;padding:0.5rem;display:flex;align-items:center;transition:transform 0.2s;">
-          ${icons.whatsapp}
-          <style>#btn-whatsapp-business:active { transform: scale(1.2); }</style>
+        <button id="btn-whatsapp-business" style="background:var(--surface2); color:var(--text-secondary); border:1px solid var(--border); padding:4px 10px; border-radius:999px; font-weight:700; font-size:0.55rem; display:flex; align-items:center; gap:5px; align-self:flex-start; cursor:pointer; transition:all 0.2s; opacity:0.75; letter-spacing:0.3px;">
+          <div style="transform:scale(0.6); display:flex; color:#25D366;">${icons.whatsapp}</div>
+          AUTOMATIZAR WHATSAPP BUSINESS
+          <style>#btn-whatsapp-business:active { transform: scale(0.96); background:var(--border); }</style>
         </button>
       </div>
 
@@ -1602,16 +1638,17 @@ function renderFazPausaModal() {
     </div>`
 }
 
-function renderServiceSearchSelect(inputId, listId, services) {
+function renderServiceSearchSelect(inputId, listId, services, selectedNames = []) {
   if (!services || services.length === 0) {
     return `<p style="font-size:0.85rem; color: var(--text-secondary); padding: 12px; border: 1px dashed var(--border); border-radius: 12px; text-align:center;">
       Nenhum serviço cadastrado. Adicione em <strong>Serviços Fornecidos</strong> primeiro.
     </p>`
   }
+  const initialText = selectedNames.length > 0 ? selectedNames.join(', ') : '';
   return `
     <div style="position:relative;">
       <div style="position:relative;">
-        <input type="text" id="${inputId}" autocomplete="off" placeholder="Buscar serviço..."
+        <input type="text" id="${inputId}" autocomplete="off" placeholder="Buscar serviço..." value="${initialText}"
           style="padding: 14px 14px 14px 40px; border-radius: 12px; width: 100%; box-sizing: border-box; border: 1.5px solid var(--border); background: var(--surface); font-family: inherit; font-size: 1rem; transition: all 0.2s;">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
           style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text-secondary); pointer-events:none;">
@@ -1619,14 +1656,16 @@ function renderServiceSearchSelect(inputId, listId, services) {
         </svg>
       </div>
       <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:225px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 1000; box-shadow: var(--shadow-lg);">
-        ${services.map(s => `
+        ${services.map(s => {
+          const isChecked = selectedNames.includes(s.nome);
+          return `
           <label class="service-opt" data-nome="${s.nome}">
-            <input type="checkbox" value="${s.nome}">
+            <input type="checkbox" value="${s.nome}" ${isChecked ? 'checked' : ''}>
             <span>${s.nome} <span class="price-tag">(R$ ${parseFloat(s.preco || 0).toFixed(2).replace('.', ',')})</span></span>
           </label>
-        `).join('')}
+        `}).join('')}
       </div>
-      <input type="hidden" id="${inputId}-selected" value="[]">
+      <input type="hidden" id="${inputId}-selected" value='${JSON.stringify(selectedNames)}'>
     </div>
   `
 }
@@ -1733,6 +1772,54 @@ function renderQuickBookModal() {
         
         <button id="btn-confirm-quick" style="background: var(--primary); color: var(--on-primary); padding: 18px; border-radius: 12px; font-weight: 800; margin-top: 15px;">CONFIRMAR AGENDAMENTO</button>
         <button id="btn-close-quick" style="color: var(--text-secondary); font-weight: 700; text-align: center; margin-top: 10px;">CANCELAR</button>
+      </div>
+    </div>
+  `
+}
+
+function renderEditAgendamentoModal() {
+  const item = appState.editingAgendamento;
+  if (!item) return '';
+
+  const selectedServices = item.service ? item.service.split(' + ') : [];
+
+  return `
+    <div class="card animate-fade-in" style="max-width: 450px; width: 90%; padding: 32px; align-items: stretch; text-align: left; border-radius: 24px;">
+      <button id="btn-close-modal" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);line-height:1;padding:0.5rem;z-index:99;">✕</button>
+      <div class="flex justify-between items-center" style="margin-bottom: 24px;">
+        <h3 style="font-family: var(--font-alt); font-size: 1.2rem; color: var(--primary);">EDITAR RESERVA</h3>
+      </div>
+      
+      <div class="flex flex-col gap-md">
+        <div class="flex flex-col gap-xs">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Serviço Desejado</label>
+          ${renderServiceSearchSelect('modal-service-search', 'modal-service-list', appState.servicosAtivos, selectedServices)}
+        </div>
+
+        <div class="flex flex-col gap-xs">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Nome do Cliente</label>
+          <input type="text" id="modal-client-name" value="${item.client}" placeholder="Ex: João Silva" maxlength="50" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
+        </div>
+        
+        <div class="flex flex-col gap-xs">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Telefone (Opcional)</label>
+          <input type="tel" id="modal-client-phone" value="${item.phone || ''}" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
+        </div>
+        
+        <div class="modal-grid">
+          <div class="flex flex-col gap-xs">
+            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Data</label>
+            <input type="date" id="modal-date" value="${item.dayKey}" style="padding: 14px; border-radius: 12px; font-family: inherit;">
+          </div>
+          <div class="flex flex-col gap-xs">
+            <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Horário</label>
+            <input type="time" id="modal-time" value="${item.time}" style="padding: 14px 10px; border-radius: 12px; font-family: inherit; text-align: center;">
+          </div>
+        </div>
+        
+        <button id="btn-save-agendamento" style="background: var(--primary); color: var(--on-primary); padding: 18px; border-radius: 12px; font-weight: 800; margin-top: 10px; letter-spacing: 1px;">
+          SALVAR ALTERAÇÕES
+        </button>
       </div>
     </div>
   `
@@ -3020,22 +3107,24 @@ function attachCalendarModalEvents() {
   })
 }
 
-function attachNewAgendamentoEvents() {
+function attachAgendamentoModalEvents() {
+  const isEdit = appState.showModal === 'edit-agendamento'
   const btnClose = document.getElementById('btn-close-modal')
   const btnSave = document.getElementById('btn-save-agendamento')
   const overlay = document.querySelector('.overlay')
 
   if (btnClose) btnClose.addEventListener('click', () => {
     appState.showModal = null
+    appState.editingAgendamento = null
     render()
   })
 
   if (overlay) overlay.addEventListener('click', (e) => {
-    // Only close if click is directly on the overlay AND the service list is not open
     const serviceList = document.getElementById('modal-service-list')
     const isListOpen = serviceList && serviceList.style.display !== 'none'
     if (e.target === overlay && !isListOpen) {
       appState.showModal = null
+      appState.editingAgendamento = null
       render()
     }
   })
@@ -3052,19 +3141,14 @@ function attachNewAgendamentoEvents() {
     const serviceHidden = document.getElementById('modal-service-search-selected')
     let selectedCount = 0
     try { selectedCount = JSON.parse(serviceHidden ? serviceHidden.value : '[]').length } catch(e) {}
-
     const isValid = name !== '' && date !== '' && time !== '' && selectedCount > 0
-    
     if (btnSave) {
       btnSave.disabled = !isValid
       btnSave.style.opacity = isValid ? '1' : '0.5'
-      btnSave.style.cursor = isValid ? 'pointer' : 'not-allowed'
     }
   }
 
-  // Initial check
   checkFormValidity()
-
   if (nameInput) nameInput.addEventListener('input', checkFormValidity)
   if (dateInputEl) dateInputEl.addEventListener('input', checkFormValidity)
   if (timeInputEl) timeInputEl.addEventListener('input', checkFormValidity)
@@ -3079,25 +3163,25 @@ function attachNewAgendamentoEvents() {
     })
   }
 
-    if (btnSave) btnSave.addEventListener('click', async () => {
+  if (btnSave) btnSave.addEventListener('click', async () => {
     btnSave.disabled = true
-    const name = document.getElementById('modal-client-name').value
-    const phone = document.getElementById('modal-client-phone').value || ''
-    const dateInput = document.getElementById('modal-date').value
-    const time = document.getElementById('modal-time').value
+    const name = nameInput.value.trim()
+    const phone = phoneInput ? phoneInput.value.trim() : ''
+    const dateInput = dateInputEl.value
+    const time = timeInputEl.value
     const serviceHidden = document.getElementById('modal-service-search-selected')
     let selectedNames = []
     try { selectedNames = JSON.parse(serviceHidden ? serviceHidden.value : '[]') } catch(e) {}
 
     if (!name || !dateInput || !time || selectedNames.length === 0) {
-      alert('Por favor, preencha todos os campos e selecione os serviços.')
+      alert('Por favor, preencha todos os campos.')
       btnSave.disabled = false
       return
     }
 
     const serviceNome = selectedNames.join(', ')
-
     let valorTotal = 0
+    let duracaoTotal = 0
     let taxaTotalReserva = 0
     let cobraReserva = false
     let firstServiceId = null
@@ -3105,47 +3189,21 @@ function attachNewAgendamentoEvents() {
     selectedNames.forEach(sn => {
       const servico = appState.servicosAtivos.find(s => s.nome === sn)
       if (servico) {
-         valorTotal += Number(servico.preco || 0)
-         if (!firstServiceId) firstServiceId = servico.id
-         if (servico.cobra_reserva) {
-           cobraReserva = true
-           taxaTotalReserva += Number(servico.taxa_reserva || 0)
-         }
+        valorTotal += Number(servico.preco || 0)
+        duracaoTotal += Number(servico.duracao_minutos || 30)
+        if (!firstServiceId) firstServiceId = servico.id
+        if (servico.cobra_reserva) {
+          cobraReserva = true
+          taxaTotalReserva += Number(servico.taxa_reserva || 0)
+        }
       }
     })
 
     const date = new Date(dateInput + 'T12:00:00')
     const dayKey = getAgendaDayKey(date)
 
-    if (!appState.agendaData[dayKey]) {
-      appState.agendaData[dayKey] = []
-    }
-
-    const newEntry = { 
-      time, 
-      client: name, 
-      service: serviceNome, 
-      status: cobraReserva ? 'pendente' : 'confirmado',
-      cobraReserva,
-      taxaReserva: taxaTotalReserva,
-      valorTotal: valorTotal
-    }
-
-    appState.agendaData[dayKey].push(newEntry)
-    appState.agendaData[dayKey].sort((a,b) => a.time.localeCompare(b.time))
-
-    // Optimistic Save complete
-    appState.selectedDate = date
-    appState.showModal = null
-    btnSave.disabled = false
-    
-    if (cobraReserva) {
-      alert('Reserva criada! Aguardando o cliente enviar o comprovante do PIX para confirmar.')
-    }
-    render()
-
-    // Background DB Sync
-    supabase.from('agendamentos').insert([{
+    // DB Payload
+    const payload = {
       estabelecimento_id: appState.user?.id,
       cliente_nome: name,
       cliente_telefone: phone,
@@ -3153,18 +3211,38 @@ function attachNewAgendamentoEvents() {
       servico_id: firstServiceId,
       data_agendamento: dateInput,
       hora_agendamento: time,
-      agendamento_status: cobraReserva ? 'Pendente' : 'Confirmado',
-      pagamento_status: !cobraReserva,
-      taxa_reserva: cobraReserva ? taxaTotalReserva : 0,
+      duracao_minutos: duracaoTotal,
       valor_total: valorTotal
-    }]).select().single().then(({ data: dbData, error }) => {
+    }
+
+    if (isEdit && appState.editingAgendamento.id) {
+      // UPDATE
+      const { error } = await supabase.from('agendamentos').update(payload).eq('id', appState.editingAgendamento.id)
       if (error) {
-        console.error('Erro ao salvar agendamento no bd', error)
-        alert('Erro ao sincronizar com o banco de dados. Verifique sua conexão.')
-      } else if (dbData) {
-        newEntry.id = dbData.id
+        alert('Erro ao atualizar: ' + error.message)
+        btnSave.disabled = false
+        return
       }
-    })
+    } else {
+      // INSERT
+      payload.agendamento_status = cobraReserva ? 'Pendente' : 'Confirmado'
+      payload.pagamento_status = !cobraReserva
+      payload.taxa_reserva = cobraReserva ? taxaTotalReserva : 0
+      
+      const { error } = await supabase.from('agendamentos').insert([payload])
+      if (error) {
+        alert('Erro ao salvar: ' + error.message)
+        btnSave.disabled = false
+        return
+      }
+    }
+
+    // Refresh and close
+    await syncAgendaData()
+    appState.selectedDate = date
+    appState.showModal = null
+    appState.editingAgendamento = null
+    render()
   })
 }
 
