@@ -1701,11 +1701,20 @@ function renderFazPausaModal() {
       </div>
       <label style="display:flex;align-items:flex-start;gap:0.75rem;padding:1rem;border-radius:0.85rem;border:1.5px solid var(--border);cursor:pointer;margin-bottom:1.25rem;">
         <div style="position:relative; width:20px; height:20px; flex-shrink:0; margin-top:2px;">
-          <input type="checkbox" id="encerrar-dia" style="position:absolute; opacity:0; cursor:pointer; height:0; width:0;">
-          <div id="custom-check" style="height:20px; width:20px; background-color:var(--surface); border:2px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; color:white; font-size:14px; font-weight:900; transition: all 0.2s;"></div>
+          <input type="checkbox" id="encerrar-dia" style="position:absolute; opacity:0; cursor:pointer; height:20px; width:20px; z-index: 2; margin:0;">
+          <div id="custom-check" style="position:absolute; top:0; left:0; height:20px; width:20px; background-color:var(--surface); border:2px solid var(--border); border-radius:6px; display:flex; align-items:center; justify-content:center; transition: all 0.2s; z-index: 1;"></div>
           <style>
-            #encerrar-dia:checked ~ #custom-check { background-color:var(--primary); border-color:var(--primary); }
-            #encerrar-dia:checked ~ #custom-check::after { content: '✓'; }
+            #encerrar-dia:checked + #custom-check { 
+              background-color: var(--primary) !important; 
+              border-color: var(--primary) !important; 
+            }
+            #encerrar-dia:checked + #custom-check::after { 
+              content: '✓'; 
+              color: white; 
+              font-size: 14px; 
+              font-weight: 900; 
+              display: block;
+            }
           </style>
         </div>
         <span style="font-size:0.875rem;font-weight:600;color:var(--text-main);">Encerrar o dia a partir deste horário<br><span style="color:var(--text-secondary);font-size:0.78rem;">Nenhum agendamento será aceito pelo restante do dia</span></span>
