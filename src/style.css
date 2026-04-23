@@ -427,6 +427,29 @@ select:focus {
   font-weight: 500;
 }
 
+/* ── Agenda Item Scrolling Optimization ── */
+.agenda-item.card {
+  transform: none !important;
+  transition: background-color 0.2s ease !important;
+  touch-action: pan-y !important; /* Allow vertical scroll even when touching the card */
+  user-select: none;
+}
+
+.agenda-item.card:hover {
+  transform: none !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-color: var(--border) !important;
+}
+
+.agenda-item.card:active {
+  background-color: var(--surface-hover) !important;
+}
+
+.agenda-item.card .btn-ag-edit:active {
+  opacity: 1 !important;
+  transform: scale(1.1) !important;
+}
+
 /* ── Print Styles (Relatórios) ── */
 @media print {
   @page {

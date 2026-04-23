@@ -456,10 +456,23 @@ function attachAgendaEvents() {
     })
   }
 
+  let touchStartY = 0;
   document.querySelectorAll('.agenda-item').forEach(el => {
+    el.addEventListener('touchstart', (e) => {
+      touchStartY = e.touches[0].pageY;
+    }, { passive: true });
+
     el.addEventListener('click', (e) => {
+      // Ignore if moved more than 10px (likely a scroll)
+      const touchEndY = e.pageY || (e.changedTouches ? e.changedTouches[0].pageY : 0);
+      if (touchStartY > 0 && Math.abs(touchEndY - touchStartY) > 10) {
+        touchStartY = 0;
+        return;
+      }
+      touchStartY = 0;
+
       // Ignore click if it was on action buttons
-      if (e.target.closest('.btn-ag-accept') || e.target.closest('.btn-ag-reject')) return;
+      if (e.target.closest('.btn-ag-accept') || e.target.closest('.btn-ag-reject') || e.target.closest('.btn-ag-edit')) return;
 
       const idx = parseInt(el.dataset.index)
       const dayKey = getAgendaDayKey(appState.selectedDate)
