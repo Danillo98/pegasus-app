@@ -410,7 +410,7 @@
 
     /* ── Init ── */
     const params = new URLSearchParams(location.search);
-    state.estabId = params.get('estab');
+    state.estabId = params.get('estab')?.trim();
     state.clienteName = params.get('nome') || '';
     state.clientePhone = formatPhone(params.get('telefone') || params.get('phone') || '');
 
@@ -428,7 +428,10 @@
           sb.from('estabelecimentos').select('nome_completo, tipo, chave_pix, dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao').eq('id', state.estabId).single(),
           sb.from('servicos').select('id, nome, preco, duracao_minutos, cobra_reserva, taxa_reserva').eq('estabelecimento_id', state.estabId).order('nome')
         ]);
+        
         if (estabRes.error) throw estabRes.error;
+        if (servicosRes.error) throw servicosRes.error;
+
         state.estab = estabRes.data;
         state.servicos = servicosRes.data || [];
 
@@ -442,8 +445,12 @@
 
         renderStep1();
       } catch (e) {
-        document.getElementById('main').innerHTML = `<div class="error-msg">❌ Não foi possível carregar. Tente novamente.</div>`;
-        console.error(e);
+        document.getElementById('main').innerHTML = `
+          <div class="error-msg">
+            ❌ Não foi possível carregar o estabelecimento.<br>
+            <small style="opacity:0.7; font-size: 0.75rem;">Erro: ${e.message || e}</small>
+          </div>`;
+        console.error('[bootstrap] Erro fatal:', e);
       }
     }
 
