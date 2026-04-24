@@ -61,6 +61,22 @@ async function handleMpCallback() {
   const params = new URLSearchParams(window.location.search)
   const code = params.get('code')
   const state = params.get('state') // contains user_id
+  const payment = params.get('payment')
+
+  if (payment === 'success') {
+    window.history.replaceState({}, document.title, window.location.pathname)
+    alert('Assinatura processada com sucesso! Em instantes seu acesso será liberado.')
+    // Re-fetch profile to check if webhook updated the database
+    if (appState.user) {
+      setTimeout(async () => {
+        const { data: profile } = await supabase.from('estabelecimentos').select('*').eq('id', appState.user.id).single()
+        if (profile) {
+           appState.profile = profile
+           render()
+        }
+      }, 3000)
+    }
+  }
 
   if (!code || !state) return
 
@@ -169,12 +185,19 @@ window.alert = function(message) {
   render();
 };
 
+// --- Constants ---
+const STRIPE_PRICE_IDS = {
+  mensal: 'price_1TPkLk2MoHdp9hlMnuCK3CaD', 
+  anual: 'price_1TPkMK2MoHdp9hlMmwIGPIc0'    
+}
+
 // State
 let appState = {
   theme: 'barbearia',
   screen: 'login', // 'login', 'dashboard', etc.
   loginSubScreen: 'default', // 'default', 'forgot', 'register'
   user: null,
+  profile: null,
   customAlert: null,
   mpConnectSuccess: false,
   mpConnectError: null,
@@ -4482,10 +4505,43 @@ function attachServicosEvents() {
     })
   })
 }
+async function stripeCheckout(priceId) {
+  if (!appState.user) return alert('Você precisa estar logado.')
+
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) throw new Error('Sessão expirada. Entre novamente.')
+
+    const res = await fetch('https://fdoecadsyvbhjgasdbxk.supabase.co/functions/v1/stripe-checkout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({
+        priceId: priceId,
+        estabelecimentoId: appState.user.id,
+        email: appState.user.email,
+        origin: window.location.origin
+      })
+    })
+
+    const { url, error } = await res.json()
+    if (error) throw new Error(error)
+    if (url) window.location.href = url
+
+  } catch (err) {
+    console.error('Erro Stripe Checkout:', err)
+    alert('Erro ao iniciar pagamento: ' + err.message)
+  }
+}
+
 function attachAssinaturasEvents() {
   attachGenericBack()
   const cardMensal = document.getElementById('card-mensal')
   const cardAnual = document.getElementById('card-anual')
+  const btnMensal = document.getElementById('btn-subscribe-mensal')
+  const btnAnual = document.getElementById('btn-subscribe-anual')
 
   if (cardMensal) {
     cardMensal.addEventListener('click', () => {
@@ -4493,6 +4549,28 @@ function attachAssinaturasEvents() {
       render()
     })
   }
+  if (cardAnual) {
+    cardAnual.addEventListener('click', () => {
+      appState.selectedAssinatura = 'anual'
+      render()
+    })
+  }
+
+  if (btnMensal) {
+    btnMensal.addEventListener('click', (e) => {
+      e.stopPropagation()
+      btnMensal.textContent = 'CARREGANDO...'
+      stripeCheckout(STRIPE_PRICE_IDS.mensal)
+    })
+  }
+  if (btnAnual) {
+    btnAnual.addEventListener('click', (e) => {
+      e.stopPropagation()
+      btnAnual.textContent = 'CARREGANDO...'
+      stripeCheckout(STRIPE_PRICE_IDS.anual)
+    })
+  }
+}
 
   if (cardAnual) {
     cardAnual.addEventListener('click', () => {
