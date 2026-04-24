@@ -4572,14 +4572,6 @@ function attachAssinaturasEvents() {
   }
 }
 
-  if (cardAnual) {
-    cardAnual.addEventListener('click', () => {
-      appState.selectedAssinatura = 'anual'
-      render()
-    })
-  }
-}
-
 // ─── Helper: Cria agendamento no banco e PIX se tiver taxa ─────────────────
 async function criarAgendamentoComPix({ clienteNome, servicoId, servicoNome, data, horario, cobraReserva, taxaReserva }) {
   const userId = appState.user?.id
