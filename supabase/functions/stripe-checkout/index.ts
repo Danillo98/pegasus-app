@@ -28,7 +28,7 @@ serve(async (req) => {
       throw new Error('Parâmetros obrigatórios ausentes.')
     }
 
-    const baseUrl = origin || 'https://pegasus-gestao-app.web.app'
+    const baseUrl = origin || 'https://pegasusapp.com.br'
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card', 'boleto'],

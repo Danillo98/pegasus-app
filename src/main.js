@@ -237,6 +237,17 @@ let appState = {
     chargeReserva: false,
     reservaValue: ''
   },
+  funcionariosAtivos: [],
+  funcionariosLoaded: false,
+  funcionariosForm: {
+    nome: '',
+    cargo: '',
+    telefone: ''
+  },
+  editingFuncionarioId: null,
+  editingFuncionarioForm: {},
+  deleteFuncionarioId: null,
+  financeiroAuth: false,
 }
 window.appState = appState;
 
@@ -331,6 +342,8 @@ const icons = {
   calendar: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-days"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg>',
   suporte: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-headset"><path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/></svg>',
   whatsapp: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.414 0 .018 5.396.015 12.035c0 2.123.554 4.197 1.604 6.023L0 24l6.135-1.61a11.757 11.757 0 005.91 1.583h.005c6.637 0 12.032-5.397 12.035-12.035a11.794 11.794 0 00-3.483-8.497"/></svg>',
+  configuracoes: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>',
+  funcionarios: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="7" r="4"/><path d="M22 21a8 8 0 0 0-2-15"/><circle cx="19" cy="11" r="2"/></svg>',
 }
 
 async function syncAgendaData() {
@@ -368,7 +381,8 @@ async function syncAgendaData() {
         phone: dbItem.cliente_telefone || '',
         service: dbItem.servico_nome,
         status: (dbItem.agendamento_status || 'Pendente').toLowerCase(),
-        valor_total: dbItem.valor_total
+        valor_total: dbItem.valor_total,
+        funcionario_id: dbItem.funcionario_id
       });
     });
   }
@@ -590,21 +604,37 @@ function render() {
   }
 
   // Auto-fetch servicos
-  if ((appState.screen === 'servicos' || appState.screen === 'agenda') && !appState.servicosLoaded && appState.user) {
+  if ((appState.screen === 'servicos' || appState.screen === 'agenda') && !appState.servicosLoaded && appState.user && !appState.isFetchingServicos) {
+    appState.isFetchingServicos = true;
     supabase.from('servicos').select('*').eq('estabelecimento_id', appState.user.id).order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (!error && data) appState.servicosAtivos = data;
         appState.servicosLoaded = true;
+        appState.isFetchingServicos = false;
         render();
       })
   }
 
   // Auto-fetch financas
-  if (appState.screen === 'financas' && !appState.financasData.loaded && appState.user) {
+  if (appState.screen === 'financas' && !appState.financasData.loaded && appState.user && !appState.isFetchingFinancas) {
+    appState.isFetchingFinancas = true;
     supabase.from('transacoes_financeiras').select('*').eq('estabelecimento_id', appState.user.id).order('data_transacao', { ascending: false })
       .then(({ data, error }) => {
         if (!error && data) appState.financasData.transactions = data.map(dbTransToLocal);
         appState.financasData.loaded = true;
+        appState.isFetchingFinancas = false;
+        render();
+      })
+  }
+
+  // Auto-fetch funcionarios (Global)
+  if (!appState.funcionariosLoaded && appState.user && !appState.isFetchingFuncionarios) {
+    appState.isFetchingFuncionarios = true;
+    supabase.from('funcionarios').select('*').eq('estabelecimento_id', appState.user.id).order('created_at', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data) appState.funcionariosAtivos = data;
+        appState.funcionariosLoaded = true;
+        appState.isFetchingFuncionarios = false;
         render();
       })
   }
@@ -637,6 +667,14 @@ function render() {
     case 'suporte':
       root.innerHTML = renderSupport()
       attachSupportEvents()
+      break
+    case 'configuracoes':
+      root.innerHTML = renderConfiguracoes()
+      attachConfiguracoesEvents()
+      break
+    case 'funcionarios':
+      root.innerHTML = renderFuncionarios()
+      attachFuncionariosEvents()
       break
   }
 
@@ -691,6 +729,42 @@ function render() {
     modalOverlay.innerHTML = renderAgendaActionsModal()
     root.appendChild(modalOverlay)
     attachAgendaActionsEvents()
+  }
+
+  if (appState.showModal === 'confirm-delete-funcionario') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    const func = appState.funcionariosAtivos.find(f => f.id === appState.deleteFuncionarioId)
+    modalOverlay.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#fee2e2; color:#dc2626; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">⚠️</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">EXCLUIR FUNCIONÁRIO?</h2>
+        <p style="color:var(--text-secondary); margin-bottom:2rem; line-height:1.5;">Deseja realmente excluir <b>${func?.nome || 'este funcionário'}</b>? Esta ação não pode ser desfeita.</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-do-delete-funcionario" style="width:100%; padding:1.1rem; border-radius:1rem; background:#dc2626; color:white; font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">SIM, EXCLUIR</button>
+          <button id="btn-cancel-delete-funcionario" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">CANCELAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(modalOverlay)
+
+    document.getElementById('btn-cancel-delete-funcionario').onclick = () => {
+      appState.showModal = null
+      appState.deleteFuncionarioId = null
+      render()
+    }
+    document.getElementById('btn-do-delete-funcionario').onclick = async () => {
+      const id = appState.deleteFuncionarioId
+      const { error } = await supabase.from('funcionarios').delete().eq('id', id)
+      if (error) {
+        alert('Erro ao excluir: ' + error.message)
+      } else {
+        appState.funcionariosLoaded = false
+        appState.showModal = null
+        appState.deleteFuncionarioId = null
+        render()
+      }
+    }
   }
 
   if (appState.showModal === 'quick-book') {
@@ -1179,6 +1253,113 @@ function render() {
       render();
     });
   }
+
+  if (appState.showModal === 'financeiro-auth') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = renderFinanceiroAuthModal()
+    root.appendChild(modalOverlay)
+    attachFinanceiroAuthEvents()
+  }
+}
+
+function renderFinanceiroAuthModal() {
+  return `
+    <div class="card animate-fade-in" style="max-width: 400px; width: 92%; padding: 2.5rem; text-align: center; border-radius: 24px; position:relative;">
+      <div style="width:70px; height:70px; background:var(--primary); color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h2 style="font-family:var(--font-alt); font-size:1.4rem; font-weight:900; margin-bottom:0.5rem; text-transform:uppercase;">ÁREA RESTRITA</h2>
+      <p style="color:var(--text-secondary); margin-bottom:1.5rem; font-weight:600; line-height:1.4;">
+        Por segurança, insira sua senha de acesso para entrar no Financeiro.<br>
+        <small style="color:var(--primary); font-weight:800; font-size:0.75rem;">(A mesma senha que você usa para logar)</small>
+      </p>
+
+      <div id="financeiro-error-msg" style="display:none; background:#fee2e2; color:#dc2626; padding:10px; border-radius:8px; font-size:0.85rem; font-weight:700; margin-bottom:1rem; animation: shake 0.4s ease-in-out;">
+        ⚠️ Senha incorreta! Tente novamente.
+      </div>
+      <style>
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-5px); }
+          75% { transform: translateX(5px); }
+        }
+      </style>
+      
+      <div class="flex flex-col gap-md">
+        <input type="password" id="financeiro-password" placeholder="Sua senha" autocomplete="current-password"
+          style="padding:16px; border-radius:12px; border:2px solid var(--border); width:100%; font-size:1rem; text-align:center; transition: border-color 0.2s;">
+        <div class="flex flex-col gap-sm">
+          <button id="btn-verify-financeiro" style="background:var(--primary); color:white; padding:18px; border-radius:12px; font-weight:900; width:100%; border:none; cursor:pointer; letter-spacing:1px; box-shadow:0 4px 12px rgba(var(--primary-rgb), 0.3);">ACESSAR FINANCEIRO</button>
+          <button id="btn-cancel-financeiro" style="color:var(--text-secondary); font-weight:800; border:none; background:none; cursor:pointer; padding:10px;">CANCELAR</button>
+        </div>
+      </div>
+    </div>
+  `
+}
+
+async function attachFinanceiroAuthEvents() {
+  const btnVerify = document.getElementById('btn-verify-financeiro')
+  const btnCancel = document.getElementById('btn-cancel-financeiro')
+  const passInput = document.getElementById('financeiro-password')
+  const errorMsg = document.getElementById('financeiro-error-msg')
+  const overlay = document.querySelector('.overlay')
+
+  const close = () => { appState.showModal = null; render() }
+  if (btnCancel) btnCancel.addEventListener('click', close)
+  if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
+
+  if (passInput) {
+    passInput.addEventListener('input', () => {
+      errorMsg.style.display = 'none'
+      passInput.style.borderColor = 'var(--border)'
+    })
+    passInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') btnVerify.click()
+    })
+    setTimeout(() => passInput.focus(), 100)
+  }
+
+  if (btnVerify) btnVerify.addEventListener('click', async () => {
+    const password = passInput.value
+    if (!password) {
+       passInput.style.borderColor = '#ef4444'
+       return
+    }
+
+    btnVerify.disabled = true
+    btnVerify.style.opacity = '0.7'
+    btnVerify.textContent = 'VERIFICANDO...'
+    errorMsg.style.display = 'none'
+
+    try {
+      // Tenta re-autenticar
+      const { error } = await supabase.auth.signInWithPassword({
+        email: appState.user.email,
+        password: password
+      })
+
+      if (error) {
+        errorMsg.style.display = 'block'
+        passInput.style.borderColor = '#ef4444'
+        btnVerify.disabled = false
+        btnVerify.style.opacity = '1'
+        btnVerify.textContent = 'ACESSAR FINANCEIRO'
+        passInput.value = ''
+        passInput.focus()
+      } else {
+        appState.financeiroAuth = true // Mantemos apenas por compatibilidade de estado se necessário, mas dashboard ignorará
+        appState.showModal = null
+        appState.screen = 'financas'
+        render()
+      }
+    } catch (e) {
+      alert('Erro de conexão. Verifique sua internet.')
+      btnVerify.disabled = false
+      btnVerify.style.opacity = '1'
+      btnVerify.textContent = 'ACESSAR FINANCEIRO'
+    }
+  })
 }
 
 function renderCustomAlert(alertData) {
@@ -1303,12 +1484,12 @@ function renderLogin() {
 
 function renderDashboard() {
   return `
-    <div class="dashboard-container min-h-screen">
-      <div class="animate-fade-in">
-        <header class="flex justify-between items-center" style="padding: 1.25rem var(--spacing-lg) 1.25rem 2.5%; border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100;">
+    <div class="dashboard-container min-h-screen" style="overflow-x: hidden;">
+      <div style="overflow-x: hidden;">
+        <header class="flex justify-between items-center" style="padding: 1.25rem var(--spacing-lg); border-bottom: 1px solid var(--border); background: var(--background); position: sticky; top: 0; z-index: 100;">
           <div class="flex items-center">
-             <img src="/logo_pegasus_sem_nome.png" alt="Pegasus Logo" style="height: 4.5rem; width: auto; object-fit: contain; margin-right: 0.5rem; ">
-             <span style="font-size: 0.75rem; background: var(--primary); padding: 0.25rem 0.8rem; border-radius: 2rem; color: var(--on-primary); font-weight: 800; letter-spacing: 1px; text-transform: uppercase;">
+             <img src="/logo_pegasus_sem_nome.png" alt="Pegasus Logo" style="height: 3.2rem; width: auto; object-fit: contain; margin-right: 0.4rem; ">
+             <span style="font-size: 0.65rem; background: var(--primary); padding: 0.2rem 0.6rem; border-radius: 2rem; color: var(--on-primary); font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; white-space: nowrap;">
               ${appState.theme === 'salao' ? 'Salão' : appState.theme}
              </span>
           </div>
@@ -1316,7 +1497,7 @@ function renderDashboard() {
             ${(() => {
               const trial = getTrialStatus()
               if (trial.isSubscriber) return ''
-              return `<span style="font-size: 0.65rem; font-weight: 800; color: ${trial.remainingDays <= 2 ? 'var(--red)' : 'var(--text-secondary)'}; background: ${trial.remainingDays <= 2 ? 'rgba(239,68,68,0.08)' : 'var(--surface)'}; padding: 4px 10px; border-radius: 999px; letter-spacing: 0.5px;">
+              return `<span style="font-size: 0.65rem; font-weight: 800; color: ${trial.remainingDays <= 2 ? 'var(--red)' : 'var(--text-secondary)'}; background: ${trial.remainingDays <= 2 ? 'rgba(239,68,68,0.08)' : 'var(--surface)'}; padding: 4px 10px; border-radius: 999px; letter-spacing: 0.5px; white-space: nowrap;">
                 FALTAM ${trial.remainingDays} DIA${trial.remainingDays !== 1 ? 'S' : ''} GRÁTIS
               </span>`
             })()}
@@ -1336,22 +1517,31 @@ function renderDashboard() {
                <p style="color: var(--text-secondary); font-weight: 600; font-size: 1.1rem;">O que vamos fazer hoje?</p>
             </div>
 
-          <div class="dashboard-grid">
-            <div class="card" id="card-financas">
-              <div class="icon-container" style="transform: scale(1.2);">${icons.financas}</div>
-              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Controle Financeiro</h3>
-            </div>
-            <div class="card" id="card-agenda">
-              <div class="icon-container" style="transform: scale(1.2);">${icons.agenda}</div>
-              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Minha Agenda</h3>
-            </div>
-            <div class="card" id="card-assinaturas">
-              <div class="icon-container" style="transform: scale(1.2);">${icons.assinaturas}</div>
-              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Assinaturas</h3>
-            </div>
-            <div class="card" id="card-servicos">
-              <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
-              <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços Fornecidos</h3>
+            <div class="dashboard-grid">
+              <div class="card" id="card-financas">
+                <div class="icon-container" style="transform: scale(1.2);">${icons.financas}</div>
+                <h3 style="margin-top: 1rem; font-size: 1.1rem;">Financeiro</h3>
+              </div>
+              <div class="card" id="card-agenda">
+                <div class="icon-container" style="transform: scale(1.2);">${icons.agenda}</div>
+                <h3 style="margin-top: 1rem; font-size: 1.1rem;">Agenda</h3>
+              </div>
+              <div class="card" id="card-servicos">
+                <div class="icon-container" style="transform: scale(1.2);">${icons.servicos}</div>
+                <h3 style="margin-top: 1rem; font-size: 1.1rem;">Serviços</h3>
+              </div>
+              <div class="card" id="card-funcionarios">
+                <div class="icon-container" style="transform: scale(1.2);">${icons.funcionarios}</div>
+                <h3 style="margin-top: 1rem; font-size: 1.1rem;">Funcionários</h3>
+              </div>
+              <div class="card" id="card-assinaturas">
+                <div class="icon-container" style="transform: scale(1.2);">${icons.assinaturas}</div>
+                <h3 style="margin-top: 1rem; font-size: 1.1rem;">Assinaturas</h3>
+              </div>
+              <div class="card" id="card-configuracoes">
+                <div class="icon-container" style="transform: scale(1.2);">${icons.configuracoes}</div>
+                <h3 style="margin-top: 1rem; font-size: 1.1rem;">Configurações</h3>
+              </div>
             </div>
           </div>
         </main>
@@ -1456,28 +1646,45 @@ function renderAgenda() {
             <div style="flex:1; padding:12px; text-align:center; font-weight:800; font-size:1.1rem; color:var(--text-main);">${valorDisplay}</div>
           </div>
 
-          <div style="display:flex; align-items:stretch; flex:1; position:relative;">
-            <!-- Body: Name & Services -->
-            <div style="padding: 0.4rem 1rem 0.75rem 1rem; display:flex; flex-direction:column; gap:0.4rem; text-align:center; flex:1; justify-content:center;">
-              <h4 style="font-family:var(--font-body); font-weight:800; font-size:1.1rem; color:var(--text-main); margin:0; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          <div style="display:flex; flex-direction:column; flex:1; position:relative;">
+            <!-- Client & Services -->
+            <div style="display:flex; flex-direction:column; gap:0.3rem; text-align:center; padding: 1rem 35px 0.8rem 35px; flex:1; justify-content:center; position:relative;">
+              <h4 style="font-family:var(--font-body); font-weight:800; font-size:1.15rem; color:var(--text-main); margin:0; line-height:1.2;">
                 ${item.client}
               </h4>
               ${item.service ? `
-                <p style="color:var(--text-secondary); font-size:0.8rem; font-weight:600; margin:0; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.3; opacity:0.8;">
+                <p style="color:var(--text-secondary); font-size:0.85rem; font-weight:600; margin:0; line-height:1.3; opacity:0.8;">
                   ${item.service}
                 </p>` : ''}
-            </div>
-
-            <!-- Sidebar Actions (Right Side) -->
-            <div style="width:40px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:10px 0;">
-              <!-- WhatsApp Contact Button -->
+              
+              <!-- WhatsApp Float (Right) -->
               ${item.phone ? `
-                <a href="https://wa.me/${item.phone.replace(/\D/g,'')}" target="_blank" onclick="event.stopPropagation()" style="color:#25D366; width:22px; height:22px; display:flex; align-items:center; justify-content:center; transition:transform 0.2s; opacity:0.9;">
+                <a href="https://wa.me/${item.phone.replace(/\D/g,'')}" target="_blank" onclick="event.stopPropagation()" 
+                  style="position:absolute; right:15px; top:15px; color:#25D366; width:24px; height:24px; display:flex; align-items:center; justify-content:center; transition:transform 0.2s; opacity:0.9;">
                   <div style="display:flex;">${icons.whatsapp}</div>
-                  <style>a[href^="https://wa.me"]:active { transform: scale(1.2); }</style>
                 </a>
               ` : ''}
             </div>
+
+            <!-- Professional Divider & Name -->
+            ${(() => {
+              const fid = item.funcionario_id
+              if (!fid) return ''
+              let name = ''
+              if (fid.startsWith('owner-')) {
+                name = appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário'
+              } else {
+                const f = appState.funcionariosAtivos.find(x => x.id === fid)
+                name = f ? f.nome : ''
+              }
+              return name ? `
+                <div style="border-top: 1px solid var(--border); padding: 8px 12px; text-align:center; background:rgba(0,0,0,0.01);">
+                  <p style="color:#000000; font-size:0.75rem; font-weight:900; margin:0; text-transform:uppercase; letter-spacing:0.8px;">
+                    PROFISSIONAL: ${name}
+                  </p>
+                </div>
+              ` : ''
+            })()}
           </div>
 
           <!-- Footer: overdue warning OR pending confirm -->
@@ -1521,7 +1728,7 @@ function renderAgenda() {
 
   return renderTabHeader(formatDate(appState.selectedDate), `
     <div id="ptr-container" style="overflow-y:auto; height:calc(100vh - 120px); -webkit-overflow-scrolling:touch; touch-action:pan-y;">
-    <div class="agenda-content p-lg animate-fade-in" style="max-width:50rem;margin:0 auto;padding:1.25rem;padding-bottom:140px;">
+    <div class="agenda-content p-lg" style="max-width:50rem;margin:0 auto;padding:1.25rem;padding-bottom:140px;">
 
       <!-- Pull-to-refresh indicator -->
       <div id="ptr-indicator" style="display:none;flex-direction:column;align-items:center;gap:0.5rem;padding:1rem 0 0.5rem;">
@@ -1532,18 +1739,9 @@ function renderAgenda() {
       <div class="flex flex-col gap-sm" style="margin-bottom:2rem;">
         <div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.4rem;">
           <h2 style="font-family:var(--font-alt);font-size:1.1rem;font-weight:800;letter-spacing:1px;color:var(--text-secondary);">PROGRAMAÇÃO DO DIA</h2>
-          <button id="btn-edit-horario" title="Editar horário de funcionamento" style="background:none;border:none;cursor:pointer;color:var(--text-secondary);padding:0.25rem;display:flex;align-items:center;opacity:0.6;">
-            ${icons.edit}
-            <style>#btn-edit-horario:hover { opacity:1; }</style>
-          </button>
         </div>
 
         <div style="display:flex; flex-direction:column; gap:0.4rem; align-items:flex-start;">
-          <button id="btn-whatsapp-business" style="background:var(--surface2); color:var(--text-secondary); border:1px solid var(--border); padding:4px 10px; border-radius:999px; font-weight:700; font-size:0.55rem; display:flex; align-items:center; gap:5px; align-self:flex-start; cursor:pointer; transition:all 0.2s; opacity:0.75; letter-spacing:0.3px;">
-            <div style="transform:scale(0.6); display:flex; color:#25D366;">${icons.whatsapp}</div>
-            AUTOMATIZAR WHATSAPP BUSINESS
-            <style>#btn-whatsapp-business:active { transform: scale(0.96); background:var(--border); }</style>
-          </button>
           ${pausaBadge}
         </div>
       </div>
@@ -1755,22 +1953,22 @@ function renderServiceSearchSelect(inputId, listId, services, selectedNames = []
   }
   const initialText = selectedNames.length > 0 ? selectedNames.join(', ') : '';
   return `
-    <div style="position:relative;">
-      <div style="position:relative;">
-        <input type="text" id="${inputId}" autocomplete="off" placeholder="Buscar serviço..." value="${initialText}"
-          style="padding: 14px 14px 14px 40px; border-radius: 12px; width: 100%; box-sizing: border-box; border: 1.5px solid var(--border); background: var(--surface); font-family: inherit; font-size: 1rem; transition: all 0.2s;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
-          style="position:absolute; left:14px; top:50%; transform:translateY(-50%); color:var(--text-secondary); pointer-events:none;">
-          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+    <div style="position:relative; width: 100%;" id="${inputId}-wrapper">
+      <div style="position:relative; cursor: pointer;" id="${inputId}-trigger">
+        <input type="text" id="${inputId}" readonly placeholder="Selecionar serviços..." value="${initialText}"
+          style="padding: 14px 40px 14px 16px; border-radius: 12px; width: 100%; box-sizing: border-box; border: 1.5px solid var(--border); background: var(--surface); font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; pointer-events: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+          style="position:absolute; right:14px; top:50%; transform:translateY(-50%); color:var(--text-secondary); pointer-events:none; opacity: 0.7;">
+          <path d="m6 9 6 6 6-6"/>
         </svg>
       </div>
-      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:225px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 1000; box-shadow: var(--shadow-lg);">
+      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:145px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface); margin-top: 5px; z-index: 1000; box-shadow: var(--shadow-lg);">
         ${services.map(s => {
           const isChecked = selectedNames.includes(s.nome);
           return `
-          <label class="service-opt" data-nome="${s.nome}">
-            <input type="checkbox" value="${s.nome}" ${isChecked ? 'checked' : ''}>
-            <span>${s.nome} <span class="price-tag">(R$ ${parseFloat(s.preco || 0).toFixed(2).replace('.', ',')})</span></span>
+          <label class="service-opt ${isChecked ? 'selected' : ''}" data-nome="${s.nome}" style="border-radius: 0;">
+            <input type="checkbox" value="${s.nome}" ${isChecked ? 'checked' : ''} style="display:none;">
+            <span>${s.nome} <span class="price-tag" style="font-weight: 800; color: var(--primary);">(R$ ${parseFloat(s.preco || 0).toFixed(2).replace('.', ',')})</span></span>
           </label>
         `}).join('')}
       </div>
@@ -1779,81 +1977,174 @@ function renderServiceSearchSelect(inputId, listId, services, selectedNames = []
   `
 }
 
-function attachServiceSearchSelect(inputId, listId, onSelectionChange) {
+function renderStaffSearchSelect(inputId, listId, staff, selectedIds = [], allowAll = true) {
+  if (!staff || staff.length === 0) return '<p>Nenhum profissional disponível.</p>'
+  
+  const selectedStaff = staff.filter(s => selectedIds.includes(s.id))
+  const isAll = allowAll && selectedIds.length === staff.length && staff.length > 0;
+  const initialText = isAll ? 'TODOS' : (selectedStaff.length > 0 ? selectedStaff.map(s => s.nome).join(', ') : '')
+  
+  return `
+    <div style="position:relative; width: 100%;" id="${inputId}-wrapper">
+      <div style="position:relative; cursor: pointer;" id="${inputId}-trigger">
+        <input type="text" id="${inputId}" readonly placeholder="Selecionar profissionais..." value="${initialText}"
+          style="padding: 16px 40px 16px 16px; border-radius: 16px; width: 100%; box-sizing: border-box; border: 1.5px solid var(--border); background: var(--surface); font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; transition: border-color 0.2s; pointer-events: none;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"
+          style="position:absolute; right:16px; top:50%; transform:translateY(-50%); color:var(--text-secondary); pointer-events:none; opacity: 0.7;">
+          <path d="m6 9 6 6 6-6"/>
+        </svg>
+      </div>
+      <div id="${listId}" class="custom-scroll" style="display:none; position:absolute; left:0; right:0; max-height:145px; overflow-y:auto; border: 1.5px solid var(--border); border-radius: 16px; background: var(--surface); margin-top: 8px; z-index: 1000; box-shadow: var(--shadow-lg);">
+        ${allowAll ? `
+          <label class="service-opt ${isAll ? 'selected' : ''}" data-id="all" style="border-radius: 0;">
+            <input type="checkbox" ${isAll ? 'checked' : ''} style="display:none;">
+            <span style="font-weight: 900; color: var(--primary);">TODOS</span>
+          </label>
+        ` : ''}
+        ${staff.map(s => {
+          const isChecked = selectedIds.includes(s.id);
+          return `
+          <label class="service-opt staff-opt ${isChecked ? 'selected' : ''}" data-id="${s.id}" data-nome="${s.nome}" style="border-radius: 0;">
+            <input type="checkbox" value="${s.id}" ${isChecked ? 'checked' : ''} style="display:none;">
+            <span>${s.nome}</span>
+          </label>
+        `}).join('')}
+      </div>
+      <input type="hidden" id="${inputId}-selected" value='${JSON.stringify(selectedIds)}'>
+    </div>
+  `
+}
+
+function attachStaffSearchSelect(inputId, listId, staff, onSelectionChange) {
+  const trigger = document.getElementById(inputId + '-trigger')
   const searchInput = document.getElementById(inputId)
   const listEl = document.getElementById(listId)
   const hiddenInput = document.getElementById(inputId + '-selected')
-  if (!searchInput || !listEl) return
+  if (!trigger || !listEl) return
 
   const closeListHandler = (e) => {
-    if (listEl && !searchInput.contains(e.target) && !listEl.contains(e.target)) {
-      listEl.style.display = 'none' 
-      searchInput.style.borderColor = 'var(--border)'
-      document.removeEventListener('mousedown', closeListHandler)
+    if (!trigger.contains(e.target) && !listEl.contains(e.target)) {
+      listEl.style.display = 'none'
+      if (searchInput) searchInput.style.borderColor = 'var(--border)'
+      document.removeEventListener('click', closeListHandler)
     }
   }
 
-  searchInput.addEventListener('focus', () => { 
-    listEl.style.display = 'block'
-    searchInput.style.borderColor = 'var(--primary)'
-    setTimeout(() => document.addEventListener('mousedown', closeListHandler), 0)
-  })
+  const toggleList = (e) => {
+    e.stopPropagation()
+    const isVisible = listEl.style.display === 'block'
+    listEl.style.display = isVisible ? 'none' : 'block'
+    if (searchInput) searchInput.style.borderColor = !isVisible ? 'var(--primary)' : 'var(--border)'
+    if (!isVisible) {
+      document.addEventListener('click', closeListHandler)
+    }
+  }
 
-  searchInput.addEventListener('input', () => {
-    const q = searchInput.value.toLowerCase().trim()
-    const selectedText = hiddenInput.value ? JSON.parse(hiddenInput.value).join(', ').toLowerCase() : ''
-    
-    const items = listEl.querySelectorAll('.service-opt')
-    
-    // Se o campo estiver vazio ou contiver exatamente a lista de selecionados, mostra tudo
-    if (q === '' || q === selectedText) {
-      items.forEach(opt => opt.style.display = 'flex')
-    } else {
-      // Caso contrário, filtra pelo que o usuário digitou
-      // Se houver vírgulas (múltiplas seleções), pegamos o último pedaço após a última vírgula? 
-      // Não, vamos filtrar o texto inteiro do input para ser mais simples e intuitivo.
-      items.forEach(opt => {
-        const text = opt.innerText.toLowerCase()
-        opt.style.display = text.includes(q) ? 'flex' : 'none'
+  trigger.addEventListener('click', toggleList)
+
+  searchInput.oninput = (e) => {
+    const term = e.target.value.toLowerCase()
+    if (term === '') {
+      listEl.querySelectorAll('.service-opt').forEach(opt => opt.style.display = 'flex')
+      return
+    }
+    listEl.querySelectorAll('.staff-opt').forEach(opt => {
+      const nome = opt.dataset.nome.toLowerCase()
+      opt.style.display = nome.includes(term) ? 'flex' : 'none'
+    })
+    // Hide 'all' option during search to avoid confusion
+    const allOpt = listEl.querySelector('[data-id="all"]')
+    if (allOpt) allOpt.style.display = 'none'
+  }
+
+  listEl.querySelectorAll('.service-opt').forEach(opt => {
+    opt.onclick = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const sid = opt.dataset.id
+      let selected = JSON.parse(hiddenInput.value || '[]')
+
+      if (sid === 'all') {
+        if (selected.length === staff.length) {
+          selected = []
+        } else {
+          selected = staff.map(s => s.id)
+        }
+      } else {
+        if (selected.includes(sid)) {
+          selected = selected.filter(id => id !== sid)
+        } else {
+          selected.push(sid)
+        }
+      }
+
+      hiddenInput.value = JSON.stringify(selected)
+      
+      // Update UI in dropdown
+      const isAll = selected.length === staff.length && staff.length > 0
+      listEl.querySelectorAll('.service-opt').forEach(o => {
+        const oid = o.dataset.id
+        const isSel = (oid === 'all') ? isAll : selected.includes(oid)
+        o.classList.toggle('selected', isSel)
+        if (o.querySelector('input')) o.querySelector('input').checked = isSel
       })
+
+      // Update input text
+      const selectedStaff = staff.filter(s => selected.includes(s.id))
+      searchInput.value = selected.length === staff.length && staff.length > 0 ? 'TODOS' : selectedStaff.map(s => s.nome).join(', ')
+      
+      if (onSelectionChange) onSelectionChange(selected)
+    }
+  })
+}
+
+function attachServiceSearchSelect(inputId, listId, onSelectionChange) {
+  const trigger = document.getElementById(inputId + '-trigger')
+  const searchInput = document.getElementById(inputId)
+  const listEl = document.getElementById(listId)
+  const hiddenInput = document.getElementById(inputId + '-selected')
+  if (!trigger || !listEl) return
+
+  const closeListHandler = (e) => {
+    if (!trigger.contains(e.target) && !listEl.contains(e.target)) {
+      listEl.style.display = 'none' 
+      if (searchInput) searchInput.style.borderColor = 'var(--border)'
+      document.removeEventListener('click', closeListHandler)
+    }
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation()
+    const isVisible = listEl.style.display === 'block'
+    listEl.style.display = isVisible ? 'none' : 'block'
+    if (searchInput) searchInput.style.borderColor = !isVisible ? 'var(--primary)' : 'var(--border)'
+    if (!isVisible) {
+      document.addEventListener('click', closeListHandler)
     }
   })
 
   // Visual Check Logic
   const labels = listEl.querySelectorAll('.service-opt')
   labels.forEach(label => {
-    const chk = label.querySelector('input[type="checkbox"]')
-    
-    // Initial state if already checked
-    if (chk.checked) {
-      label.classList.add('selected')
-    }
-
     label.addEventListener('click', (e) => {
-      // Prevent double trigger if clicking near the hidden input or if multiple events fire
       e.preventDefault();
+      e.stopPropagation();
+      const chk = label.querySelector('input[type="checkbox"]')
       chk.checked = !chk.checked;
-      chk.dispatchEvent(new Event('change'));
-    })
-
-    chk.onchange = () => {
+      
       const allChecks = Array.from(listEl.querySelectorAll('input[type="checkbox"]'))
       const selected = allChecks.filter(c => c.checked).map(c => c.value)
       
       // Update visual style for all
       allChecks.forEach(c => {
         const parent = c.closest('.service-opt')
-        if (c.checked) {
-          parent.classList.add('selected')
-        } else {
-          parent.classList.remove('selected')
-        }
+        parent.classList.toggle('selected', c.checked)
       })
 
       hiddenInput.value = JSON.stringify(selected)
-      searchInput.value = selected.join(', ')
+      if (searchInput) searchInput.value = selected.join(', ')
       if (onSelectionChange) onSelectionChange(selected)
-    }
+    })
   })
 }
 
@@ -1914,6 +2205,16 @@ function renderEditAgendamentoModal() {
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Telefone (Opcional)</label>
           <input type="tel" id="modal-client-phone" value="${item.phone || ''}" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
         </div>
+
+        <div class="flex flex-col gap-xs">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Profissional</label>
+          ${(() => {
+            const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+            const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
+            const selected = item.funcionario_id ? [item.funcionario_id] : []
+            return renderStaffSearchSelect('modal-staff-search', 'modal-staff-list', allStaff, selected, false)
+          })()}
+        </div>
         
         <div class="modal-grid">
           <div class="flex flex-col gap-xs">
@@ -1958,6 +2259,16 @@ function renderNewAgendamentoModal() {
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Telefone (Opcional)</label>
           <input type="tel" id="modal-client-phone" placeholder="(00) 00000-0000" style="padding: 14px; border-radius: 12px; width: 100%; box-sizing: border-box;">
+        </div>
+
+        <div class="flex flex-col gap-xs">
+          <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Profissional</label>
+          ${(() => {
+            const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+            const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
+            const selected = appState.editingAgendamento?.funcionario_id ? [appState.editingAgendamento.funcionario_id] : []
+            return renderStaffSearchSelect('modal-staff-search', 'modal-staff-list', allStaff, selected, false)
+          })()}
         </div>
         
         <div class="modal-grid">
@@ -2164,7 +2475,7 @@ function renderFinancas() {
   }
 
   return renderTabHeader('CONTROLE FINANCEIRO', `
-    <div class="financas-content p-lg animate-fade-in" style="max-width: 50rem; margin: 0 auto; padding: 1rem;">
+    <div class="financas-content p-lg" style="max-width: 50rem; margin: 0 auto; padding: 1rem;">
       
       <!-- Filter Badge -->
       ${filterByDay ? `
@@ -2537,8 +2848,16 @@ function renderNewTransactionModal() {
 }
 
 function renderServicos() {
+  if (!appState.funcionariosLoaded) {
+    supabase.from('funcionarios').select('*').eq('estabelecimento_id', appState.user.id).order('nome').then(({ data }) => {
+      if (data) appState.funcionariosAtivos = data
+      appState.funcionariosLoaded = true
+      render()
+    })
+  }
+
   return renderTabHeader('Serviços Fornecidos', `
-    <div class="servicos-content p-lg animate-fade-in" style="max-width: 60rem; margin: 0 auto; padding: 1.25rem;">
+    <div class="servicos-content p-lg" style="max-width: 60rem; margin: 0 auto; padding: 1.25rem;">
       <div class="card" style="padding: 2rem; margin-bottom: 2.5rem; align-items: stretch;">
         <h3 style="margin-bottom: 1.5rem; text-align: left; font-size: 1.1rem; border-left: 4px solid var(--primary); padding-left: 1rem;">CADASTRAR NOVO SERVIÇO</h3>
         <div class="flex flex-col gap-md">
@@ -2553,6 +2872,15 @@ function renderServicos() {
               <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Duração</label>
               <input type="time" id="input-duracao-servico" value="${appState.servicosForm.duration}" style="padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--border); font-weight: 500; width: 100%;">
             </div>
+          </div>
+
+          <div class="flex flex-col gap-xs" style="margin-top: 0.5rem;">
+            <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Profissionais que realizam</label>
+            ${(() => {
+              const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+              const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
+              return renderStaffSearchSelect('input-staff-servico', 'list-staff-servico', allStaff, appState.servicosForm.funcionarios_ids || [])
+            })()}
           </div>
 
           <div class="flex flex-col" style="gap: 1rem; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
@@ -2614,6 +2942,16 @@ function renderServicos() {
                     <input id="edit-duracao-${s.id}" type="time" value="${timeValue}" style="padding: 0.7rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-weight: 700;">
                   </div>
                 </div>
+
+                <div class="flex flex-col gap-xs" style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem;">
+                  <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Profissionais que realizam</label>
+                  ${(() => {
+                    const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+                    const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
+                    const selected = ef.funcionarios_ids !== undefined ? ef.funcionarios_ids : (s.funcionarios_ids || [])
+                    return renderStaffSearchSelect(`edit-staff-servico-${s.id}`, `edit-list-staff-servico-${s.id}`, allStaff, selected)
+                  })()}
+                </div>
                 <div style="border-top:1px solid var(--border); padding-top:0.75rem;">
                   <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
                     <span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Cobrar taxa de reserva?</span>
@@ -2622,6 +2960,8 @@ function renderServicos() {
                       <span style="flex:1; text-align:center; font-size:0.65rem; font-weight:900; padding:5px 0; border-radius:14px; transition:all 0.3s; ${cobraReserva ? 'background:var(--primary); color:var(--on-primary); box-shadow:var(--shadow-sm);' : 'color:var(--text-secondary);'}">SIM</span>
                     </div>
                   </div>
+                  
+
                   ${cobraReserva ? `
                     <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.75rem;">
                       <label style="font-size:0.65rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Taxa de Reserva</label>
@@ -2658,6 +2998,464 @@ function renderServicos() {
   `, false, false)
 }
 
+function renderConfiguracoes() {
+  const profile = appState.profile || {}
+  const dias = Array.isArray(profile.dias_funcionamento) ? profile.dias_funcionamento : []
+  const abertura = profile.horario_abertura || '09:00'
+  const fechamento = profile.horario_fechamento || '18:00'
+  const pausas = Array.isArray(profile.pausas_padrao) ? profile.pausas_padrao : []
+  
+  const diasSemana = [
+    { label: 'DOM', val: 0 }, { label: 'SEG', val: 1 },
+    { label: 'TER', val: 2 }, { label: 'QUA', val: 3 },
+    { label: 'QUI', val: 4 }, { label: 'SEX', val: 5 },
+    { label: 'SÁB', val: 6 },
+  ]
+
+  const lbl = `font-size:0.75rem;font-weight:800;letter-spacing:1px;color:var(--text-secondary);margin-bottom:0.8rem;display:block;text-transform:uppercase;`
+  const input = `width:100%;padding:1rem;border-radius:1rem;border:1px solid var(--border);background:var(--surface);color:var(--text-main);font-family:inherit;font-size:1.1rem;font-weight:700;`
+  const pausaRow = (p, i) => `
+    <div class="pausa-row" data-idx="${i}" style="display:flex;gap:0.75rem;align-items:center;margin-bottom:0.75rem;background:var(--surface);padding:0.75rem;border-radius:1rem;border:1px solid var(--border);">
+      <input type="time" class="pausa-inicio" value="${p.inicio||''}" style="flex:1;${input};border:none;padding:0;">
+      <span style="color:var(--text-secondary);font-weight:700;font-size:0.9rem;">até</span>
+      <input type="time" class="pausa-fim" value="${p.fim||''}" style="flex:1;${input};border:none;padding:0;">
+      <button class="btn-remove-pausa-config" data-idx="${i}" style="background:rgba(239,68,68,0.1);border:none;color:var(--red);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">✕</button>
+    </div>`
+
+  return renderTabHeader('Configurações', `
+    <div class="config-content p-lg" style="max-width: 45rem; margin: 0 auto; padding: 1.25rem; padding-bottom: 8rem;">
+      
+      <!-- WhatsApp Section -->
+      <div class="card" style="padding: 2rem; margin-bottom: 2rem; align-items: stretch; border-left: 5px solid #25D366;">
+        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.25rem;">
+          <div style="background:#25D366; color:white; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+            ${icons.whatsapp}
+          </div>
+          <h3 style="font-size: 1.1rem; font-weight: 800; letter-spacing: 0.5px;">AUTOMAÇÃO WHATSAPP BUSINESS</h3>
+        </div>
+        <p style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 600; line-height: 1.5; margin-bottom: 1.5rem;">
+          Configure uma resposta automática no seu WhatsApp Business com o link do seu agendamento online.
+        </p>
+        <button id="btn-config-whatsapp" style="background:#25D366; color:white; padding:1.1rem; border-radius:1rem; font-weight:900; font-size:0.9rem; border:none; cursor:pointer; letter-spacing:1px; box-shadow:0 4px 15px rgba(37,211,102,0.2);">
+          CONFIGURAR MENSAGEM AUTOMÁTICA
+        </button>
+      </div>
+
+      <!-- Schedule Section -->
+      <div class="card" style="padding: 2rem; align-items: stretch;">
+        <h3 style="margin-bottom: 1.5rem; text-align: left; font-size: 1.1rem; border-left: 4px solid var(--primary); padding-left: 1rem; font-weight: 800;">HORÁRIO DE FUNCIONAMENTO</h3>
+        
+        <span style="${lbl}">DIAS QUE VOCÊ ATENDE</span>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:2rem;">
+          ${diasSemana.map(d => {
+            const sel = dias.includes(d.val)
+            return `<button class="dia-btn-config${sel?' dia-sel':''}" data-dia="${d.val}"
+              style="padding:0.6rem 1rem;border-radius:1rem;border:2px solid ${sel?'var(--primary)':'var(--border)'};background:${sel?'var(--primary)':'transparent'};color:${sel?'var(--on-primary)':'var(--text-main)'};font-weight:800;font-size:0.85rem;cursor:pointer;transition:all 0.2s;">${d.label}</button>`
+          }).join('')}
+        </div>
+
+        <span style="${lbl}">HORÁRIO DE EXPEDIENTE</span>
+        <div style="display:flex;gap:1rem;margin-bottom:2rem;align-items:flex-end;">
+          <div style="flex:1;">
+            <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.4rem;">Abertura</label>
+            <input type="time" id="config-abertura" value="${abertura}" style="${input}">
+          </div>
+          <span style="color:var(--text-secondary);font-weight:700;padding-bottom:1rem;font-size:1.5rem;">–</span>
+          <div style="flex:1;">
+            <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.4rem;">Fechamento</label>
+            <input type="time" id="config-fechamento" value="${fechamento}" style="${input}">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <span style="${lbl}; margin-bottom:0;">INTERVALOS (ALMOÇO, ETC)</span>
+          <button id="btn-add-pausa-config" style="font-size:0.8rem;font-weight:900;color:var(--primary);background:none;border:none;cursor:pointer;">+ ADICIONAR</button>
+        </div>
+        
+        <div id="config-pausas-list" style="margin-bottom:1.5rem;">
+          ${pausas.length > 0
+            ? pausas.map((p,i) => pausaRow(p,i)).join('')
+            : `<p style="font-size:0.85rem;color:var(--text-secondary);padding:1rem;background:var(--surface-hover);border-radius:1rem;text-align:center;font-weight:600;border:1.5px dashed var(--border);">Nenhum intervalo configurado.</p>`
+          }
+        </div>
+
+        <button id="btn-save-config" style="width:100%;padding:1.25rem;border-radius:1rem;background:var(--primary);color:var(--on-primary);font-weight:900;font-size:1rem;letter-spacing:1.5px;border:none;cursor:pointer;margin-top:1rem;box-shadow:var(--shadow-md);">SALVAR CONFIGURAÇÕES</button>
+      </div>
+    </div>
+  `)
+}
+
+function attachConfiguracoesEvents() {
+  const btnWA = document.getElementById('btn-config-whatsapp')
+  if (btnWA) btnWA.addEventListener('click', () => { appState.showModal = 'whatsapp'; render() })
+
+  // Toggle Days
+  document.querySelectorAll('.dia-btn-config').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const val = parseInt(btn.dataset.dia)
+      let dias = Array.isArray(appState.profile.dias_funcionamento) ? [...appState.profile.dias_funcionamento] : []
+      if (dias.includes(val)) {
+        dias = dias.filter(d => d !== val)
+      } else {
+        dias.push(val)
+      }
+      appState.profile.dias_funcionamento = dias
+      render()
+    })
+  })
+
+  // Add Pausa
+  const btnAddPausa = document.getElementById('btn-add-pausa-config')
+  if (btnAddPausa) btnAddPausa.addEventListener('click', () => {
+    if (!Array.isArray(appState.profile.pausas_padrao)) appState.profile.pausas_padrao = []
+    appState.profile.pausas_padrao.push({ inicio: '12:00', fim: '13:00' })
+    render()
+  })
+
+  // Remove Pausa
+  document.querySelectorAll('.btn-remove-pausa-config').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.idx)
+      appState.profile.pausas_padrao.splice(idx, 1)
+      render()
+    })
+  })
+
+  // Save Config
+  const btnSave = document.getElementById('btn-save-config')
+  if (btnSave) btnSave.addEventListener('click', async () => {
+    const abertura = document.getElementById('config-abertura').value
+    const fechamento = document.getElementById('config-fechamento').value
+    
+    // Collect pausas
+    const pausas = []
+    document.querySelectorAll('#config-pausas-list .pausa-row').forEach(row => {
+      const inicio = row.querySelector('.pausa-inicio').value
+      const fim = row.querySelector('.pausa-fim').value
+      if (inicio && fim) pausas.push({ inicio, fim })
+    })
+
+    btnSave.textContent = 'SALVANDO...'
+    btnSave.disabled = true
+
+    const { error } = await supabase.from('estabelecimentos')
+      .update({
+        horario_abertura: abertura,
+        horario_fechamento: fechamento,
+        dias_funcionamento: appState.profile.dias_funcionamento,
+        pausas_padrao: pausas
+      })
+      .eq('id', appState.user.id)
+
+    if (error) {
+      alert('Erro ao salvar: ' + error.message)
+    } else {
+      appState.profile.horario_abertura = abertura
+      appState.profile.horario_fechamento = fechamento
+      appState.profile.pausas_padrao = pausas
+      alert('Configurações salvas com sucesso!')
+    }
+    render()
+  })
+}
+
+function renderFuncionarios() {
+  const f = appState.funcionariosAtivos;
+  const ownerId = `owner-${appState.user.id}`;
+  
+  // Create virtual owner employee
+  const owner = {
+    id: ownerId,
+    nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário',
+    cargo: 'PROPRIETÁRIO',
+    telefone: appState.profile?.telefone || appState.registrationData.telefone || '',
+    ativo: appState.profile?.ativo !== false,
+    isOwner: true
+  };
+
+  const allList = [owner, ...f];
+  const activeCount = allList.filter(func => func.ativo !== false).length;
+  
+  return renderTabHeader('Funcionários', `
+    <div class="funcionarios-content p-lg" style="max-width: 60rem; margin: 0 auto; padding: 1.25rem;">
+      <div class="card" style="padding: 2.5rem; margin-bottom: 2.5rem; align-items: stretch; border-top: 6px solid var(--primary);">
+        <h3 style="margin-bottom: 1.8rem; text-align: left; font-size: 1.2rem; font-weight: 900; letter-spacing: 0.5px;">CADASTRAR NOVO FUNCIONÁRIO</h3>
+        <div class="flex flex-col gap-md">
+          <div class="flex flex-col gap-xs">
+            <label style="font-size:0.7rem; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Nome Completo</label>
+            <input type="text" id="input-nome-funcionario" value="${appState.funcionariosForm.nome}" placeholder="Ex: Danillo Neto" class="capitalize-input" style="padding: 1.1rem; border-radius: 1rem; border: 1.5px solid var(--border); width: 100%; font-weight: 700; font-size:1.05rem;">
+          </div>
+          
+          <div class="flex flex-col gap-xs">
+            <label style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Cargo / Especialidade</label>
+            <input type="text" id="input-cargo-funcionario" value="${appState.funcionariosForm.cargo}" placeholder="Ex: Barbeiro" class="capitalize-input" style="padding: 1.1rem; border-radius: 1rem; border: 1.5px solid var(--border); font-weight: 700; width: 100%; font-size:1.05rem;">
+          </div>
+
+          <div class="flex flex-col gap-xs">
+            <label style="font-size: 0.7rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Telefone</label>
+            <input type="tel" id="input-telefone-funcionario" value="${appState.funcionariosForm.telefone}" placeholder="(00) 0 0000-0000" maxlength="16" style="padding: 1.1rem; border-radius: 1rem; border: 1.5px solid var(--border); font-weight: 700; width: 100%; font-size:1.05rem;">
+          </div>
+
+          <button id="btn-salvar-funcionario" style="background: var(--primary); color: var(--on-primary); padding: 1.25rem; border-radius: 1.25rem; font-weight: 900; margin-top: 1.25rem; font-size: 1.1rem; letter-spacing: 1.5px; box-shadow: var(--shadow-md); border:none; cursor:pointer;">
+            SALVAR FUNCIONÁRIO
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+        <h3 style="font-size: 1rem; color: var(--text-secondary); letter-spacing: 1px; font-weight: 900; text-transform: uppercase;">EQUIPE ATIVA (${activeCount})</h3>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1.5rem; padding-bottom: 6rem;">
+        ${allList.length > 0 ? allList.map(func => {
+          const isEditing = appState.editingFuncionarioId === func.id;
+          const ef = appState.editingFuncionarioForm;
+          const isAtivo = func.ativo !== false;
+          const isOwner = func.isOwner;
+          
+          return `
+          <div class="card" style="padding: 1.5rem; align-items: stretch; text-align: left; position: relative; border-radius: 1.5rem; opacity: ${isAtivo ? '1' : '0.7'}; transition: all 0.3s ease; border: 1px solid ${isOwner ? 'var(--primary)' : 'var(--border)'};">
+            ${isEditing ? `
+              <div class="flex flex-col w-full" style="gap: 1rem;">
+                <input id="edit-func-nome-${func.id}" type="text" value="${ef.nome || func.nome}" class="capitalize-input" ${isOwner ? 'disabled' : ''} style="padding: 0.8rem; border-radius: 0.75rem; border: 2px solid ${isOwner ? 'var(--border)' : 'var(--primary)'}; width: 100%; font-size: 1rem; font-weight: 800; background: ${isOwner ? 'var(--surface-hover)' : 'white'};">
+                <input id="edit-func-cargo-${func.id}" type="text" value="${ef.cargo || func.cargo}" placeholder="Cargo" class="capitalize-input" ${isOwner ? 'disabled' : ''} style="padding: 0.8rem; border-radius: 0.75rem; border: 1px solid var(--border); width: 100%; font-weight: 700; background: ${isOwner ? 'var(--surface-hover)' : 'white'};">
+                <input id="edit-func-tel-${func.id}" type="tel" value="${ef.telefone || func.telefone}" placeholder="Telefone" class="phone-mask" maxlength="16" style="padding: 0.8rem; border-radius: 0.75rem; border: 1px solid var(--border); width: 100%; font-weight: 700;">
+                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                  <button class="btn-save-edit-funcionario" data-id="${func.id}" style="flex:1; background:var(--primary); color:var(--on-primary); padding:0.85rem; border-radius:0.75rem; font-weight:900; font-size:0.85rem; border:none; cursor:pointer;">SALVAR</button>
+                  <button class="btn-cancel-edit-funcionario" data-id="${func.id}" style="flex:1; border:2px solid var(--border); color:var(--text-secondary); padding:0.85rem; border-radius:0.75rem; font-weight:900; font-size:0.85rem; background:none; cursor:pointer;">VOLTAR</button>
+                </div>
+              </div>
+            ` : `
+              <!-- Header: Avatar and Toggle -->
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; width: 100%; margin-bottom: 1.5rem;">
+                <div style="width: 60px; height: 60px; background: var(--surface-hover); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-main);">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                  <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">Está trabalhando hoje?</span>
+                  <div class="btn-toggle-funcionario-status" data-id="${func.id}" data-status="${isAtivo}" style="display: flex; background: var(--surface-hover); padding: 3px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); min-width: 90px; justify-content: space-between; transition: all 0.3s ease;">
+                    <span style="flex: 1; text-align: center; font-size: 0.65rem; font-weight: 900; padding: 5px 0; border-radius: 14px; transition: all 0.3s; ${!isAtivo ? 'background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm);' : 'color: var(--text-secondary);'}">NÃO</span>
+                    <span style="flex: 1; text-align: center; font-size: 0.65rem; font-weight: 900; padding: 5px 0; border-radius: 14px; transition: all 0.3s; ${isAtivo ? 'background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm);' : 'color: var(--text-secondary);'}">SIM</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Content: Name, Role, Phone -->
+              <div style="flex-grow: 1; position: relative; width: 100%;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 0.25rem;">
+                  <h4 style="font-family: var(--font-body); font-weight: 900; color: var(--text-main); font-size: 1.4rem;">${func.nome}</h4>
+                  <!-- Edit Button (Aligned with Name) -->
+                  <button class="btn-edit-funcionario" data-id="${func.id}" style="background: var(--surface-hover); border: none; padding: 8px; border-radius: 10px; color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    ${icons.edit}
+                  </button>
+                </div>
+                <p style="font-size: 0.85rem; color: var(--text-main); font-weight: 900; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.5rem;">${func.cargo || 'BARBEIRO'}</p>
+                
+                <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 1.5rem;">
+                  <a href="https://wa.me/55${(func.telefone || '').replace(/\D/g, '')}" target="_blank" style="display: flex; align-items: center; gap: 6px; text-decoration: none; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                    <div style="width: 28px; height: 28px; color: #25D366;">${icons.whatsapp}</div>
+                    <span style="font-size: 1.1rem; color: var(--text-secondary); font-weight: 800;">${func.telefone || '(00) 0 0000-0000'}</span>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Footer: Status and Delete -->
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; border-top: 1px solid var(--border); padding-top: 1rem;">
+                <div style="font-size: 0.75rem; font-weight: 900; color: var(--text-secondary);">
+                  STATUS: <span style="color: ${isAtivo ? '#10b981' : '#ef4444'};">${isAtivo ? 'ATIVO' : 'INATIVO'}</span>
+                </div>
+                ${!isOwner ? `
+                  <button class="btn-delete-funcionario" data-id="${func.id}" style="background: #fee2e2; border: none; padding: 8px; border-radius: 10px; color: #ef4444; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+                    ${icons.trash}
+                  </button>
+                ` : ''}
+              </div>
+            `}
+          </div>`
+        }).join('') : `
+          <div style="grid-column: 1/-1; padding: 4rem 2rem; text-align: center; background: var(--surface); border-radius: 2rem; border: 2px dashed var(--border);">
+            <p style="color: var(--text-secondary); font-weight: 700; font-size: 1.1rem;">Nenhum funcionário cadastrado ainda.</p>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Cadastre sua equipe para organizar o atendimento.</p>
+          </div>
+        `}
+      </div>
+    </div>
+  `, false, false)
+}
+
+function attachFuncionariosEvents() {
+  const btnBack = document.getElementById('btn-back-dashboard')
+  if (btnBack) btnBack.onclick = () => { appState.screen = 'dashboard'; render(); }
+
+  // Phone Mask Helper
+  const applyPhoneMask = (input) => {
+    if (!input) return
+    input.addEventListener('input', (e) => {
+      let val = e.target.value.replace(/\D/g, '')
+      if (val.length > 11) val = val.slice(0, 11)
+      if (val.length > 6) {
+        val = `(${val.slice(0, 2)}) ${val.slice(2, 3)} ${val.slice(3, 7)}-${val.slice(7)}`
+      } else if (val.length > 2) {
+        val = `(${val.slice(0, 2)}) ${val.slice(2)}`
+      } else if (val.length > 0) {
+        val = `(${val}`
+      }
+      e.target.value = val
+    })
+  }
+
+  applyPhoneMask(document.getElementById('input-telefone-funcionario'))
+
+  // Capitalize Initial Helper
+  const applyCapitalize = (input) => {
+    if (!input) return
+    input.addEventListener('input', (e) => {
+      let val = e.target.value
+      // Always capitalize first letter of each word
+      e.target.value = val.replace(/(^\w|\s\w)/g, m => m.toUpperCase())
+    })
+  }
+
+  applyPhoneMask(document.getElementById('input-telefone-funcionario'))
+  document.querySelectorAll('.phone-mask').forEach(applyPhoneMask)
+  
+  applyCapitalize(document.getElementById('input-nome-funcionario'))
+  applyCapitalize(document.getElementById('input-cargo-funcionario'))
+  document.querySelectorAll('.capitalize-input').forEach(applyCapitalize)
+
+  const btnSave = document.getElementById('btn-salvar-funcionario')
+  if (btnSave) btnSave.addEventListener('click', async () => {
+    const nome = document.getElementById('input-nome-funcionario').value
+    const cargo = document.getElementById('input-cargo-funcionario').value
+    const telefone = document.getElementById('input-telefone-funcionario').value
+
+    if (!nome) return alert('Por favor, insira o nome do funcionário.')
+
+    btnSave.textContent = 'CADASTRANDO...'
+    btnSave.disabled = true
+
+    const { error } = await supabase.from('funcionarios').insert([{
+      estabelecimento_id: appState.user.id,
+      nome,
+      cargo,
+      telefone,
+      ativo: true
+    }])
+
+    if (error) {
+      alert('Erro ao cadastrar: ' + error.message)
+    } else {
+      appState.funcionariosForm = { nome: '', cargo: '', telefone: '' }
+      appState.funcionariosLoaded = false
+      alert('Funcionário cadastrado com sucesso!')
+    }
+    render()
+  })
+
+  // Edit
+  document.querySelectorAll('.btn-edit-funcionario').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id
+      appState.editingFuncionarioId = id
+      appState.editingFuncionarioForm = {}
+      render()
+    })
+  })
+
+  // Cancel Edit
+  document.querySelectorAll('.btn-cancel-edit-funcionario').forEach(btn => {
+    btn.addEventListener('click', () => {
+      appState.editingFuncionarioId = null
+      render()
+    })
+  })
+
+  // Save Edit
+  document.querySelectorAll('.btn-save-edit-funcionario').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id
+      const nome = document.getElementById(`edit-func-nome-${id}`).value
+      const cargo = document.getElementById(`edit-func-cargo-${id}`).value
+      const telefone = document.getElementById(`edit-func-tel-${id}`).value
+
+      if (id.startsWith('owner-')) {
+        // Update establishment profile instead
+        const { error } = await supabase.from('estabelecimentos')
+          .update({ telefone: telefone })
+          .eq('id', appState.user.id)
+        
+        if (error) {
+          alert('Erro ao atualizar proprietário: ' + error.message)
+        } else {
+          if (appState.profile) appState.profile.telefone = telefone
+          appState.editingFuncionarioId = null
+          alert('Dados do proprietário atualizados!')
+          render()
+        }
+        return
+      }
+
+      const { error } = await supabase.from('funcionarios')
+        .update({ nome, cargo, telefone })
+        .eq('id', id)
+
+      if (error) {
+        alert('Erro ao salvar: ' + error.message)
+      } else {
+        appState.editingFuncionarioId = null
+        appState.funcionariosLoaded = false
+        alert('Dados atualizados!')
+      }
+      render()
+    })
+  })
+
+  // Toggle Status
+  document.querySelectorAll('.btn-toggle-funcionario-status').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id
+      const currentStatus = btn.dataset.status === 'true'
+      const nextStatus = !currentStatus
+      
+      if (id.startsWith('owner-')) {
+        const { error } = await supabase.from('estabelecimentos')
+          .update({ ativo: nextStatus })
+          .eq('id', appState.user.id)
+        
+        if (error) {
+          alert('Erro ao atualizar status: ' + error.message)
+        } else {
+          if (appState.profile) appState.profile.ativo = nextStatus
+          render()
+        }
+        return
+      }
+
+      const { error } = await supabase.from('funcionarios')
+        .update({ ativo: nextStatus })
+        .eq('id', id)
+        
+      if (error) {
+        alert('Erro ao atualizar status: ' + error.message)
+      } else {
+        appState.funcionariosLoaded = false
+        render()
+      }
+    })
+  })
+
+  // Delete
+  document.querySelectorAll('.btn-delete-funcionario').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id
+      appState.deleteFuncionarioId = id
+      appState.showModal = 'confirm-delete-funcionario'
+      render()
+    })
+  })
+}
+
 function renderAssinaturas() {
   const isMensal = appState.selectedAssinatura === 'mensal'
   const isAnual = appState.selectedAssinatura === 'anual'
@@ -2673,7 +3471,7 @@ function renderAssinaturas() {
   const monthlyLed = 'rgba(209, 213, 219, 0.6)'
 
   return renderTabHeader('Assinaturas', `
-    <div class="assinaturas-content p-lg animate-fade-in text-center" style="max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem;">
+    <div class="assinaturas-content p-lg text-center" style="max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem;">
       <div style="margin-bottom: 3rem;">
         <h2 style="font-family: var(--font-heading); font-size: clamp(1.5rem, 4vw, 2.5rem); letter-spacing: -1px;">POTENCIALIZE SEU NEGÓCIO</h2>
         <p style="color: var(--text-secondary); margin-top: 0.625rem; font-weight: 600; font-size: 1.1rem;">Escolha o plano ideal para sua jornada.</p>
@@ -2912,12 +3710,20 @@ function attachDashboardEvents() {
   const financas = document.getElementById('card-financas')
   const servicos = document.getElementById('card-servicos')
   const assinaturas = document.getElementById('card-assinaturas')
+  const funcionarios = document.getElementById('card-funcionarios')
+  const configuracoes = document.getElementById('card-configuracoes')
 
   if (logout) logout.addEventListener('click', () => { appState.showModal = 'confirm-logout'; render() })
   if (agenda) agenda.addEventListener('click', () => { appState.screen = 'agenda'; render() })
-  if (financas) financas.addEventListener('click', () => { appState.screen = 'financas'; render() })
+  if (financas) financas.addEventListener('click', () => {
+    // Sempre pedir senha ao acessar via Dashboard, ignorando estado anterior
+    appState.showModal = 'financeiro-auth'
+    render()
+  })
   if (servicos) servicos.addEventListener('click', () => { appState.screen = 'servicos'; render() })
   if (assinaturas) assinaturas.addEventListener('click', () => { appState.screen = 'assinaturas'; render() })
+  if (funcionarios) funcionarios.addEventListener('click', () => { appState.screen = 'funcionarios'; render() })
+  if (configuracoes) configuracoes.addEventListener('click', () => { appState.screen = 'configuracoes'; render() })
 
   const btnSupport = document.getElementById('btn-floating-support')
   if (btnSupport) btnSupport.addEventListener('click', () => {
@@ -3177,7 +3983,7 @@ function attachCalendarModalEvents() {
   const days = document.querySelectorAll('.calendar-day:not(.empty)')
 
   if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) { appState.showModal = null; render() } })
-  if (btnClose) btnClose.addEventListener('click', () => { appState.showModal = null; render() })
+  if (btnClose) btnClose.addEventListener('click', () => { appState.showModal = null; render() } )
 
   if (btnPrev) btnPrev.addEventListener('click', () => {
     appState.viewingDate.setMonth(appState.viewingDate.getMonth() - 1)
@@ -3266,6 +4072,12 @@ function attachAgendamentoModalEvents() {
     checkFormValidity()
   })
 
+  const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+  const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
+  attachStaffSearchSelect('modal-staff-search', 'modal-staff-list', allStaff, () => {
+    checkFormValidity()
+  })
+
   if (phoneInput) {
     phoneInput.addEventListener('input', (e) => {
       e.target.value = formatPhone(e.target.value)
@@ -3311,6 +4123,10 @@ function attachAgendamentoModalEvents() {
     const date = new Date(dateInput + 'T12:00:00')
     const dayKey = getAgendaDayKey(date)
 
+    const staffHidden = document.getElementById('modal-staff-search-selected')
+    let selectedStaffIds = []
+    try { selectedStaffIds = JSON.parse(staffHidden ? staffHidden.value : '[]') } catch(e) {}
+
     // DB Payload
     const payload = {
       estabelecimento_id: appState.user?.id,
@@ -3321,7 +4137,8 @@ function attachAgendamentoModalEvents() {
       data_agendamento: dateInput,
       hora_agendamento: time,
       duracao_minutos: duracaoTotal,
-      valor_total: valorTotal
+      valor_total: valorTotal,
+      funcionario_id: selectedStaffIds[0] || null
     }
 
     if (isEdit && appState.editingAgendamento.id) {
@@ -3938,18 +4755,6 @@ function attachFinancasEvents() {
   if (btnNext) {
     btnNext.addEventListener('click', async () => {
       if (appState.financasData.month === 11) {
-        bg1024.scan(0, 0, 1024, 1024, function(px, py, idx) {
-          const dx = px - centerX; const dy = py - centerY;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-          
-          // Preenche o círculo INTEIRO de preto para garantir que o ícone seja redondo
-          if (distance <= radius) {
-            this.bitmap.data[idx + 0] = 0;
-            this.bitmap.data[idx + 1] = 0;
-            this.bitmap.data[idx + 2] = 0;
-            this.bitmap.data[idx + 3] = 255;
-          }
-        });
         appState.financasData.month = 0
         appState.financasData.year += 1
       } else {
@@ -4139,6 +4944,8 @@ function attachNewTransactionEvents() {
       return
     }
 
+    const payload = localTransToDb(desc, val, typeFull, dateInput, appState.user.id)
+
     // Optimistic Save
     appState.financasData.transactions.unshift(dbTransToLocal(payload)) // Use payload as temporary visual data
     close()
@@ -4264,6 +5071,20 @@ function attachEditTransactionEvents() {
 function attachServicosEvents() {
   attachGenericBack()
 
+  // Staff Selection (Dropdown UI)
+  const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+  const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
+  
+  attachStaffSearchSelect('input-staff-servico', 'list-staff-servico', allStaff, (selected) => {
+    appState.servicosForm.funcionarios_ids = selected
+  })
+
+  appState.servicosAtivos.forEach(s => {
+    attachStaffSearchSelect(`edit-staff-servico-${s.id}`, `edit-list-staff-servico-${s.id}`, allStaff, (selected) => {
+      appState.editingServicoForm.funcionarios_ids = selected
+    })
+  })
+
   const toggle = document.getElementById('toggle-reserva')
   if (toggle) {
     toggle.addEventListener('click', () => {
@@ -4324,6 +5145,11 @@ function attachServicosEvents() {
   const btnSalvar = document.getElementById('btn-salvar-servico')
   if (btnSalvar) {
     btnSalvar.addEventListener('click', async () => {
+      const taxaReservaStr = document.getElementById('input-taxa-reserva')?.value || '0'
+      const chavePix = document.getElementById('input-chave-pix')?.value || ''
+      const staffIdsInput = document.getElementById('input-staff-servico-selected')
+      const staffIds = staffIdsInput ? JSON.parse(staffIdsInput.value || '[]') : []
+
       if (!appState.servicosForm.name || !appState.servicosForm.price || !appState.servicosForm.duration) {
         return alert('Por favor, preencha o nome, preço e duração do serviço!')
       }
@@ -4331,8 +5157,7 @@ function attachServicosEvents() {
       // Se cobra taxa de reserva, verificar se preencheu a chave PIX
       let chavePixValue = ''
       if (appState.servicosForm.chargeReserva) {
-        const pixInput = document.getElementById('input-chave-pix')
-        chavePixValue = pixInput ? pixInput.value.trim() : ''
+        chavePixValue = chavePix
         if (!chavePixValue) {
           return alert('Por favor, informe a sua Chave PIX para receber a taxa de reserva.')
         }
@@ -4350,7 +5175,8 @@ function attachServicosEvents() {
         preco: parseCurrency(appState.servicosForm.price),
         duracao_minutos: totalMinutes,
         cobra_reserva: appState.servicosForm.chargeReserva,
-        taxa_reserva: appState.servicosForm.chargeReserva ? parseCurrency(appState.servicosForm.reservaValue) : 0
+        taxa_reserva: appState.servicosForm.chargeReserva ? parseCurrency(taxaReservaStr) : 0,
+        funcionarios_ids: staffIds
       }
 
       // Optimistic state cleanup
@@ -4389,7 +5215,8 @@ function attachServicosEvents() {
         duracao_minutos: s.duracao_minutos,
         chargeReserva: s.cobra_reserva || false,
         taxa_str: s.taxa_reserva ? 'R$ ' + Number(s.taxa_reserva).toFixed(2).replace('.', ',') : '',
-        chave_pix: appState.profile?.chave_pix || ''
+        chave_pix: appState.profile?.chave_pix || '',
+        funcionarios_ids: s.funcionarios_ids || []
       }
       render()
     })
@@ -4414,17 +5241,6 @@ function attachServicosEvents() {
       appState.editingServicoId = null
       appState.editingServicoForm = {}
       render()
-      // After render, attach capitalize to the nome field
-      setTimeout(() => {
-        const nomeInput = document.getElementById('edit-nome-' + id)
-        if (nomeInput) {
-          nomeInput.addEventListener('input', () => {
-            const pos = nomeInput.selectionStart
-            nomeInput.value = nomeInput.value.replace(/(?:^|\\s)\\S/g, c => c.toUpperCase())
-            nomeInput.setSelectionRange(pos, pos)
-          })
-        }
-      }, 0)
     })
   })
 
@@ -4464,8 +5280,11 @@ function attachServicosEvents() {
         return alert('Por favor, informe a Chave PIX para receber a taxa de reserva.')
       }
 
+      const staffIdsInput = document.getElementById(`edit-staff-servico-${id}-selected`)
+      const staffIds = staffIdsInput ? JSON.parse(staffIdsInput.value || '[]') : (appState.servicosAtivos.find(s => s.id === id)?.funcionarios_ids || [])
+
       const payload = {
-        nome, preco, duracao_minutos: duracao, cobra_reserva: cobraReserva, taxa_reserva: taxaReserva
+        nome, preco, duracao_minutos: duracao, cobra_reserva: cobraReserva, taxa_reserva: taxaReserva, funcionarios_ids: staffIds
       }
 
       // Optimistic Update

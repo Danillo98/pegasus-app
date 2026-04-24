@@ -199,6 +199,15 @@
     .service-info .s-name  { font-size: .95rem; font-weight: 600; }
     .service-info .s-dur   { font-size: .75rem; color: var(--muted); margin-top: 2px; }
     .service-price { font-size: .95rem; font-weight: 700; color: var(--primary); }
+    .service-item.service-disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      pointer-events: none;
+      background: var(--surface2);
+    }
+    .service-item.service-disabled .s-name {
+      text-decoration: line-through;
+    }
 
     /* ── Total ── */
     .total-bar {
@@ -397,6 +406,8 @@
       estabId: null,
       estab: null,
       servicos: [],
+      staff: [],
+      selectedStaffId: null,
       selectedIds: new Set(),
       slots: [],
       selectedSlot: null,
@@ -466,9 +477,10 @@
     async function bootstrap() {
       showLoading();
       try {
-        const [estabRes, servicosRes] = await Promise.all([
-          sb.from('estabelecimentos').select('nome_completo, tipo, chave_pix, dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao').eq('id', state.estabId).maybeSingle(),
-          sb.from('servicos').select('id, nome, preco, duracao_minutos, cobra_reserva, taxa_reserva').eq('estabelecimento_id', state.estabId).order('nome')
+        const [estabRes, servicosRes, staffRes] = await Promise.all([
+          sb.from('estabelecimentos').select('nome_completo, tipo, chave_pix, dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao, ativo').eq('id', state.estabId).maybeSingle(),
+          sb.from('servicos').select('id, nome, preco, duracao_minutos, cobra_reserva, taxa_reserva, funcionarios_ids').eq('estabelecimento_id', state.estabId).order('nome'),
+          sb.from('funcionarios').select('id, nome, ativo').eq('estabelecimento_id', state.estabId).eq('ativo', true).order('nome')
         ]);
         
         if (estabRes.error) throw estabRes.error;
@@ -478,7 +490,17 @@
         state.estab = estabRes.data;
         state.servicos = servicosRes.data || [];
 
-        // Applica a estilização (themes: default to dark/barbearia, if 'salao' it changes to light/pink)
+        // Build staff list: owner first (only if active), then active employees
+        const ownerActive = state.estab.ativo !== false; // default true if column is null
+        const staff = [];
+        if (ownerActive) {
+          staff.push({ id: `owner-${state.estabId}`, nome: state.estab.nome_completo || 'Proprietário' });
+        }
+        const employees = (staffRes.data || []).map(f => ({ id: f.id, nome: f.nome }));
+        state.staff = [...staff, ...employees];
+        // Pre-select the first professional
+        if (state.staff.length > 0) state.selectedStaffId = state.staff[0].id;
+
         if (state.estab.tipo?.toLowerCase() === 'salao') {
            document.body.classList.add('theme-salao');
         }
@@ -572,15 +594,26 @@
           <div id="service-list">
             ${state.servicos.length === 0
               ? '<p style="color:var(--muted);text-align:center;padding:1rem 0">Nenhum serviço disponível.</p>'
-              : state.servicos.map(s => `
-                <div class="service-item ${state.selectedIds.has(s.id) ? 'selected' : ''}" data-id="${s.id}">
+              : state.servicos.map(s => {
+                // Check if service has at least 1 active professional
+                const ids = s.funcionarios_ids || [];
+                const hasActivePro = ids.length === 0 || ids.some(fid => state.staff.find(p => p.id === fid));
+                const disabled = !hasActivePro;
+                
+                // If disabled, remove from selection
+                if (disabled) state.selectedIds.delete(s.id);
+                
+                return `
+                <div class="service-item ${disabled ? 'service-disabled' : ''} ${state.selectedIds.has(s.id) ? 'selected' : ''}" data-id="${s.id}" ${disabled ? 'data-disabled="true"' : ''}>
                   <div class="service-check">${state.selectedIds.has(s.id) ? '✓' : ''}</div>
                   <div class="service-info">
                     <div class="s-name">${s.nome}</div>
                     ${s.duracao_minutos ? `<div class="s-dur">⏱ ${s.duracao_minutos} min</div>` : ''}
+                    ${disabled ? '<div class="s-dur" style="color:var(--red); font-weight:700;">Indisponível</div>' : ''}
                   </div>
-                  <div class="service-price">R$${Number(s.preco).toFixed(2).replace('.', ',')}</div>
-                </div>`).join('')}
+                  <div class="service-price" ${disabled ? 'style="opacity:0.4;"' : ''}>R$${Number(s.preco).toFixed(2).replace('.', ',')}</div>
+                </div>`;
+              }).join('')}
           </div>
           <div class="total-bar" style="margin-top:.8rem">
             <span class="total-label">Total</span>
@@ -595,6 +628,7 @@
 
       document.querySelectorAll('.service-item').forEach(el => {
         el.addEventListener('click', () => {
+          if (el.dataset.disabled === 'true') return; // Block clicks on disabled services
           const id = el.dataset.id;
           if (state.selectedIds.has(id)) { state.selectedIds.delete(id); el.classList.remove('selected'); el.querySelector('.service-check').textContent = ''; }
           else { state.selectedIds.add(id); el.classList.add('selected'); el.querySelector('.service-check').textContent = '✓'; }
@@ -643,12 +677,19 @@
         return h * 60 + m;
       }
 
-      // 1. Fetch existing bookings (CORRECT COLUMN: agendamento_status)
-      const { data: bookings } = await sb
+      // 1. Fetch existing bookings filtered by selected professional
+      let bookingsQuery = sb
         .from('agendamentos')
-        .select('data_agendamento, hora_agendamento, agendamento_status, duracao_minutos')
+        .select('data_agendamento, hora_agendamento, agendamento_status, duracao_minutos, funcionario_id')
         .eq('estabelecimento_id', state.estabId)
         .not('agendamento_status', 'in', '(cancelado,recusado,excluido)');
+
+      // Filter by selected staff if one is chosen
+      if (state.selectedStaffId) {
+        bookingsQuery = bookingsQuery.eq('funcionario_id', state.selectedStaffId);
+      }
+
+      const { data: bookings } = await bookingsQuery;
 
       // 2. Fetch day-specific exceptions
       const startStr = now.toISOString().split('T')[0];
@@ -748,17 +789,57 @@
       const fmtDate = d => d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
       const fmtTime = d => d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
-      const slotsHtml = state.slots.length === 0
-        ? '<p style="color:var(--muted);text-align:center;padding:1.5rem 0">Nenhum horário disponível nos próximos dias. Entre em contato diretamente.</p>'
-        : state.slots.map((slot, i) => {
-          const today = new Date();
-          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-          
-          let dateFinal = fmtDate(slot);
-          if (slot.toDateString() === tomorrow.toDateString()) {
-            dateFinal += ' (Amanhã)';
-          }
+      // 1. Filter staff based on selected services
+      const selectedServices = state.servicos.filter(s => state.selectedIds.has(s.id));
+      
+      // A professional is valid if they are included in ALL selected services' funcionarios_ids
+      let filteredStaff = state.staff.filter(person => {
+        return selectedServices.every(srv => {
+          // If the service has no specific staff mapped, assume everyone can do it (or handle as needed)
+          if (!srv.funcionarios_ids || srv.funcionarios_ids.length === 0) return true;
+          return srv.funcionarios_ids.includes(person.id);
+        });
+      });
 
+      // If filtering results in nothing (shouldn't happen with correct DB data), show all as fallback
+      if (filteredStaff.length === 0) filteredStaff = state.staff;
+
+      // Ensure state.selectedStaffId is valid for the new list
+      if (!filteredStaff.find(s => s.id === state.selectedStaffId)) {
+        state.selectedStaffId = filteredStaff[0].id;
+      }
+
+      const currentStaff = state.staff.find(s => s.id === state.selectedStaffId) || filteredStaff[0];
+
+      // Staff Dropdown HTML
+      const staffHtml = filteredStaff.length > 1 ? `
+        <div class="section-title" style="margin-bottom:0.6rem;">👤 Escolha o profissional</div>
+        <div class="staff-dropdown-container" style="position:relative; margin-bottom:1.5rem;">
+          <div id="staff-dropdown-trigger" style="display:flex; justify-content:space-between; align-items:center; padding:0.9rem 1.1rem; background:var(--surface2); border:1.5px solid var(--border); border-radius:var(--radius); cursor:pointer; transition:all 0.2s;">
+            <span style="font-weight:700; font-size:0.95rem; color:var(--text);">${currentStaff.nome}</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.3s;" id="staff-chevron"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div id="staff-dropdown-options" style="display:none; position:absolute; top:calc(100% + 5px); left:0; width:100%; background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); z-index:100; overflow:hidden; animation: slideIn 0.2s ease-out;">
+            ${filteredStaff.map(s => `
+              <div class="staff-option" data-sid="${s.id}" style="padding:0.9rem 1.1rem; cursor:pointer; font-weight:600; font-size:0.9rem; transition:background 0.2s; ${state.selectedStaffId === s.id ? 'background:rgba(0,0,0,0.03); color:var(--primary);' : ''}">
+                ${s.nome}
+                ${state.selectedStaffId === s.id ? '<span style="float:right;">✓</span>' : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <style>
+          @keyframes slideIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+          .staff-option:hover { background: var(--surface2); }
+        </style>
+      ` : '';
+
+      const slotsHtml = state.slots.length === 0
+        ? '<p style="color:var(--muted);text-align:center;padding:1.5rem 0">Nenhum horário disponível nos próximos dias.</p>'
+        : state.slots.map((slot, i) => {
+          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+          let dateFinal = fmtDate(slot);
+          if (slot.toDateString() === tomorrow.toDateString()) dateFinal += ' (Amanhã)';
           return `
           <div class="slot-item ${state.selectedSlot?.getTime() === slot.getTime() ? 'selected' : ''}" data-i="${i}">
             <div class="slot-icon">
@@ -778,15 +859,82 @@
       document.getElementById('main').innerHTML = `
         <div class="card">
           <div class="section-title">🕐 Próximos horários disponíveis</div>
-          ${slotsHtml}
+          ${staffHtml}
+          <div id="slots-container">${slotsHtml}</div>
           <button class="btn" id="btn-step3" disabled>Confirmar agendamento →</button>
           <button class="btn outline" onclick="renderStep2()">← Voltar</button>
         </div>`;
 
+      // Dropdown Logic
+      const trigger = document.getElementById('staff-dropdown-trigger');
+      const options = document.getElementById('staff-dropdown-options');
+      const chevron = document.getElementById('staff-chevron');
+
+      if (trigger) {
+        trigger.onclick = (e) => {
+          e.stopPropagation();
+          const isVisible = options.style.display === 'block';
+          options.style.display = isVisible ? 'none' : 'block';
+          chevron.style.transform = isVisible ? 'rotate(0deg)' : 'rotate(180deg)';
+        };
+
+        // Close when clicking outside
+        document.addEventListener('click', () => {
+          if (options) {
+            options.style.display = 'none';
+            if (chevron) chevron.style.transform = 'rotate(0deg)';
+          }
+        }, { once: true });
+
+        // Select option
+        document.querySelectorAll('.staff-option').forEach(opt => {
+          opt.onclick = async (e) => {
+            e.stopPropagation();
+            state.selectedStaffId = opt.dataset.sid;
+            state.selectedSlot = null;
+            
+            // Auto-close dropdown
+            options.style.display = 'none';
+            chevron.style.transform = 'rotate(0deg)';
+
+            // Update UI (loading)
+            const staffName = state.staff.find(s => s.id === state.selectedStaffId)?.nome || '';
+            trigger.querySelector('span').textContent = staffName;
+
+            const container = document.getElementById('slots-container');
+            container.innerHTML = '<div class="loading-wrap" style="padding:1.5rem"><div class="spinner"></div><span>Buscando horários...</span></div>';
+            
+            await loadSlots();
+
+            // Re-render slots
+            const newSlotsHtml = state.slots.length === 0
+              ? '<p style="color:var(--muted);text-align:center;padding:1.5rem 0">Nenhum horário disponível nos próximos dias.</p>'
+              : state.slots.map((slot, i) => {
+                const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+                let df = fmtDate(slot);
+                if (slot.toDateString() === tomorrow.toDateString()) df += ' (Amanhã)';
+                return `<div class="slot-item" data-i="${i}"><div class="slot-icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><text x="12" y="19" text-anchor="middle" font-size="9" font-weight="900" fill="currentColor" stroke="none" style="font-family:'Inter',sans-serif;">${slot.getDate()}</text></svg></div><div class="slot-info"><div class="s-date">${df}</div><div class="s-time">${fmtTime(slot)}</div></div></div>`;
+              }).join('');
+            container.innerHTML = newSlotsHtml;
+
+            // Re-attach slot listeners
+            container.querySelectorAll('.slot-item').forEach(el => {
+              el.addEventListener('click', () => {
+                container.querySelectorAll('.slot-item').forEach(e => e.classList.remove('selected'));
+                el.classList.add('selected');
+                state.selectedSlot = state.slots[Number(el.dataset.i)];
+                updateStep3Btn();
+              });
+            });
+            updateStep3Btn();
+          };
+        });
+      }
+
       // Pre-select if only 1 slot
       if (state.slots.length === 1) { state.selectedSlot = state.slots[0]; document.querySelector('.slot-item')?.classList.add('selected'); updateStep3Btn(); }
 
-      document.querySelectorAll('.slot-item').forEach(el => {
+      document.querySelectorAll('#slots-container .slot-item').forEach(el => {
         el.addEventListener('click', () => {
           document.querySelectorAll('.slot-item').forEach(e => e.classList.remove('selected'));
           el.classList.add('selected');
@@ -817,6 +965,7 @@
       const chave = state.estab?.chave_pix;
 
       const fmtDt = d => d.toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      const staffName = state.staff.find(s => s.id === state.selectedStaffId)?.nome || '';
 
       const pixSection = precisaPix && chave ? `
         <div class="pix-box" style="margin-top:1rem">
@@ -836,6 +985,7 @@
           <div class="summary-row"><span class="label">Nome</span><span class="value">${state.clienteName}</span></div>
           <div class="summary-row"><span class="label">Serviços</span><span class="value">${selected.map(s => s.nome).join(', ')}</span></div>
           <div class="summary-row"><span class="label">Horário</span><span class="value">${fmtDt(state.selectedSlot)}</span></div>
+          ${staffName ? `<div class="summary-row"><span class="label">Profissional</span><span class="value">${staffName}</span></div>` : ''}
           <div class="summary-row"><span class="label">Total</span><span class="value" style="color:var(--primary)">R$ ${total.toFixed(2).replace('.', ',')}</span></div>
           ${precisaPix ? `<div class="summary-row"><span class="label">Taxa reserva</span><span class="value" style="color:var(--yellow)">R$ ${totalTaxa.toFixed(2).replace('.', ',')} <span class="chip-tag">PIX</span></span></div>` : ''}
           ${pixSection}
@@ -876,6 +1026,11 @@
         obj.servico_id = selected[0].id;
       }
 
+      // funcionario_id — profissional selecionado
+      if (state.selectedStaffId) {
+        obj.funcionario_id = state.selectedStaffId;
+      }
+
       console.log('[agendamento] inserindo:', obj);
       const { data, error } = await sb.from('agendamentos').insert(obj).select().maybeSingle();
 
@@ -893,6 +1048,7 @@
       const selected = state.servicos.filter(s => state.selectedIds.has(s.id));
       const total = selected.reduce((acc, s) => acc + Number(s.preco), 0);
       const fmtDt = d => d.toLocaleString('pt-BR', { weekday:'long', day:'2-digit', month:'long', hour:'2-digit', minute:'2-digit' });
+      const staffName = state.staff.find(s => s.id === state.selectedStaffId)?.nome || '';
 
       // Hide steps bar
       document.getElementById('steps-bar').style.display = 'none';
@@ -929,6 +1085,7 @@
           <div style="text-align:left; width: 100%">
             <div class="summary-row"><span class="label">Serviços</span><span class="value">${selected.map(s=>s.nome).join(', ')}</span></div>
             <div class="summary-row"><span class="label">Quando</span><span class="value">${fmtDt(state.selectedSlot)}</span></div>
+            ${staffName ? `<div class="summary-row"><span class="label">Profissional</span><span class="value">${staffName}</span></div>` : ''}
             <div class="summary-row"><span class="label">Total</span><span class="value" style="color:var(--primary)">R$ ${total.toFixed(2).replace('.', ',')}</span></div>
           </div>
           <p style="color:var(--muted);font-size:.8rem;margin-top:1.25rem">
