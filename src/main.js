@@ -188,7 +188,9 @@ window.alert = function(message) {
 // --- Constants ---
 const STRIPE_PRICE_IDS = {
   mensal: 'price_1TPkLk2MoHdp9hlMnuCK3CaD', 
-  anual: 'price_1TPkMK2MoHdp9hlMmwIGPIc0'    
+  anual: 'price_1TPkMK2MoHdp9hlMmwIGPIc0',
+  mensal_ilimitado: 'price_1TQWhX2MoHdp9hlMT1ud49gH',
+  anual_ilimitado: 'price_1TQWiI2MoHdp9hlMskOxcE2y'
 }
 
 // State
@@ -3489,65 +3491,140 @@ function attachFuncionariosEvents() {
 
 function renderAssinaturas() {
   const isMensal = appState.selectedAssinatura === 'mensal'
+  const isMensalIlimitado = appState.selectedAssinatura === 'mensal_ilimitado'
   const isAnual = appState.selectedAssinatura === 'anual'
+  const isAnualIlimitado = appState.selectedAssinatura === 'anual_ilimitado'
   const isSalao = appState.theme === 'salao'
 
-  // Dynamic colors based on theme
   const annualBorder = isSalao ? '#FF4D94' : '#000000'
   const annualLed = isSalao ? 'rgba(255, 77, 148, 0.7)' : 'rgba(0, 0, 0, 0.5)'
   const annualTagBg = isSalao ? '#FF4D94' : '#000000'
   const annualAccent = isSalao ? '#FF4D94' : '#000000'
 
-  const monthlyBorder = '#d1d5db' // Light Gray
+  const monthlyBorder = '#d1d5db'
   const monthlyLed = 'rgba(209, 213, 219, 0.6)'
 
   return renderTabHeader('Assinaturas', `
-    <div class="assinaturas-content p-lg text-center" style="max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem;">
-      <div style="margin-bottom: 3rem;">
-        <h2 style="font-family: var(--font-heading); font-size: clamp(1.5rem, 4vw, 2.5rem); letter-spacing: -1px;">POTENCIALIZE SEU NEGÓCIO</h2>
-        <p style="color: var(--text-secondary); margin-top: 0.625rem; font-weight: 600; font-size: 1.1rem;">Escolha o plano ideal para sua jornada.</p>
+    <style>
+      .assinaturas-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-top: 2rem;
+      }
+      @media (max-width: 1100px) {
+        .assinaturas-grid { grid-template-columns: repeat(2, 1fr); }
+      }
+      @media (max-width: 768px) {
+        .assinaturas-grid { grid-template-columns: 1fr; }
+      }
+      .plan-list li {
+        display: grid;
+        grid-template-columns: 24px 1fr;
+        gap: 8px;
+        align-items: start;
+        text-align: left;
+        margin-bottom: 0.8rem;
+        line-height: 1.4;
+      }
+      .plan-card {
+        padding: 2.5rem 1.25rem;
+        border-radius: 1.5rem;
+        background: #ffffff;
+        transition: all 0.3s ease;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+    </style>
+    <div class="assinaturas-content p-lg text-center" style="max-width: 85rem; margin: 0 auto; padding: 2rem 1rem;">
+      <div style="margin-bottom: 2rem;">
+        <h2 style="font-family: var(--font-heading); font-size: clamp(1.5rem, 4vw, 2.2rem); letter-spacing: -1px;">POTENCIALIZE SEU NEGÓCIO</h2>
+        <p style="color: var(--text-secondary); margin-top: 0.5rem; font-weight: 600; font-size: 1rem;">Escolha o plano ideal para sua jornada.</p>
       </div>
 
-      <div class="flex gap-lg justify-center items-stretch" style="display: flex; gap: 2rem; flex-wrap: wrap; isolation: isolate;">
+      <div class="assinaturas-grid">
+        
         <!-- PLANO MENSAL -->
-        <div id="card-mensal" class="card ripple" style="flex: 1; min-width: 20rem; border: 3px solid ${monthlyBorder}; box-shadow: ${isMensal ? `0 0 35px ${monthlyLed}` : 'var(--shadow-md)'}; transform: ${isMensal ? 'scale(1.03)' : 'scale(1)'}; z-index: ${isMensal ? '10' : '1'}; padding: 3rem 2rem; background: #ffffff; border-radius: 1.5rem; position: relative; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: visible !important;">
-          <h3 style="margin-top: 0.625rem; font-size: 1.25rem; font-weight: 900; color: #4b5563;">PLANO MENSAL</h3>
-          <div style="margin: 1.5rem 0;">
-            <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 99<span style="font-size: 1.25rem; opacity: 0.6;">,90</span></h1>
+        <div id="card-mensal" class="plan-card ripple" style="border: 3px solid ${monthlyBorder}; box-shadow: ${isMensal ? `0 0 30px ${monthlyLed}` : 'var(--shadow-md)'}; transform: ${isMensal ? 'scale(1.02)' : 'scale(1)'};">
+          <div>
+            <h3 style="font-size: 1rem; font-weight: 900; color: #4b5563;">PLANO MENSAL</h3>
+            <div style="margin: 1.5rem 0;">
+              <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 99<span style="font-size: 1rem; opacity: 0.6;">,90</span></h1>
+            </div>
+            <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Agenda limitada até <b>2 profissionais</b> ativos</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Financeiro com Fluxo de Caixa</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Suporte via WhatsApp</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>WhatsApp Business</span></li>
+            </ul>
           </div>
-          <ul style="text-align: left; margin: 2rem 0; font-size: 1rem; color: #4b5563; line-height: 2.2; font-weight: 500;">
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${monthlyBorder}; font-weight: 900;">✓</div> Agenda Ilimitada</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${monthlyBorder}; font-weight: 900;">✓</div> Financeiro Profissional com Fluxo de Caixa</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${monthlyBorder}; font-weight: 900;">✓</div> Relatórios Mensais e Anuais em PDF</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${monthlyBorder}; font-weight: 900;">✓</div> Suporte via WhatsApp</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${monthlyBorder}; font-weight: 900;">✓</div> Compatibilidade com WhatsApp Business</li>
-          </ul>
-          <button id="btn-subscribe-mensal" style="background: #212529; color: white; padding: 1.25rem; border-radius: 0.75rem; font-weight: 800; width: 100%; box-shadow: var(--shadow-md); letter-spacing: 1px; border: none; cursor: pointer;">ASSINAR AGORA</button>
+          <button id="btn-subscribe-mensal" style="background: #212529; color: white; padding: 1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; border: none; cursor: pointer; font-size: 0.85rem;">ASSINAR AGORA</button>
+        </div>
+
+        <!-- PLANO MENSAL ILIMITADO -->
+        <div id="card-mensal-ilimitado" class="plan-card ripple" style="border: 3px solid ${monthlyBorder}; box-shadow: ${isMensalIlimitado ? `0 0 30px ${monthlyLed}` : 'var(--shadow-md)'}; transform: ${isMensalIlimitado ? 'scale(1.02)' : 'scale(1)'};">
+          <div>
+            <h3 style="font-size: 1rem; font-weight: 900; color: #4b5563;">MENSAL - ILIMITADO</h3>
+            <div style="margin: 1.5rem 0;">
+              <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 129<span style="font-size: 1rem; opacity: 0.6;">,90</span></h1>
+            </div>
+            <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Agenda <b>ILIMITADA</b> para profissionais</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Financeiro com Fluxo de Caixa</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Suporte via WhatsApp</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>WhatsApp Business</span></li>
+            </ul>
+          </div>
+          <button id="btn-subscribe-mensal-ilimitado" style="background: #212529; color: white; padding: 1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; border: none; cursor: pointer; font-size: 0.85rem;">ASSINAR AGORA</button>
         </div>
 
         <!-- PLANO ANUAL -->
-        <div id="card-anual" class="card ripple" style="flex: 1; min-width: 20rem; border: 3px solid ${annualBorder}; box-shadow: 0 0 35px ${annualLed}; transform: scale(1.03); z-index: 10; padding: 3rem 2rem; background: #ffffff; border-radius: 1.5rem; position: relative; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); overflow: visible !important;">
-          <div style="background: ${annualTagBg}; color: white; padding: 0.5rem 1.2rem; border-radius: 1.25rem; font-size: 0.75rem; font-weight: 900; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border: 2px solid white; white-space: nowrap; line-height: 1; z-index: 20;">MAIS ESCOLHIDO</div>
-          <h3 style="margin-top: 0.625rem; font-size: 1.25rem; font-weight: 900; color: ${annualAccent};">PLANO ANUAL</h3>
-          <div style="margin: 1.5rem 0;">
-            <h1 style="font-size: clamp(3rem, 6vw, 4rem); font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 999<span style="font-size: 1.25rem; opacity: 0.6;">,00</span></h1>
+        <div id="card-anual" class="plan-card ripple" style="border: 3px solid ${annualBorder}; box-shadow: ${isAnual ? `0 0 30px ${annualLed}` : 'var(--shadow-md)'}; transform: ${isAnual ? 'scale(1.02)' : 'scale(1)'};">
+          <div>
+            <h3 style="font-size: 1rem; font-weight: 900; color: ${annualAccent};">PLANO ANUAL</h3>
+            <div style="margin: 1.5rem 0;">
+              <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 999<span style="font-size: 1rem; opacity: 0.6;">,00</span></h1>
+            </div>
+            <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Agenda limitada até <b>2 profissionais</b> ativos</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Financeiro com Fluxo de Caixa</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Suporte via WhatsApp</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>WhatsApp Business</span></li>
+            </ul>
           </div>
-          <p style="font-size: 0.8rem; font-weight: 900; background: ${isSalao ? 'rgba(255, 77, 148, 0.1)' : 'rgba(0, 0, 0, 0.05)'}; color: ${annualAccent}; padding: 0.6rem 1.25rem; border-radius: 1.25rem; display: inline-block; margin-bottom: 1.25rem; letter-spacing: 0.5px; border: 1.5px solid ${isSalao ? 'rgba(255, 77, 148, 0.2)' : 'rgba(0, 0, 0, 0.1)'};">ECONOMIZE 2 MESES DE ASSINATURA (R$199,80 DE ECONOMIA)</p>
-          <ul style="text-align: left; margin: 1.5rem 0; font-size: 1rem; color: #4b5563; line-height: 2.2; font-weight: 500;">
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${annualBorder}; font-weight: 900;">✓</div> Agenda Ilimitada</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${annualBorder}; font-weight: 900;">✓</div> Financeiro Profissional com Fluxo de Caixa</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${annualBorder}; font-weight: 900;">✓</div> Relatórios Mensais e Anuais em PDF</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${annualBorder}; font-weight: 900;">✓</div> Suporte via WhatsApp</li>
-            <li style="display: flex; align-items: center; gap: 8px;"><div style="width: 18px; color: ${annualBorder}; font-weight: 900;">✓</div> Compatibilidade com WhatsApp Business</li>
-          </ul>
-          <button id="btn-subscribe-anual" style="background: #212529; color: white; padding: 1.25rem; border-radius: 0.75rem; font-weight: 800; width: 100%; box-shadow: var(--shadow-md); letter-spacing: 1px; border: none; cursor: pointer;">ASSINAR AGORA</button>
+          <button id="btn-subscribe-anual" style="background: #212529; color: white; padding: 1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; border: none; cursor: pointer; font-size: 0.85rem;">ASSINAR AGORA</button>
         </div>
+
+        <!-- PLANO ANUAL ILIMITADO -->
+        <div id="card-anual-ilimitado" class="plan-card ripple" style="border: 3px solid ${annualBorder}; box-shadow: ${isAnualIlimitado ? `0 0 30px ${annualLed}` : 'var(--shadow-md)'}; transform: ${isAnualIlimitado ? 'scale(1.02)' : 'scale(1)'};">
+          <div style="background: ${annualTagBg}; color: white; padding: 0.3rem 0.8rem; border-radius: 1rem; font-size: 0.65rem; font-weight: 900; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; border: 2px solid white; white-space: nowrap; z-index: 20;">MAIS ESCOLHIDO</div>
+          <div>
+            <h3 style="font-size: 1rem; font-weight: 900; color: ${annualAccent};">ANUAL - ILIMITADO</h3>
+            <div style="margin: 1.5rem 0;">
+              <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 1.290<span style="font-size: 1rem; opacity: 0.6;">,00</span></h1>
+            </div>
+            <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Agenda <b>ILIMITADA</b> para profissionais</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Financeiro com Fluxo de Caixa</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Suporte via WhatsApp</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>WhatsApp Business</span></li>
+            </ul>
+          </div>
+          <button id="btn-subscribe-anual-ilimitado" style="background: #212529; color: white; padding: 1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; border: none; cursor: pointer; font-size: 0.85rem;">ASSINAR AGORA</button>
+        </div>
+
       </div>
 
-      <div style="margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--border); display:flex; flex-direction:column; align-items:center; gap:0.6rem;">
-        <a href="/termos.html" target="_blank" style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); text-decoration:underline; cursor:pointer;">Termos de Uso</a>
-        <a href="/politicas.html" target="_blank" style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); text-decoration:underline; cursor:pointer;">Política de Privacidade</a>
-        <span style="font-size:0.75rem; color:var(--text-secondary); opacity:0.6; font-weight:600;">© 2026 Pegasus App — Todos os direitos reservados.</span>
+      <div style="margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; flex-direction:column; align-items:center; gap:0.4rem;">
+        <a href="/termos.html" target="_blank" style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-decoration:underline; cursor:pointer;">Termos de Uso</a>
+        <a href="/politicas.html" target="_blank" style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-decoration:underline; cursor:pointer;">Política de Privacidade</a>
+        <span style="font-size:0.7rem; color:var(--text-secondary); opacity:0.6; font-weight:600;">© 2026 Pegasus App — Todos os direitos reservados.</span>
       </div>
     </div>
   `, false, false)
@@ -5400,38 +5477,32 @@ async function stripeCheckout(priceId) {
 
 function attachAssinaturasEvents() {
   attachGenericBack()
-  const cardMensal = document.getElementById('card-mensal')
-  const cardAnual = document.getElementById('card-anual')
-  const btnMensal = document.getElementById('btn-subscribe-mensal')
-  const btnAnual = document.getElementById('btn-subscribe-anual')
 
-  if (cardMensal) {
-    cardMensal.addEventListener('click', () => {
-      appState.selectedAssinatura = 'mensal'
-      render()
-    })
-  }
-  if (cardAnual) {
-    cardAnual.addEventListener('click', () => {
-      appState.selectedAssinatura = 'anual'
-      render()
-    })
+  const setupPlan = (id, key) => {
+    const el = document.getElementById(id)
+    if (el) el.onclick = () => { appState.selectedAssinatura = key; render(); }
   }
 
-  if (btnMensal) {
-    btnMensal.addEventListener('click', (e) => {
-      e.stopPropagation()
-      btnMensal.textContent = 'CARREGANDO...'
-      stripeCheckout(STRIPE_PRICE_IDS.mensal)
-    })
+  const setupBtn = (id, key) => {
+    const btn = document.getElementById(id)
+    if (btn) {
+      btn.onclick = (e) => {
+        e.stopPropagation()
+        btn.textContent = 'CARREGANDO...'
+        stripeCheckout(STRIPE_PRICE_IDS[key])
+      }
+    }
   }
-  if (btnAnual) {
-    btnAnual.addEventListener('click', (e) => {
-      e.stopPropagation()
-      btnAnual.textContent = 'CARREGANDO...'
-      stripeCheckout(STRIPE_PRICE_IDS.anual)
-    })
-  }
+
+  setupPlan('card-mensal', 'mensal')
+  setupPlan('card-mensal-ilimitado', 'mensal_ilimitado')
+  setupPlan('card-anual', 'anual')
+  setupPlan('card-anual-ilimitado', 'anual_ilimitado')
+
+  setupBtn('btn-subscribe-mensal', 'mensal')
+  setupBtn('btn-subscribe-mensal-ilimitado', 'mensal_ilimitado')
+  setupBtn('btn-subscribe-anual', 'anual')
+  setupBtn('btn-subscribe-anual-ilimitado', 'anual_ilimitado')
 }
 
 // ─── Helper: Cria agendamento no banco e PIX se tiver taxa ─────────────────
