@@ -682,7 +682,7 @@
         .from('agendamentos')
         .select('data_agendamento, hora_agendamento, agendamento_status, duracao_minutos, funcionario_id')
         .eq('estabelecimento_id', state.estabId)
-        .not('agendamento_status', 'in', '(cancelado,recusado,excluido)');
+        .not('agendamento_status', 'in', '(cancelado,recusado,excluido,concluido)');
 
       // Filter by selected staff if one is chosen
       if (state.selectedStaffId) {

@@ -19,6 +19,22 @@
     ],
     "rewrites": [
       {
+        "source": "/termos",
+        "destination": "/termos.html"
+      },
+      {
+        "source": "/termos/",
+        "destination": "/termos.html"
+      },
+      {
+        "source": "/politicas",
+        "destination": "/politicas.html"
+      },
+      {
+        "source": "/politicas/",
+        "destination": "/politicas.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

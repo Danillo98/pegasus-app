@@ -1445,6 +1445,18 @@ function renderLogin() {
         <input type="email" id="reg-email" placeholder="Email" value="${appState.registrationData.email}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
         <input type="password" id="reg-senha" placeholder="Senha" value="${appState.registrationData.senha}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
         <input type="password" id="reg-senha-confirm" placeholder="Confirmação de Senha" value="${appState.registrationData.conf}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
+        
+        <div style="display:flex; flex-direction:column; gap:0.6rem; margin-top:0.5rem; width:100%;">
+          <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer; font-size:0.8rem; font-weight:600; color:var(--text-secondary); text-align:left;">
+            <input type="checkbox" id="chk-termos" style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
+            <span>Li e concordo com os <a href="/termos.html" target="_blank" style="color:var(--primary); font-weight:800; text-decoration:underline;">Termos de Uso</a></span>
+          </label>
+          <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer; font-size:0.8rem; font-weight:600; color:var(--text-secondary); text-align:left;">
+            <input type="checkbox" id="chk-politicas" style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
+            <span>Li e concordo com a <a href="/politicas.html" target="_blank" style="color:var(--primary); font-weight:800; text-decoration:underline;">Política de Privacidade</a></span>
+          </label>
+        </div>
+
         <button id="btn-do-register" class="w-full" style="background: var(--primary); color: var(--on-primary); padding: 1rem; border-radius: 0.5rem; font-weight: 800; margin-top: 5px; font-size: 1.1rem; cursor: pointer; box-shadow: 0 4px 15px var(--glow);">
           CADASTRAR
         </button>
@@ -2999,11 +3011,16 @@ function renderServicos() {
 }
 
 function renderConfiguracoes() {
-  const profile = appState.profile || {}
-  const dias = Array.isArray(profile.dias_funcionamento) ? profile.dias_funcionamento : []
-  const abertura = profile.horario_abertura || '09:00'
-  const fechamento = profile.horario_fechamento || '18:00'
-  const pausas = Array.isArray(profile.pausas_padrao) ? profile.pausas_padrao : []
+  // Initialize temporary config if it doesn't exist
+  if (!appState.tempConfig) {
+    appState.tempConfig = JSON.parse(JSON.stringify(appState.profile || {}))
+  }
+  
+  const config = appState.tempConfig
+  const dias = Array.isArray(config.dias_funcionamento) ? config.dias_funcionamento : []
+  const abertura = config.horario_abertura || '09:00'
+  const fechamento = config.horario_fechamento || '18:00'
+  const pausas = Array.isArray(config.pausas_padrao) ? config.pausas_padrao : []
   
   const diasSemana = [
     { label: 'DOM', val: 0 }, { label: 'SEG', val: 1 },
@@ -3019,7 +3036,7 @@ function renderConfiguracoes() {
       <input type="time" class="pausa-inicio" value="${p.inicio||''}" style="flex:1;${input};border:none;padding:0;">
       <span style="color:var(--text-secondary);font-weight:700;font-size:0.9rem;">até</span>
       <input type="time" class="pausa-fim" value="${p.fim||''}" style="flex:1;${input};border:none;padding:0;">
-      <button class="btn-remove-pausa-config" data-idx="${i}" style="background:rgba(239,68,68,0.1);border:none;color:var(--red);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">✕</button>
+      <button class="btn-remove-pausa-config" data-idx="${i}">✕</button>
     </div>`
 
   return renderTabHeader('Configurações', `
@@ -3055,7 +3072,7 @@ function renderConfiguracoes() {
         </div>
 
         <span style="${lbl}">HORÁRIO DE EXPEDIENTE</span>
-        <div style="display:flex;gap:1rem;margin-bottom:2rem;align-items:flex-end;">
+        <div class="config-time-group" style="display:flex;gap:1rem;margin-bottom:2rem;align-items:flex-end;">
           <div style="flex:1;">
             <label style="font-size:0.75rem;font-weight:700;color:var(--text-secondary);display:block;margin-bottom:0.4rem;">Abertura</label>
             <input type="time" id="config-abertura" value="${abertura}" style="${input}">
@@ -3082,7 +3099,7 @@ function renderConfiguracoes() {
         <button id="btn-save-config" style="width:100%;padding:1.25rem;border-radius:1rem;background:var(--primary);color:var(--on-primary);font-weight:900;font-size:1rem;letter-spacing:1.5px;border:none;cursor:pointer;margin-top:1rem;box-shadow:var(--shadow-md);">SALVAR CONFIGURAÇÕES</button>
       </div>
     </div>
-  `)
+  `, false, false) // showPrint=false, showCalendar=false
 }
 
 function attachConfiguracoesEvents() {
@@ -3093,13 +3110,13 @@ function attachConfiguracoesEvents() {
   document.querySelectorAll('.dia-btn-config').forEach(btn => {
     btn.addEventListener('click', () => {
       const val = parseInt(btn.dataset.dia)
-      let dias = Array.isArray(appState.profile.dias_funcionamento) ? [...appState.profile.dias_funcionamento] : []
+      let dias = Array.isArray(appState.tempConfig.dias_funcionamento) ? [...appState.tempConfig.dias_funcionamento] : []
       if (dias.includes(val)) {
         dias = dias.filter(d => d !== val)
       } else {
         dias.push(val)
       }
-      appState.profile.dias_funcionamento = dias
+      appState.tempConfig.dias_funcionamento = dias
       render()
     })
   })
@@ -3107,8 +3124,8 @@ function attachConfiguracoesEvents() {
   // Add Pausa
   const btnAddPausa = document.getElementById('btn-add-pausa-config')
   if (btnAddPausa) btnAddPausa.addEventListener('click', () => {
-    if (!Array.isArray(appState.profile.pausas_padrao)) appState.profile.pausas_padrao = []
-    appState.profile.pausas_padrao.push({ inicio: '12:00', fim: '13:00' })
+    if (!Array.isArray(appState.tempConfig.pausas_padrao)) appState.tempConfig.pausas_padrao = []
+    appState.tempConfig.pausas_padrao.push({ inicio: '12:00', fim: '13:00' })
     render()
   })
 
@@ -3116,7 +3133,7 @@ function attachConfiguracoesEvents() {
   document.querySelectorAll('.btn-remove-pausa-config').forEach(btn => {
     btn.addEventListener('click', () => {
       const idx = parseInt(btn.dataset.idx)
-      appState.profile.pausas_padrao.splice(idx, 1)
+      appState.tempConfig.pausas_padrao.splice(idx, 1)
       render()
     })
   })
@@ -3142,21 +3159,35 @@ function attachConfiguracoesEvents() {
       .update({
         horario_abertura: abertura,
         horario_fechamento: fechamento,
-        dias_funcionamento: appState.profile.dias_funcionamento,
+        dias_funcionamento: appState.tempConfig.dias_funcionamento,
         pausas_padrao: pausas
       })
       .eq('id', appState.user.id)
 
     if (error) {
-      alert('Erro ao salvar: ' + error.message)
+      alert('Erro ao salvar configurações: ' + error.message)
     } else {
+      // Update official profile with saved data
       appState.profile.horario_abertura = abertura
       appState.profile.horario_fechamento = fechamento
-      appState.profile.pausas_padrao = pausas
+      appState.profile.dias_funcionamento = [...appState.tempConfig.dias_funcionamento]
+      appState.profile.pausas_padrao = [...pausas]
+      
+      appState.tempConfig = null // Clear temp state
       alert('Configurações salvas com sucesso!')
+      render()
     }
-    render()
+    btnSave.textContent = 'SALVAR CONFIGURAÇÕES'
+    btnSave.disabled = false
   })
+
+  // Back to Dashboard
+  const btnBack = document.getElementById('btn-back-dashboard')
+  if (btnBack) btnBack.onclick = () => { 
+    appState.tempConfig = null; // Discard changes
+    appState.screen = 'dashboard'; 
+    render(); 
+  }
 }
 
 function renderFuncionarios() {
@@ -3512,6 +3543,12 @@ function renderAssinaturas() {
           <button id="btn-subscribe-anual" style="background: #212529; color: white; padding: 1.25rem; border-radius: 0.75rem; font-weight: 800; width: 100%; box-shadow: var(--shadow-md); letter-spacing: 1px; border: none; cursor: pointer;">ASSINAR AGORA</button>
         </div>
       </div>
+
+      <div style="margin-top:3rem; padding-top:1.5rem; border-top:1px solid var(--border); display:flex; flex-direction:column; align-items:center; gap:0.6rem;">
+        <a href="/termos.html" target="_blank" style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); text-decoration:underline; cursor:pointer;">Termos de Uso</a>
+        <a href="/politicas.html" target="_blank" style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); text-decoration:underline; cursor:pointer;">Política de Privacidade</a>
+        <span style="font-size:0.75rem; color:var(--text-secondary); opacity:0.6; font-weight:600;">© 2026 Pegasus App — Todos os direitos reservados.</span>
+      </div>
     </div>
   `, false, false)
 }
@@ -3672,6 +3709,12 @@ function attachLoginEvents() {
     }
     if (senha !== conf) {
       return alert('As senhas não coincidem.')
+    }
+
+    const chkTermos = document.getElementById('chk-termos')
+    const chkPoliticas = document.getElementById('chk-politicas')
+    if (!chkTermos?.checked || !chkPoliticas?.checked) {
+      return alert('Erro: Você deve aceitar os Termos de Uso e a Política de Privacidade para criar sua conta.')
     }
 
     btnDoRegister.textContent = 'CRIANDO...'

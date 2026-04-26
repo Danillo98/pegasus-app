@@ -287,26 +287,91 @@ input[type="date"], input[type="time"] {
 /* Dashboard Grid */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr)); /* Force equal widths */
   gap: var(--spacing-lg);
   padding: var(--spacing-lg);
   width: 100%;
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
   box-sizing: border-box;
+  overflow: hidden; /* Prevents internal cards from leaking width */
+}
+
+@media (max-width: 900px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 600px) {
   .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* Force equal widths on mobile */
     padding: var(--spacing-md);
     gap: var(--spacing-md);
+    max-width: 100%;
   }
 }
-@media (min-width: 601px) {
-  .dashboard-grid {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+
+/* ── Config Screen Responsiveness ── */
+@media (max-width: 600px) {
+  .config-content {
+    padding: 0.75rem !important;
+    padding-bottom: 6rem !important;
   }
+  .config-content .card {
+    padding: 1.25rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+  .config-content h3 {
+    font-size: 0.95rem !important;
+  }
+  .config-content p {
+    font-size: 0.8rem !important;
+  }
+  .dia-btn-config {
+    padding: 0.5rem 0.8rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 0.75rem !important;
+  }
+  .config-time-group {
+    gap: 0.5rem !important;
+  }
+  .config-time-group input {
+    padding: 0.75rem !important;
+    font-size: 0.9rem !important;
+  }
+  .config-time-group span {
+    font-size: 1rem !important;
+  }
+}
+
+.btn-remove-pausa-config {
+  background: var(--surface);
+  border: 2px solid var(--border); /* Default gray */
+  color: var(--red);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-weight: 900;
+  transition: all 0.2s;
+}
+
+.mode-salao .btn-remove-pausa-config {
+  border-color: var(--primary); /* Pink for salon */
+}
+
+.mode-barbearia .btn-remove-pausa-config {
+  border-color: #d1d5db; /* Gray for barbearia */
+}
+
+.btn-remove-pausa-config:hover {
+  background: var(--surface-hover);
+  transform: scale(1.1);
 }
 
 /* Calendar Modal Styles */
