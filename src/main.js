@@ -3607,7 +3607,7 @@ function renderAssinaturas() {
             <h3 style="font-size: 1rem; font-weight: 900; color: ${annualAccent};">PLANO ANUAL</h3>
             <div style="margin: 1.5rem 0;">
               <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 999<span style="font-size: 1rem; opacity: 0.6;">,00</span></h1>
-              <p style="font-size: 0.75rem; color: #16a34a; font-weight: 800; margin-top: 0.5rem;">Pague 10 meses e use 12</p>
+              <p style="font-size: 0.75rem; color: #16a34a; font-weight: 800; margin-top: 0.5rem;">Economize 2 meses(199,80) com este plano</p>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Suporta até 2 Profissionais ativos</span></li>
@@ -3629,7 +3629,7 @@ function renderAssinaturas() {
             <h3 style="font-size: 1rem; font-weight: 900; color: ${annualAccent};">ANUAL - ILIMITADO</h3>
             <div style="margin: 1.5rem 0;">
               <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 1.290<span style="font-size: 1rem; opacity: 0.6;">,00</span></h1>
-              <p style="font-size: 0.75rem; color: #16a34a; font-weight: 800; margin-top: 0.5rem;">Pague 10 meses e use 12</p>
+              <p style="font-size: 0.75rem; color: #16a34a; font-weight: 800; margin-top: 0.5rem;">Economize 2 meses(259,80) com este plano</p>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Número ILIMITADO de Profissionais ativos</span></li>
