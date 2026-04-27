@@ -22,9 +22,9 @@ serve(async (req) => {
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    const { priceId, estabelecimentoId, email, origin } = await req.json()
+    const { priceId, estabelecimentoId, plano, email, origin } = await req.json()
 
-    if (!priceId || !estabelecimentoId) {
+    if (!priceId || !estabelecimentoId || !plano) {
       throw new Error('Parâmetros obrigatórios ausentes.')
     }
 
@@ -39,11 +39,13 @@ serve(async (req) => {
       cancel_url: `${baseUrl}/`,
       customer_email: email,
       metadata: {
-        estabelecimento_id: estabelecimentoId
+        estabelecimento_id: estabelecimentoId,
+        plano: plano
       },
       subscription_data: {
         metadata: {
-          estabelecimento_id: estabelecimentoId
+          estabelecimento_id: estabelecimentoId,
+          plano: plano
         }
       }
     })

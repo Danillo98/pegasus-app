@@ -35,14 +35,24 @@ serve(async (req) => {
     const session = event.data.object
     if (session.payment_status === 'paid') {
       const estabId = session.metadata.estabelecimento_id
+      const plano = session.metadata.plano
       const customerId = session.customer
 
       const now = new Date()
       const expiracao = new Date(now)
-      expiracao.setDate(expiracao.getDate() + 32) // 30 dias + 2 de margem
+      
+      // Cálculo de vencimento: mensal = 30 dias, anual = 365 dias
+      if (plano && (plano.includes('anual'))) {
+        expiracao.setFullYear(expiracao.getFullYear() + 1)
+      } else {
+        expiracao.setDate(expiracao.getDate() + 30)
+      }
+      expiracao.setDate(expiracao.getDate() + 2) // +2 dias de margem
 
       await supabaseAdmin.from('estabelecimentos').update({
-        assinatura_status: 'active',
+        assinatura_status: 'PAGO',
+        plano: plano,
+        assinatura_iniciada: now.toISOString(),
         assinatura_vencimento: expiracao.toISOString(),
         stripe_customer_id: customerId,
         updated_at: now.toISOString()
@@ -54,14 +64,20 @@ serve(async (req) => {
   if (event.type === 'customer.subscription.updated') {
     const sub = event.data.object
     const estabId = sub.metadata.estabelecimento_id
+    const plano = sub.metadata.plano
     const status = sub.status // 'active', 'past_due', 'unpaid', 'canceled'
 
-    let appStatus = 'suspended'
-    if (status === 'active') appStatus = 'active'
-    if (status === 'past_due') appStatus = 'grace_period'
+    let appStatus = 'VENCIDO'
+    if (status === 'active') appStatus = 'PAGO'
 
-    const expiracao = new Date()
-    expiracao.setDate(expiracao.getDate() + 32)
+    const now = new Date()
+    const expiracao = new Date(now)
+    if (plano && (plano.includes('anual'))) {
+      expiracao.setFullYear(expiracao.getFullYear() + 1)
+    } else {
+      expiracao.setDate(expiracao.getDate() + 30)
+    }
+    expiracao.setDate(expiracao.getDate() + 2)
 
     await supabaseAdmin.from('estabelecimentos').update({
       assinatura_status: appStatus,
@@ -76,7 +92,7 @@ serve(async (req) => {
     const estabId = sub.metadata.estabelecimento_id
     
     await supabaseAdmin.from('estabelecimentos').update({
-      assinatura_status: 'suspended',
+      assinatura_status: 'VENCIDO',
       updated_at: new Date().toISOString()
     }).eq('id', estabId)
   }

@@ -278,24 +278,28 @@ function ensureCountryCode(ph) {
   return ph;
 }
 
-function getTrialStatus() {
-  if (!appState.profile || !appState.profile.created_at) return { isExpired: false, remainingDays: 7 }
+function getSubscriptionStatus() {
+  if (!appState.profile) return { isExpired: false, status: 'Trial', remainingDays: 7 }
   
-  // If user has an active subscription, they are not on trial
-  if (appState.profile.subscription_status === 'active') {
-    return { isExpired: false, isSubscriber: true }
+  const status = appState.profile.assinatura_status || 'Trial'
+  const vencimento = appState.profile.assinatura_vencimento ? new Date(appState.profile.assinatura_vencimento) : null
+  const now = new Date()
+
+  // Se a data atual passou do vencimento, está expirado
+  const isExpired = vencimento && now > vencimento
+
+  // Cálculo de dias restantes (especialmente para o badge do Trial)
+  let remainingDays = 0
+  if (vencimento) {
+    const diffTime = vencimento - now
+    remainingDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
   }
 
-  const createdDate = new Date(appState.profile.created_at)
-  const now = new Date()
-  const diffTime = now - createdDate
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
-  const remaining = 7 - diffDays
-  
   return { 
-    isExpired: remaining <= 0, 
-    remainingDays: Math.max(0, remaining),
-    isSubscriber: false
+    isExpired: isExpired, 
+    status: isExpired ? 'VENCIDO' : status,
+    remainingDays: Math.max(0, remainingDays),
+    isSubscriber: status === 'PAGO' && !isExpired
   }
 }
 
@@ -586,9 +590,20 @@ function render() {
 
   // ── Global Subscription/Trial Lock ──
   if (appState.user && appState.profile && appState.screen !== 'assinaturas') {
-     const trial = getTrialStatus()
-     if (trial.isExpired) {
+     const sub = getSubscriptionStatus()
+     if (sub.isExpired) {
+        if (sub.status === 'VENCIDO') {
+          // Logout automático para vencidos
+          supabase.auth.signOut()
+          alert('Sua assinatura venceu. Por favor, renove seu plano para continuar.')
+        }
         appState.screen = 'assinaturas'
+        // If it's expired, we might want to sync the VENCIDO status to the DB once
+        if (appState.profile.assinatura_status !== 'VENCIDO' && sub.status === 'VENCIDO') {
+          supabase.from('estabelecimentos').update({ assinatura_status: 'VENCIDO' }).eq('id', appState.user.id).then(() => {
+            appState.profile.assinatura_status = 'VENCIDO'
+          })
+        }
      }
   }
 
@@ -1509,10 +1524,10 @@ function renderDashboard() {
           </div>
           <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 1rem;">
             ${(() => {
-              const trial = getTrialStatus()
-              if (trial.isSubscriber) return ''
-              return `<span style="font-size: 0.65rem; font-weight: 800; color: ${trial.remainingDays <= 2 ? 'var(--red)' : 'var(--text-secondary)'}; background: ${trial.remainingDays <= 2 ? 'rgba(239,68,68,0.08)' : 'var(--surface)'}; padding: 4px 10px; border-radius: 999px; letter-spacing: 0.5px; white-space: nowrap;">
-                FALTAM ${trial.remainingDays} DIA${trial.remainingDays !== 1 ? 'S' : ''} GRÁTIS
+              const sub = getSubscriptionStatus()
+              if (sub.isSubscriber) return ''
+              return `<span style="font-size: 0.65rem; font-weight: 800; color: ${sub.remainingDays <= 2 ? 'var(--red)' : 'var(--text-secondary)'}; background: ${sub.remainingDays <= 2 ? 'rgba(239,68,68,0.08)' : 'var(--surface)'}; padding: 4px 10px; border-radius: 999px; letter-spacing: 0.5px; white-space: nowrap;">
+                FALTAM ${sub.remainingDays} DIA${sub.remainingDays !== 1 ? 'S' : ''} GRÁTIS
               </span>`
             })()}
             <button id="btn-logout" style="color: var(--text-secondary); font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px;">Sair</button>
@@ -3046,16 +3061,16 @@ function renderConfiguracoes() {
       
       <!-- WhatsApp Section -->
       <div class="card" style="padding: 2rem; margin-bottom: 2rem; align-items: stretch; border-left: 5px solid #25D366;">
-        <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.25rem;">
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content: center; gap:0.75rem; margin-bottom:1.25rem;">
           <div style="background:#25D366; color:white; width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
             ${icons.whatsapp}
           </div>
-          <h3 style="font-size: 1.1rem; font-weight: 800; letter-spacing: 0.5px;">AUTOMAÇÃO WHATSAPP BUSINESS</h3>
+          <h3 style="font-size: 1.1rem; font-weight: 800; letter-spacing: 0.5px; text-align: center;">AUTOMAÇÃO WHATSAPP BUSINESS</h3>
         </div>
         <p style="font-size: 0.9rem; color: var(--text-secondary); font-weight: 600; line-height: 1.5; margin-bottom: 1.5rem;">
           Configure uma resposta automática no seu WhatsApp Business com o link do seu agendamento online.
         </p>
-        <button id="btn-config-whatsapp" style="background:#25D366; color:white; padding:1.1rem; border-radius:1rem; font-weight:900; font-size:0.9rem; border:none; cursor:pointer; letter-spacing:1px; box-shadow:0 4px 15px rgba(37,211,102,0.2);">
+        <button id="btn-config-whatsapp" style="background:#25D366; color:white; padding:1.1rem; border-radius:1rem; font-weight:900; font-size:0.9rem; border:none; cursor:pointer; letter-spacing:1px; box-shadow:0 4px 15px rgba(37,211,102,0.2); width: 100%;">
           CONFIGURAR MENSAGEM AUTOMÁTICA
         </button>
       </div>
@@ -3554,11 +3569,13 @@ function renderAssinaturas() {
               <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 99<span style="font-size: 1rem; opacity: 0.6;">,90</span></h1>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
-              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Agenda limitada até <b>2 profissionais</b> ativos</span></li>
-              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Financeiro com Fluxo de Caixa</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Suporta até 2 Profissionais ativos</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Financeiro privado com Fluxo de Caixa integrado</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Cadastro de Serviços e Profissionais</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Agenda com reservas automatizadas</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Integração com Whatsapp Business</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Suporte via WhatsApp</span></li>
-              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>WhatsApp Business</span></li>
             </ul>
           </div>
           <button id="btn-subscribe-mensal" style="background: #212529; color: white; padding: 1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; border: none; cursor: pointer; font-size: 0.85rem;">ASSINAR AGORA</button>
@@ -3572,11 +3589,13 @@ function renderAssinaturas() {
               <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 129<span style="font-size: 1rem; opacity: 0.6;">,90</span></h1>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
-              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Agenda <b>ILIMITADA</b> para profissionais</span></li>
-              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Financeiro com Fluxo de Caixa</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Número ILIMITADO de Profissionais ativos</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Financeiro privado com Fluxo de Caixa integrado</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Cadastro de Serviços e Profissionais</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Agenda com reservas automatizadas</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Integração com Whatsapp Business</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Suporte via WhatsApp</span></li>
-              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>WhatsApp Business</span></li>
             </ul>
           </div>
           <button id="btn-subscribe-mensal-ilimitado" style="background: #212529; color: white; padding: 1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; border: none; cursor: pointer; font-size: 0.85rem;">ASSINAR AGORA</button>
@@ -3588,13 +3607,16 @@ function renderAssinaturas() {
             <h3 style="font-size: 1rem; font-weight: 900; color: ${annualAccent};">PLANO ANUAL</h3>
             <div style="margin: 1.5rem 0;">
               <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 999<span style="font-size: 1rem; opacity: 0.6;">,00</span></h1>
+              <p style="font-size: 0.75rem; color: #16a34a; font-weight: 800; margin-top: 0.5rem;">Pague 10 meses e use 12</p>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
-              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Agenda limitada até <b>2 profissionais</b> ativos</span></li>
-              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Financeiro com Fluxo de Caixa</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Suporta até 2 Profissionais ativos</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Financeiro privado com Fluxo de Caixa integrado</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Cadastro de Serviços e Profissionais</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Agenda com reservas automatizadas</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Integração com Whatsapp Business</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Suporte via WhatsApp</span></li>
-              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>WhatsApp Business</span></li>
             </ul>
           </div>
           <button id="btn-subscribe-anual" style="background: #212529; color: white; padding: 1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; border: none; cursor: pointer; font-size: 0.85rem;">ASSINAR AGORA</button>
@@ -3602,18 +3624,21 @@ function renderAssinaturas() {
 
         <!-- PLANO ANUAL ILIMITADO -->
         <div id="card-anual-ilimitado" class="plan-card ripple" style="border: 3px solid ${annualBorder}; box-shadow: ${isAnualIlimitado ? `0 0 30px ${annualLed}` : 'var(--shadow-md)'}; transform: ${isAnualIlimitado ? 'scale(1.02)' : 'scale(1)'};">
-          <div style="background: ${annualTagBg}; color: white; padding: 0.3rem 0.8rem; border-radius: 1rem; font-size: 0.65rem; font-weight: 900; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; border: 2px solid white; white-space: nowrap; z-index: 20;">MAIS ESCOLHIDO</div>
+          <div style="background: ${annualTagBg}; color: white; padding: 0.3rem 0.8rem; border-radius: 1rem; font-size: 0.65rem; font-weight: 900; position: absolute; top: -10px; left: 50%; transform: translateX(-50%); letter-spacing: 1px; border: 2px solid white; white-space: nowrap; z-index: 20;">MAIS ESCOLHIDO</div>
           <div>
             <h3 style="font-size: 1rem; font-weight: 900; color: ${annualAccent};">ANUAL - ILIMITADO</h3>
             <div style="margin: 1.5rem 0;">
               <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 1.290<span style="font-size: 1rem; opacity: 0.6;">,00</span></h1>
+              <p style="font-size: 0.75rem; color: #16a34a; font-weight: 800; margin-top: 0.5rem;">Pague 10 meses e use 12</p>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
-              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Agenda <b>ILIMITADA</b> para profissionais</span></li>
-              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Financeiro com Fluxo de Caixa</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Número ILIMITADO de Profissionais ativos</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Financeiro privado com Fluxo de Caixa integrado</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Cadastro de Serviços e Profissionais</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Agenda com reservas automatizadas</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Integração com Whatsapp Business</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Suporte via WhatsApp</span></li>
-              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>WhatsApp Business</span></li>
             </ul>
           </div>
           <button id="btn-subscribe-anual-ilimitado" style="background: #212529; color: white; padding: 1rem; border-radius: 0.75rem; font-weight: 800; width: 100%; border: none; cursor: pointer; font-size: 0.85rem;">ASSINAR AGORA</button>
@@ -4028,8 +4053,9 @@ function renderSupport() {
             ENVIAR WHATSAPP
           </button>
 
-          <div style="margin-top: 1.5rem; color: #64748b; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: #f1f5f9; padding: 0.8rem; border-radius: 8px;">
+          <div id="btn-copy-support-phone" style="margin-top: 1.5rem; color: #64748b; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; background: #f1f5f9; padding: 0.8rem; border-radius: 8px; cursor: pointer; transition: background 0.3s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
             <span style="font-weight: 700;">+55 (22) 99878-6284</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.7;"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
           </div>
         </div>
 
@@ -4078,6 +4104,19 @@ function attachSupportEvents() {
     
     const whatsappUrl = `https://wa.me/5522998786284?text=${encodeURIComponent(fullMessage)}`
     window.open(whatsappUrl, '_blank')
+  })
+
+  const btnCopyPhone = document.getElementById('btn-copy-support-phone')
+  if (btnCopyPhone) btnCopyPhone.addEventListener('click', () => {
+    navigator.clipboard.writeText('+5522998786284').then(() => {
+      const original = btnCopyPhone.innerHTML
+      btnCopyPhone.style.background = '#dcfce7'
+      btnCopyPhone.innerHTML = '<span style="font-weight: 800; color: #16a34a;">✅ NÚMERO COPIADO!</span>'
+      setTimeout(() => {
+        btnCopyPhone.style.background = '#f1f5f9'
+        btnCopyPhone.innerHTML = original
+      }, 2000)
+    })
   })
 }
 
@@ -5444,7 +5483,7 @@ function attachServicosEvents() {
     })
   })
 }
-async function stripeCheckout(priceId) {
+async function stripeCheckout(priceId, plano) {
   if (!appState.user) return alert('Você precisa estar logado.')
 
   try {
@@ -5459,6 +5498,7 @@ async function stripeCheckout(priceId) {
       },
       body: JSON.stringify({
         priceId: priceId,
+        plano: plano,
         estabelecimentoId: appState.user.id,
         email: appState.user.email,
         origin: window.location.origin
@@ -5489,7 +5529,7 @@ function attachAssinaturasEvents() {
       btn.onclick = (e) => {
         e.stopPropagation()
         btn.textContent = 'CARREGANDO...'
-        stripeCheckout(STRIPE_PRICE_IDS[key])
+        stripeCheckout(STRIPE_PRICE_IDS[key], key)
       }
     }
   }
@@ -5635,10 +5675,16 @@ handleMpCallback().then(async () => {
       if (profile) {
         appState.theme = profile.tipo // 'barbearia' ou 'salao'
         appState.profile = profile
+        
+        // Verificação de assinatura no boot
+        const sub = getSubscriptionStatus()
+        if (sub.isExpired) {
+          appState.screen = 'assinaturas'
+        } else {
+          appState.screen = 'dashboard'
+        }
       }
     } catch(e) { console.warn('Could not restore theme from profile', e) }
-
-    appState.screen = 'dashboard';
   }
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
