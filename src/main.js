@@ -1465,11 +1465,11 @@ function renderLogin() {
         
         <div style="display:flex; flex-direction:column; gap:0.6rem; margin-top:0.5rem; width:100%;">
           <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer; font-size:0.8rem; font-weight:600; color:var(--text-secondary); text-align:left;">
-            <input type="checkbox" id="chk-termos" style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
+            <input type="checkbox" id="chk-termos" ${appState.registrationData.termos ? 'checked' : ''} style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
             <span>Li e concordo com os <a href="/termos.html" target="_blank" style="color:var(--primary); font-weight:800; text-decoration:underline;">Termos de Uso</a></span>
           </label>
           <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer; font-size:0.8rem; font-weight:600; color:var(--text-secondary); text-align:left;">
-            <input type="checkbox" id="chk-politicas" style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
+            <input type="checkbox" id="chk-politicas" ${appState.registrationData.politicas ? 'checked' : ''} style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
             <span>Li e concordo com a <a href="/politicas.html" target="_blank" style="color:var(--primary); font-weight:800; text-decoration:underline;">Política de Privacidade</a></span>
           </label>
         </div>
@@ -3569,7 +3569,7 @@ function renderAssinaturas() {
               <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 99<span style="font-size: 1rem; opacity: 0.6;">,90</span></h1>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
-              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Suporta até 2 Profissionais ativos</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Suporta até <strong>2 Profissionais</strong> ativos</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Financeiro privado com Fluxo de Caixa integrado</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Cadastro de Serviços e Profissionais</span></li>
@@ -3589,7 +3589,7 @@ function renderAssinaturas() {
               <h1 style="font-size: 2.5rem; font-family: var(--font-body); font-weight: 900; color: #212529;">R$ 129<span style="font-size: 1rem; opacity: 0.6;">,90</span></h1>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
-              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Número ILIMITADO de Profissionais ativos</span></li>
+              <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Número <strong>ILIMITADO</strong> de Profissionais ativos</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Financeiro privado com Fluxo de Caixa integrado</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
               <li><div style="color: ${monthlyBorder}; font-weight: 900;">✓</div> <span>Cadastro de Serviços e Profissionais</span></li>
@@ -3610,7 +3610,7 @@ function renderAssinaturas() {
               <p style="font-size: 0.75rem; color: #16a34a; font-weight: 800; margin-top: 0.5rem;">Economize 2 meses(199,80) com este plano</p>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
-              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Suporta até 2 Profissionais ativos</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Suporta até <strong>2 Profissionais</strong> ativos</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Financeiro privado com Fluxo de Caixa integrado</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Cadastro de Serviços e Profissionais</span></li>
@@ -3632,7 +3632,7 @@ function renderAssinaturas() {
               <p style="font-size: 0.75rem; color: #16a34a; font-weight: 800; margin-top: 0.5rem;">Economize 2 meses(259,80) com este plano</p>
             </div>
             <ul class="plan-list" style="margin: 1.5rem 0; font-size: 0.85rem; color: #4b5563; font-weight: 500;">
-              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Número ILIMITADO de Profissionais ativos</span></li>
+              <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Número <strong>ILIMITADO</strong> de Profissionais ativos</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Financeiro privado com Fluxo de Caixa integrado</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Relatórios em PDF</span></li>
               <li><div style="color: ${annualBorder}; font-weight: 900;">✓</div> <span>Cadastro de Serviços e Profissionais</span></li>
@@ -3843,9 +3843,24 @@ function attachLoginEvents() {
     }
 
     alert('Conta criada com sucesso! Seja bem-vindo ao Pegasus!<br>Você já pode fazer login.')
-    appState.registrationData = { nome: '', telefone: '', endereco: '', email: '', senha: '', conf: '' }
+    appState.registrationData = { nome: '', telefone: '', endereco: '', email: '', senha: '', conf: '', termos: false, politicas: false }
     appState.loginSubScreen = 'default'
     render()
+  })
+
+  // Listeners para salvar estado dos checkboxes e inputs
+  const chkTermos = document.getElementById('chk-termos')
+  const chkPoliticas = document.getElementById('chk-politicas')
+  if (chkTermos) chkTermos.addEventListener('change', (e) => { appState.registrationData.termos = e.target.checked })
+  if (chkPoliticas) chkPoliticas.addEventListener('change', (e) => { appState.registrationData.politicas = e.target.checked })
+  
+  const inputs = ['reg-nome', 'reg-telefone', 'reg-endereco', 'reg-email', 'reg-senha', 'reg-senha-confirm']
+  inputs.forEach(id => {
+    const el = document.getElementById(id)
+    if (el) el.addEventListener('input', (e) => {
+      const field = id.replace('reg-', '').replace('-confirm', 'conf')
+      appState.registrationData[field === 'senha' && id.includes('confirm') ? 'conf' : field] = e.target.value
+    })
   })
 }
 
