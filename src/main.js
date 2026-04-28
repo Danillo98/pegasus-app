@@ -1271,6 +1271,69 @@ function render() {
     });
   }
 
+  if (appState.showModal === 'welcome') {
+    const modalOverlay = document.createElement('div')
+    modalOverlay.className = 'overlay'
+    modalOverlay.innerHTML = `
+      <div class="card animate-fade-in custom-scroll" style="max-width:600px; width:96%; padding:0; border-radius:1.5rem; overflow:hidden; max-height:85vh; display:flex; flex-direction:column; background: var(--background); box-shadow: 0 20px 50px rgba(0,0,0,0.3);">
+        <style>
+          .custom-scroll::-webkit-scrollbar { width: 6px; }
+          .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+          .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 10px; }
+          .custom-scroll:hover::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); }
+          @media (max-width: 480px) {
+            .welcome-title { font-size: 1.05rem !important; letter-spacing: 0.2px !important; }
+            .welcome-header { padding: 1.5rem 0.75rem !important; }
+            .welcome-content { padding: 1.25rem 1rem !important; }
+          }
+        </style>
+        <div class="welcome-header" style="width: 100%; box-sizing: border-box; background: ${appState.theme === 'salao' ? 'rgba(255, 77, 148, 0.9)' : 'rgba(0, 0, 0, 0.9)'}; padding: 2.5rem 1.5rem; text-align:center;">
+          <h2 class="welcome-title" style="font-family:var(--font-alt); font-size:clamp(1.2rem, 5vw, 1.5rem); font-weight:900; color:white; margin:0; text-transform: uppercase; letter-spacing: 1.5px; white-space: nowrap;">BEM-VINDO(A) AO PEGASUS</h2>
+          <p style="color:rgba(255,255,255,0.9); font-size:0.9rem; font-weight:700; margin-top:0.6rem; letter-spacing:0.5px;">Leia atentamente as instru\u00e7\u00f5es a seguir:</p>
+        </div>
+        <div class="custom-scroll welcome-content" style="overflow-y:auto; padding:2rem 1.5rem; flex:1;">
+          <div style="display:flex; flex-direction:column; gap:1.5rem;">
+            ${[
+              { n: '1', text: '\u00c9 necess\u00e1rio primeiramente cadastrar os <strong>FUNCION\u00c1RIOS</strong>, caso n\u00e3o tenha pode ignorar esta etapa.' },
+              { n: '2', text: 'Cadastre os <strong>SERVI\u00c7OS</strong> que iremos oferecer aos clientes.' },
+              { n: '3', text: 'V\u00e1 em <strong>CONFIGURA\u00c7\u00d5ES</strong> e configure os dias e hor\u00e1rios de funcionamento do estabelecimento. N\u00e3o esque\u00e7a de baixar e configurar o <strong>WhatsApp Business</strong> para automatizarmos o envio do link para agendamentos autom\u00e1ticos.' },
+              { n: '4', text: 'Fique atento pois a qualquer momento poder\u00e1 chegar reservas em sua agenda. Em casos de reservas com taxas, \u00e9 necess\u00e1rio que voc\u00ea <strong>confirme o pagamento</strong>.' },
+              { n: '5', text: 'Voc\u00ea pode logar em aparelhos de funcion\u00e1rios para que possam gerenciar a agenda com voc\u00ea, mas <strong>ATEN\u00c7\u00c3O</strong>: n\u00e3o divulgue sua senha pois ela ser\u00e1 usada para acessar o <strong>FINANCEIRO</strong>.' },
+              { n: '6', text: 'Todos os servi\u00e7os que forem marcados como <strong>CONCLU\u00cdDO</strong> ser\u00e3o adicionados ao seu <strong>CAIXA</strong>. Aproveite tamb\u00e9m para cadastrar todas despesas fixas ou vari\u00e1veis (quando houver).' },
+              { n: '7', text: 'Qualquer d\u00favida entre em contato pelo suporte via <strong>WhatsApp</strong>. Ser\u00e1 um prazer te atender \ud83d\ude09' }
+            ].map(s => `
+              <div style="display:flex; gap:15px; align-items:flex-start;">
+                <div style="min-width:24px; height:24px; background:var(--primary); color:var(--on-primary); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.75rem; flex-shrink:0; box-shadow: 0 2px 8px var(--glow);">${s.n}</div>
+                <p style="font-size:0.9rem; color:var(--text-secondary); line-height:1.6; margin:0; font-weight:500; text-align: left;">${s.text}</p>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+        <div style="padding:1.5rem 1.5rem 2.5rem; text-align: center;">
+          <button id="btn-welcome-ok" style="padding:0.8rem 4rem; border-radius:1rem; background:var(--primary); color:var(--on-primary); font-weight:900; font-size:1rem; letter-spacing:1.5px; border:none; cursor:pointer; box-shadow:0 6px 20px var(--glow); transition: all 0.2s;">ENTENDI</button>
+        </div>
+      </div>
+    `
+    root.appendChild(modalOverlay)
+
+    document.getElementById('btn-welcome-ok')?.addEventListener('click', () => {
+      // Instant UI response
+      appState.showModal = null
+      render()
+
+      // Background DB update
+      if (appState.user) {
+        supabase.from('estabelecimentos')
+          .update({ primeiro_acesso: false })
+          .eq('id', appState.user.id)
+          .then(({ error }) => {
+            if (error) console.error('Erro ao atualizar primeiro_acesso:', error)
+            if (appState.profile) appState.profile.primeiro_acesso = false
+          })
+      }
+    })
+  }
+
   if (appState.showModal === 'financeiro-auth') {
     const modalOverlay = document.createElement('div')
     modalOverlay.className = 'overlay'
@@ -1463,14 +1526,16 @@ function renderLogin() {
         <input type="password" id="reg-senha" placeholder="Senha" value="${appState.registrationData.senha}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
         <input type="password" id="reg-senha-confirm" placeholder="Confirmação de Senha" value="${appState.registrationData.conf}" style="padding: 0.8rem; border-radius: 0.5rem; border: 1px solid var(--border); width: 100%; font-size: 1rem;">
         
-        <div style="display:flex; flex-direction:column; gap:0.6rem; margin-top:0.5rem; width:100%;">
-          <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer; font-size:0.8rem; font-weight:600; color:var(--text-secondary); text-align:left;">
-            <input type="checkbox" id="chk-termos" ${appState.registrationData.termos ? 'checked' : ''} style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
-            <span>Li e concordo com os <a href="/termos.html" target="_blank" style="color:var(--primary); font-weight:800; text-decoration:underline;">Termos de Uso</a></span>
+        <div style="display:flex; flex-direction:column; gap:0.4rem; margin-top:0.5rem; width:100%;">
+          <label class="checkbox-container">
+            <input type="checkbox" id="chk-termos" ${appState.registrationData.termos ? 'checked' : ''}>
+            <div class="checkbox-box"></div>
+            <span class="checkbox-label">Li e concordo com os <a href="/termos.html" target="_blank">Termos de Uso</a></span>
           </label>
-          <label style="display:flex; align-items:flex-start; gap:0.5rem; cursor:pointer; font-size:0.8rem; font-weight:600; color:var(--text-secondary); text-align:left;">
-            <input type="checkbox" id="chk-politicas" ${appState.registrationData.politicas ? 'checked' : ''} style="width:18px; height:18px; min-width:18px; margin-top:2px; accent-color:var(--primary); cursor:pointer;">
-            <span>Li e concordo com a <a href="/politicas.html" target="_blank" style="color:var(--primary); font-weight:800; text-decoration:underline;">Política de Privacidade</a></span>
+          <label class="checkbox-container">
+            <input type="checkbox" id="chk-politicas" ${appState.registrationData.politicas ? 'checked' : ''}>
+            <div class="checkbox-box"></div>
+            <span class="checkbox-label">Li e concordo com a <a href="/politicas.html" target="_blank">Política de Privacidade</a></span>
           </label>
         </div>
 
@@ -1572,6 +1637,16 @@ function renderDashboard() {
                 <h3 style="margin-top: 1rem; font-size: 1.1rem;">Configurações</h3>
               </div>
             </div>
+
+            ${(() => {
+              const sub = getSubscriptionStatus()
+              if (!sub.isSubscriber && sub.remainingDays > 0) {
+                return `<div style="text-align: center; margin-top: 0.3rem;">
+                  <button id="btn-reopen-instructions" style="background: none; border: none; color: var(--text-secondary); font-size: 0.85rem; font-weight: 700; cursor: pointer; opacity: 0.6; text-decoration: underline;">Ver instruções</button>
+                </div>`
+              }
+              return ''
+            })()}
           </div>
         </main>
       </div>
@@ -1596,6 +1671,7 @@ function renderDashboard() {
         z-index: 99999 !important;
         cursor: pointer !important;
         transition: transform 0.2s;
+        display: ${appState.showModal === 'welcome' ? 'none' : 'flex'} !important;
       ">
         <div style="transform: scale(1.4);">${icons.suporte}</div>
       </button>
@@ -3250,11 +3326,18 @@ function renderFuncionarios() {
         </div>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-        <h3 style="font-size: 1rem; color: var(--text-secondary); letter-spacing: 1px; font-weight: 900; text-transform: uppercase;">EQUIPE ATIVA (${activeCount})</h3>
+      <div style="display:flex; flex-direction:column; gap:0.4rem; margin-bottom:1.5rem;">
+        <h3 style="font-size: 1rem; color: var(--text-secondary); letter-spacing: 1px; font-weight: 900; text-transform: uppercase; margin:0;">PROFISSIONAIS ATIVOS (${activeCount})</h3>
+        ${(() => {
+          const sub = getSubscriptionStatus()
+          if (!sub.isSubscriber && sub.remainingDays > 0) {
+            return `<p style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; opacity: 0.6; margin:0;">Durante o período gratuito o número de profissionais ativos é ilimitado.</p>`
+          }
+          return ''
+        })()}
       </div>
 
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1.5rem; padding-bottom: 6rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr)); gap: 1.5rem;">
         ${allList.length > 0 ? allList.map(func => {
           const isEditing = appState.editingFuncionarioId === func.id;
           const ef = appState.editingFuncionarioForm;
@@ -3327,6 +3410,11 @@ function renderFuncionarios() {
             <p style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.5rem;">Cadastre sua equipe para organizar o atendimento.</p>
           </div>
         `}
+      </div>
+      <div style="text-align: center; margin-top: 0.75rem; padding: 0 1rem; padding-bottom: 6rem;">
+        <p style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 700; opacity: 0.5; line-height: 1.5; max-width: 40rem; margin: 0 auto;">
+          <strong>Nota:</strong> Lembre-se de mudar o status para INATIVO caso o funcionário não for atender hoje. Fazendo isso os clientes não conseguem fazer reservas com um funcionário indisponível.
+        </p>
       </div>
     </div>
   `, false, false)
@@ -3707,12 +3795,33 @@ function attachLoginEvents() {
       .single()
 
     if (profile) {
-      appState.theme = profile.tipo // 'barbearia' ou 'salao'
+      if (profile.tipo !== appState.theme) {
+        const portalCorreto = profile.tipo === 'salao' ? 'Salão de Beleza' : 'Barbearia'
+        const portalAtual = appState.theme === 'salao' ? 'Salão de Beleza' : 'Barbearia'
+        alert(`Esta conta está cadastrada como ${portalCorreto}.\nPor favor, selecione a opção "${portalCorreto}" na tela inicial para entrar.`)
+        await supabase.auth.signOut()
+        appState.user = null
+        appState.profile = null
+        btnLogin.textContent = 'ENTRAR'
+        render()
+        return
+      }
       appState.profile = profile
     }
 
     appState.user = authData.user
-    appState.screen = 'dashboard'
+
+    // Verificar assinatura expirada
+    const sub = getSubscriptionStatus()
+    if (sub.isExpired) {
+      appState.screen = 'assinaturas'
+    } else {
+      appState.screen = 'dashboard'
+      // Popup de boas-vindas no primeiro login
+      if (profile && profile.primeiro_acesso === true) {
+        appState.showModal = 'welcome'
+      }
+    }
     render()
   })
 
@@ -3816,7 +3925,7 @@ function attachLoginEvents() {
     const chkTermos = document.getElementById('chk-termos')
     const chkPoliticas = document.getElementById('chk-politicas')
     if (!chkTermos?.checked || !chkPoliticas?.checked) {
-      return alert('Erro: Você deve aceitar os Termos de Uso e a Política de Privacidade para criar sua conta.')
+      return alert('Você deve aceitar os Termos de Uso e a Política de Privacidade para criar sua conta.')
     }
 
     btnDoRegister.textContent = 'CRIANDO...'
@@ -3836,13 +3945,13 @@ function attachLoginEvents() {
     })
 
     if (error) {
-      alert('Erro: ' + error.message)
+      alert(error.message)
       btnDoRegister.textContent = 'CADASTRAR'
       btnDoRegister.disabled = false
       return
     }
 
-    alert('Conta criada com sucesso! Seja bem-vindo ao Pegasus!<br>Você já pode fazer login.')
+    alert('Conta criada com sucesso!<br>Você já pode fazer login.')
     appState.registrationData = { nome: '', telefone: '', endereco: '', email: '', senha: '', conf: '', termos: false, politicas: false }
     appState.loginSubScreen = 'default'
     render()
@@ -3888,6 +3997,12 @@ function attachDashboardEvents() {
   const btnSupport = document.getElementById('btn-floating-support')
   if (btnSupport) btnSupport.addEventListener('click', () => {
     appState.screen = 'suporte'
+    render()
+  })
+
+  const btnReopen = document.getElementById('btn-reopen-instructions')
+  if (btnReopen) btnReopen.addEventListener('click', () => {
+    appState.showModal = 'welcome'
     render()
   })
 
@@ -5697,6 +5812,10 @@ handleMpCallback().then(async () => {
           appState.screen = 'assinaturas'
         } else {
           appState.screen = 'dashboard'
+          // Popup de boas-vindas no primeiro acesso
+          if (profile.primeiro_acesso === true) {
+            appState.showModal = 'welcome'
+          }
         }
       }
     } catch(e) { console.warn('Could not restore theme from profile', e) }
