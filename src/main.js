@@ -192,10 +192,10 @@ window.alert = function(message) {
 
 // --- Constants ---
 const STRIPE_PRICE_IDS = {
-  mensal: 'price_1TPkLk2MoHdp9hlMnuCK3CaD', 
-  anual: 'price_1TPkMK2MoHdp9hlMmwIGPIc0',
-  mensal_ilimitado: 'price_1TQWhX2MoHdp9hlMT1ud49gH',
-  anual_ilimitado: 'price_1TQWiI2MoHdp9hlMskOxcE2y'
+  mensal: 'price_1TRayZ2MoHdp9hlMbAv6oh6g',
+  mensal_ilimitado: 'price_1TRaz02MoHdp9hlM50tATdyZ',
+  anual: 'price_1TRazL2MoHdp9hlMSbcoOSZm',
+  anual_ilimitado: 'price_1TRazm2MoHdp9hlMRk2J04xG'
 }
 
 // State
