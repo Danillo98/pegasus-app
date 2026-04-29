@@ -28,7 +28,6 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   )
 
-  // Função para pegar data atual em BRT (UTC-3)
   const getBRTDate = () => {
     const d = new Date()
     return new Date(d.getTime() - (3 * 60 * 60 * 1000))
@@ -48,7 +47,7 @@ serve(async (req) => {
       } else {
         expiracao.setDate(expiracao.getDate() + 30)
       }
-      expiracao.setDate(expiracao.getDate() + 2)
+      // REMOVIDA A CARÊNCIA DE 2 DIAS
 
       await supabaseAdmin.from('estabelecimentos').update({
         assinatura_status: 'PAGO',
@@ -75,7 +74,7 @@ serve(async (req) => {
     } else {
       expiracao.setDate(expiracao.getDate() + 30)
     }
-    expiracao.setDate(expiracao.getDate() + 2)
+    // REMOVIDA A CARÊNCIA DE 2 DIAS
 
     const updateData: any = {
       assinatura_status: appStatus,
