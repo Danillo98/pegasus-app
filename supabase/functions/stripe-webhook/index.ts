@@ -38,21 +38,25 @@ serve(async (req) => {
       const estabId = session.metadata?.estabelecimento_id
       const plano = session.metadata?.plano
       const customerId = session.customer as string
+      const customerEmail = session.customer_details?.email
       const newSubscriptionId = session.subscription as string
 
-      // --- Lógica para evitar cobrança dupla (Troca de Plano) ---
+      // --- Lógica agressiva para evitar cobrança dupla ---
+      // 1. Cancelar outras assinaturas do MESMO customerId
       if (customerId) {
-        console.log(`🔍 Verificando assinaturas antigas para o cliente: ${customerId}`)
-        const subscriptions = await stripe.subscriptions.list({
-          customer: customerId,
-          status: 'active',
-        })
-        
-        // Cancelar todas as assinaturas ATIVAS que não sejam a nova que acabou de ser criada
+        const subscriptions = await stripe.subscriptions.list({ customer: customerId, status: 'active' })
         for (const sub of subscriptions.data) {
-          if (sub.id !== newSubscriptionId) {
-            console.log(`🗑️ Cancelando assinatura antiga: ${sub.id}`)
-            await stripe.subscriptions.cancel(sub.id)
+          if (sub.id !== newSubscriptionId) await stripe.subscriptions.cancel(sub.id)
+        }
+      }
+
+      // 2. Garantir cancelamento em outros Customers com o MESMO e-mail (Segurança extra)
+      if (customerEmail) {
+        const otherCustomers = await stripe.customers.list({ email: customerEmail })
+        for (const cust of otherCustomers.data) {
+          if (cust.id !== customerId) {
+            const otherSubs = await stripe.subscriptions.list({ customer: cust.id, status: 'active' })
+            for (const s of otherSubs.data) await stripe.subscriptions.cancel(s.id)
           }
         }
       }

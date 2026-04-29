@@ -18,6 +18,16 @@ serve(async (req) => {
 
     const { priceId, estabelecimentoId, plano, email, origin, stripeCustomerId } = await req.json()
 
+    let finalCustomerId = stripeCustomerId
+
+    // Se não temos o ID, buscamos por e-mail no Stripe para evitar duplicatas
+    if (!finalCustomerId && email) {
+      const customers = await stripe.customers.list({ email: email, limit: 1 })
+      if (customers.data.length > 0) {
+        finalCustomerId = customers.data[0].id
+      }
+    }
+
     const sessionOptions: any = {
       payment_method_types: ['card', 'boleto'],
       allow_promotion_codes: true,
@@ -31,9 +41,8 @@ serve(async (req) => {
       }
     }
 
-    // Se já temos o ID do cliente no Stripe, usamos ele em vez do e-mail para evitar duplicatas
-    if (stripeCustomerId) {
-      sessionOptions.customer = stripeCustomerId
+    if (finalCustomerId) {
+      sessionOptions.customer = finalCustomerId
     } else {
       sessionOptions.customer_email = email
     }
