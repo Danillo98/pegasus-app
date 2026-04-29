@@ -16,7 +16,6 @@ serve(async (req) => {
 
   const bodyText = await req.text()
   let event;
-
   try {
     event = await stripe.webhooks.constructEventAsync(bodyText, signature!, STRIPE_WEBHOOK_SECRET)
   } catch (err) {
@@ -38,7 +37,25 @@ serve(async (req) => {
     if (session.payment_status === 'paid') {
       const estabId = session.metadata?.estabelecimento_id
       const plano = session.metadata?.plano
-      const customerId = session.customer
+      const customerId = session.customer as string
+      const newSubscriptionId = session.subscription as string
+
+      // --- Lógica para evitar cobrança dupla (Troca de Plano) ---
+      if (customerId) {
+        console.log(`🔍 Verificando assinaturas antigas para o cliente: ${customerId}`)
+        const subscriptions = await stripe.subscriptions.list({
+          customer: customerId,
+          status: 'active',
+        })
+        
+        // Cancelar todas as assinaturas ATIVAS que não sejam a nova que acabou de ser criada
+        for (const sub of subscriptions.data) {
+          if (sub.id !== newSubscriptionId) {
+            console.log(`🗑️ Cancelando assinatura antiga: ${sub.id}`)
+            await stripe.subscriptions.cancel(sub.id)
+          }
+        }
+      }
 
       const nowBRT = getBRTDate()
       const expiracao = new Date(nowBRT)
@@ -47,7 +64,6 @@ serve(async (req) => {
       } else {
         expiracao.setDate(expiracao.getDate() + 30)
       }
-      // REMOVIDA A CARÊNCIA DE 2 DIAS
 
       await supabaseAdmin.from('estabelecimentos').update({
         assinatura_status: 'PAGO',
@@ -74,7 +90,6 @@ serve(async (req) => {
     } else {
       expiracao.setDate(expiracao.getDate() + 30)
     }
-    // REMOVIDA A CARÊNCIA DE 2 DIAS
 
     const updateData: any = {
       assinatura_status: appStatus,

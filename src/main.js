@@ -5723,7 +5723,8 @@ async function stripeCheckout(priceId, plano) {
         plano: plano,
         estabelecimentoId: appState.user.id,
         email: appState.user.email,
-        origin: window.location.origin
+        origin: window.location.origin,
+        stripeCustomerId: appState.profile?.stripe_customer_id
       })
     })
 

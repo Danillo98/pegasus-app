@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.1/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from 'https://esm.sh/stripe@12.0.0?target=deno'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,10 +8,13 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  // 1. Lidar com CORS Preflight
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+
+  const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')
+  const stripe = new Stripe(STRIPE_SECRET_KEY!, {
+    apiVersion: '2022-11-15',
+    httpClient: Stripe.createFetchHttpClient(),
+  })
 
   try {
     const authHeader = req.headers.get('Authorization')!
@@ -20,7 +24,6 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     )
 
-    // 2. Verificar usuário logado
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
     if (authError || !user) return new Response('Unauthorized', { status: 401, headers: corsHeaders })
 
@@ -30,9 +33,27 @@ serve(async (req) => {
     )
 
     const userId = user.id
-    console.log(`🗑️ Deletando conta completa do usuário: ${userId}`)
     
-    // 3. Deletar dados das tabelas públicas
+    // 1. Buscar stripe_customer_id
+    const { data: estab } = await supabaseAdmin
+      .from('estabelecimentos')
+      .select('stripe_customer_id')
+      .eq('id', userId)
+      .single()
+
+    // 2. Cancelar assinaturas no Stripe (se houver)
+    if (estab?.stripe_customer_id) {
+      console.log(`💳 Cancelando assinaturas Stripe para: ${estab.stripe_customer_id}`)
+      const subscriptions = await stripe.subscriptions.list({
+        customer: estab.stripe_customer_id,
+        status: 'active',
+      })
+      for (const sub of subscriptions.data) {
+        await stripe.subscriptions.cancel(sub.id)
+      }
+    }
+
+    // 3. Deletar dados do banco
     await supabaseAdmin.from('funcionarios').delete().eq('estabelecimento_id', userId)
     await supabaseAdmin.from('servicos').delete().eq('estabelecimento_id', userId)
     await supabaseAdmin.from('agendamentos').delete().eq('estabelecimento_id', userId)
@@ -49,7 +70,6 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   } catch (err) {
-    console.error("Erro na exclusão:", err.message)
     return new Response(JSON.stringify({ error: err.message }), { 
       status: 500, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

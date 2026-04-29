@@ -7,58 +7,47 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   try {
     const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY')
-    if (!STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY não configurada.')
-    }
-
-    const stripe = new Stripe(STRIPE_SECRET_KEY, {
+    const stripe = new Stripe(STRIPE_SECRET_KEY!, {
       apiVersion: '2022-11-15',
       httpClient: Stripe.createFetchHttpClient(),
     })
 
-    const { priceId, estabelecimentoId, plano, email, origin } = await req.json()
+    const { priceId, estabelecimentoId, plano, email, origin, stripeCustomerId } = await req.json()
 
-    if (!priceId || !estabelecimentoId || !plano) {
-      throw new Error('Parâmetros obrigatórios ausentes.')
-    }
-
-    const baseUrl = origin || 'https://pegasusapp.com.br'
-
-    const session = await stripe.checkout.sessions.create({
+    const sessionOptions: any = {
       payment_method_types: ['card', 'boleto'],
       allow_promotion_codes: true,
       line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
-      success_url: `${baseUrl}/?payment=success`,
-      cancel_url: `${baseUrl}/`,
-      customer_email: email,
-      metadata: {
-        estabelecimento_id: estabelecimentoId,
-        plano: plano
-      },
+      success_url: `${origin || 'https://pegasusapp.com.br'}/?payment=success`,
+      cancel_url: `${origin || 'https://pegasusapp.com.br'}/`,
+      metadata: { estabelecimento_id: estabelecimentoId, plano: plano },
       subscription_data: {
-        metadata: {
-          estabelecimento_id: estabelecimentoId,
-          plano: plano
-        }
+        metadata: { estabelecimento_id: estabelecimentoId, plano: plano }
       }
+    }
+
+    // Se já temos o ID do cliente no Stripe, usamos ele em vez do e-mail para evitar duplicatas
+    if (stripeCustomerId) {
+      sessionOptions.customer = stripeCustomerId
+    } else {
+      sessionOptions.customer_email = email
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionOptions)
+
+    return new Response(JSON.stringify({ url: session.url }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+      status: 200 
     })
-
-    return new Response(
-      JSON.stringify({ url: session.url }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    )
-
   } catch (error) {
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    )
+    return new Response(JSON.stringify({ error: error.message }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+      status: 400 
+    })
   }
 })
