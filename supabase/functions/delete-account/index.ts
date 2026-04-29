@@ -33,27 +33,30 @@ serve(async (req) => {
     )
 
     const userId = user.id
-    
-    // 1. Buscar stripe_customer_id
-    const { data: estab } = await supabaseAdmin
-      .from('estabelecimentos')
-      .select('stripe_customer_id')
-      .eq('id', userId)
-      .single()
+    const userEmail = user.email
 
-    // 2. Cancelar assinaturas no Stripe (se houver)
-    if (estab?.stripe_customer_id) {
-      console.log(`💳 Cancelando assinaturas Stripe para: ${estab.stripe_customer_id}`)
-      const subscriptions = await stripe.subscriptions.list({
-        customer: estab.stripe_customer_id,
-        status: 'active',
-      })
-      for (const sub of subscriptions.data) {
-        await stripe.subscriptions.cancel(sub.id)
+    console.log(`🗑️ Iniciando exclusão total para: ${userEmail} (${userId})`)
+
+    // 1. Cancelar assinaturas no Stripe (Busca por e-mail para garantir limpeza total)
+    if (userEmail) {
+      console.log(`💳 Buscando assinaturas para o e-mail: ${userEmail}`)
+      const customers = await stripe.customers.list({ email: userEmail })
+      
+      for (const customer of customers.data) {
+        const subscriptions = await stripe.subscriptions.list({
+          customer: customer.id,
+          status: 'active',
+        })
+        
+        for (const sub of subscriptions.data) {
+          console.log(`🗑️ Cancelando assinatura Stripe: ${sub.id}`)
+          await stripe.subscriptions.cancel(sub.id)
+        }
       }
     }
 
-    // 3. Deletar dados do banco
+    // 2. Deletar dados das tabelas públicas
+    console.log("📊 Limpando tabelas do banco de dados...")
     await supabaseAdmin.from('funcionarios').delete().eq('estabelecimento_id', userId)
     await supabaseAdmin.from('servicos').delete().eq('estabelecimento_id', userId)
     await supabaseAdmin.from('agendamentos').delete().eq('estabelecimento_id', userId)
@@ -61,7 +64,8 @@ serve(async (req) => {
     await supabaseAdmin.from('excecoes_agenda').delete().eq('estabelecimento_id', userId)
     await supabaseAdmin.from('estabelecimentos').delete().eq('id', userId)
 
-    // 4. Deletar do Auth
+    // 3. Deletar do Auth (Supabase)
+    console.log("🔐 Removendo usuário do Auth...")
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
     if (deleteError) throw deleteError
 
@@ -70,6 +74,7 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   } catch (err) {
+    console.error("Erro na exclusão:", err.message)
     return new Response(JSON.stringify({ error: err.message }), { 
       status: 500, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
