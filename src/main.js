@@ -729,6 +729,101 @@ function render() {
     })
   }
 
+  if (appState.showModal === 'confirm-plan-change') {
+    const planNames = { mensal: 'Mensal', mensal_ilimitado: 'Mensal Ilimitado', anual: 'Anual', anual_ilimitado: 'Anual Ilimitado' }
+    const cPlan = (appState.profile?.plano || '').toLowerCase()
+    const newKey = appState._pendingPlanKey || ''
+    const isSame = cPlan === newKey
+    const venc = appState.profile?.assinatura_vencimento ? new Date(appState.profile.assinatura_vencimento).toLocaleDateString('pt-BR') : 'Não definido'
+    const mo = document.createElement('div')
+    mo.className = 'overlay'
+    mo.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#fef3c7; color:#f59e0b; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">⚠️</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:0.5rem;">${isSame ? 'RENOVAR PLANO?' : 'TROCAR DE PLANO?'}</h2>
+        <p style="color:var(--text-secondary); margin-bottom:0.5rem; line-height:1.5; font-size:0.9rem;">Plano atual: <strong>${(planNames[cPlan] || cPlan).toUpperCase()}</strong></p>
+        ${!isSame ? `<p style="color:var(--text-secondary); margin-bottom:0.5rem; line-height:1.5; font-size:0.9rem;">Novo plano: <strong>${(planNames[newKey] || newKey).toUpperCase()}</strong></p>` : ''}
+        <p style="color:var(--text-secondary); margin-bottom:1.5rem; line-height:1.5; font-size:0.9rem;">Vencimento: <strong style="color:var(--primary);">${venc}</strong></p>
+        <div style="background:#fef3c7; padding:1rem; border-radius:0.75rem; margin-bottom:1.5rem; text-align:left; font-size:0.85rem; line-height:1.6; color:#92400e;">
+          <strong>${isSame ? 'Ao confirmar a renovação:' : 'Ao confirmar a troca:'}</strong><br>
+          • Seu plano atual será cancelado imediatamente<br>
+          • A data de vencimento será atualizada<br>
+          • Não haverá estorno do período não utilizado
+        </div>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-confirm-plan-change" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--primary); color:var(--on-primary); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">CONFIRMAR</button>
+          <button id="btn-cancel-plan-change" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">VOLTAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(mo)
+    document.getElementById('btn-cancel-plan-change').addEventListener('click', () => { appState.showModal = null; appState._pendingPlanKey = null; render() })
+    document.getElementById('btn-confirm-plan-change').addEventListener('click', () => {
+      const key = appState._pendingPlanKey
+      appState.showModal = null; appState._pendingPlanKey = null; render()
+      stripeCheckout(STRIPE_PRICE_IDS[key], key)
+    })
+  }
+
+  if (appState.showModal === 'confirm-cancel-plan') {
+    const mo2 = document.createElement('div')
+    mo2.className = 'overlay'
+    mo2.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#fee2e2; color:#dc2626; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">🗑️</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem; color:#dc2626;">CANCELAR PLANO?</h2>
+        <div style="background:#fee2e2; padding:1rem; border-radius:0.75rem; margin-bottom:1.5rem; text-align:left; font-size:0.85rem; line-height:1.6; color:#991b1b;">
+          <strong>Ao cancelar seu plano:</strong><br>
+          • Não haverá reembolso do valor pago<br>
+          • Sua conta será EXCLUÍDA permanentemente<br>
+          • Você perderá o acesso instantaneamente<br>
+          • Todos os seus dados serão removidos
+        </div>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-confirm-cancel-plan" style="width:100%; padding:1.1rem; border-radius:1rem; background:#dc2626; color:white; font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">SIM, CANCELAR PLANO</button>
+          <button id="btn-back-cancel-plan" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">VOLTAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(mo2)
+    document.getElementById('btn-back-cancel-plan').addEventListener('click', () => { appState.showModal = null; render() })
+    document.getElementById('btn-confirm-cancel-plan').addEventListener('click', () => { appState.showModal = 'confirm-cancel-plan-final'; render() })
+  }
+
+  if (appState.showModal === 'confirm-cancel-plan-final') {
+    const mo3 = document.createElement('div')
+    mo3.className = 'overlay'
+    mo3.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#dc2626; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">⚠️</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">ÚLTIMA CONFIRMAÇÃO</h2>
+        <p style="color:var(--text-secondary); margin-bottom:1.5rem; line-height:1.5; font-size:0.95rem;">Esta ação é <strong style="color:#dc2626;">IRREVERSÍVEL</strong>.<br>Sua conta e todos os dados serão excluídos permanentemente.</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-do-cancel-plan" style="width:100%; padding:1.1rem; border-radius:1rem; background:#dc2626; color:white; font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">CONFIRMAR EXCLUSÃO</button>
+          <button id="btn-back-cancel-final" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--surface-hover); color:var(--text-main); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">VOLTAR</button>
+        </div>
+      </div>
+    `
+    root.appendChild(mo3)
+    document.getElementById('btn-back-cancel-final').addEventListener('click', () => { appState.showModal = null; render() })
+    document.getElementById('btn-do-cancel-plan').addEventListener('click', async () => {
+      const btnDo = document.getElementById('btn-do-cancel-plan')
+      btnDo.textContent = 'EXCLUINDO...'; btnDo.disabled = true
+      try {
+        // Chamada à Edge Function que deleta TUDO (incluindo Auth)
+        const { error } = await supabase.functions.invoke('delete-account')
+        if (error) throw error
+
+        await supabase.auth.signOut()
+        appState.user = null; appState.profile = null; appState.showModal = null; appState.screen = 'login'
+        render()
+      } catch (err) {
+        alert('Erro ao excluir conta: ' + err.message)
+        btnDo.textContent = 'CONFIRMAR EXCLUSÃO'; btnDo.disabled = false
+      }
+    })
+  }
+
   if (appState.showModal === 'new-agendamento' || appState.showModal === 'edit-agendamento') {
     const modalOverlay = document.createElement('div')
     modalOverlay.className = 'overlay'
@@ -5626,22 +5721,11 @@ function attachAssinaturasEvents() {
 
   const sub = getSubscriptionStatus()
   const currentPlan = (appState.profile?.plano || '').toLowerCase()
+  const planNames = { mensal: 'Mensal', mensal_ilimitado: 'Mensal Ilimitado', anual: 'Anual', anual_ilimitado: 'Anual Ilimitado' }
 
   const setupPlan = (id, key) => {
     const el = document.getElementById(id)
     if (el) el.onclick = () => { appState.selectedAssinatura = key; render(); }
-  }
-
-  const showPlanChangeWarning = (key) => {
-    const isSamePlan = currentPlan === key
-    const planNames = { mensal: 'Mensal', mensal_ilimitado: 'Mensal Ilimitado', anual: 'Anual', anual_ilimitado: 'Anual Ilimitado' }
-    const vencimento = appState.profile?.assinatura_vencimento ? new Date(appState.profile.assinatura_vencimento).toLocaleDateString('pt-BR') : 'Não definido'
-
-    const msg = isSamePlan
-      ? `⚠️ ATENÇÃO - RENOVAÇÃO\n\nSeu plano atual: ${planNames[currentPlan]?.toUpperCase()}\nVencimento: ${vencimento}\n\nAo confirmar a RENOVAÇÃO:\n• Seu plano atual será cancelado imediatamente\n• A data de vencimento será atualizada\n• Não haverá estorno do período não utilizado\n\nDeseja continuar?`
-      : `⚠️ ATENÇÃO - TROCA DE PLANO\n\nSeu plano atual: ${planNames[currentPlan]?.toUpperCase()}\nNovo plano: ${planNames[key]?.toUpperCase()}\nVencimento atual: ${vencimento}\n\nAo confirmar a troca:\n• Seu plano atual será cancelado imediatamente\n• A data de vencimento será atualizada para o novo plano\n• Não haverá estorno do período não utilizado\n\nDeseja continuar?`
-
-    return confirm(msg)
   }
 
   const setupBtn = (id, key) => {
@@ -5649,12 +5733,14 @@ function attachAssinaturasEvents() {
     if (btn) {
       btn.onclick = (e) => {
         e.stopPropagation()
-        // Se já é assinante, mostrar popup de aviso
         if (sub.isSubscriber) {
-          if (!showPlanChangeWarning(key)) return
+          appState.showModal = 'confirm-plan-change'
+          appState._pendingPlanKey = key
+          render()
+        } else {
+          btn.textContent = 'CARREGANDO...'
+          stripeCheckout(STRIPE_PRICE_IDS[key], key)
         }
-        btn.textContent = 'CARREGANDO...'
-        stripeCheckout(STRIPE_PRICE_IDS[key], key)
       }
     }
   }
@@ -5671,36 +5757,10 @@ function attachAssinaturasEvents() {
 
   // Cancelar Agora
   document.querySelectorAll('.btn-cancelar-plano').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
+    btn.addEventListener('click', (e) => {
       e.stopPropagation()
-      const confirmed = confirm('⚠️ ATENÇÃO - CANCELAMENTO\n\nAo cancelar seu plano:\n• Não haverá reembolso do valor pago\n• Sua conta será EXCLUÍDA permanentemente\n• Você perderá o acesso ao Pegasus App instantaneamente\n• Todos os seus dados serão removidos\n\nTem certeza que deseja cancelar?')
-      if (!confirmed) return
-
-      const doubleConfirm = confirm('ÚLTIMA CONFIRMAÇÃO\n\nEsta ação é IRREVERSÍVEL.\nSua conta e todos os dados serão excluídos permanentemente.\n\nConfirmar exclusão?')
-      if (!doubleConfirm) return
-
-      btn.textContent = 'CANCELANDO...'
-      btn.disabled = true
-
-      try {
-        // Atualizar status para VENCIDO
-        await supabase.from('estabelecimentos').update({
-          assinatura_status: 'VENCIDO',
-          updated_at: new Date().toISOString()
-        }).eq('id', appState.user.id)
-
-        // Deslogar
-        await supabase.auth.signOut()
-        appState.user = null
-        appState.profile = null
-        appState.screen = 'login'
-        alert('Sua assinatura foi cancelada e sua conta foi desativada.')
-        render()
-      } catch (err) {
-        alert('Erro ao cancelar: ' + err.message)
-        btn.textContent = 'Cancelar Agora'
-        btn.disabled = false
-      }
+      appState.showModal = 'confirm-cancel-plan'
+      render()
     })
   })
 }
