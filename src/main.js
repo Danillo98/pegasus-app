@@ -72,10 +72,52 @@ async function handleMpCallback() {
       const pollProfile = async (attempts = 0) => {
         const { data: profile } = await supabase.from('estabelecimentos').select('*').eq('id', appState.user.id).single()
         if (profile) {
+          const oldPlan = appState.profile?.plano
           appState.profile = profile
           render()
-          // Se ainda não está PAGO e temos tentativas, tenta novamente
-          if (profile.assinatura_status !== 'PAGO' && attempts < 5) {
+          
+          // Se acabou de ser confirmado como PAGO
+          if (profile.assinatura_status === 'PAGO') {
+            const plano = (profile.plano || '').toLowerCase()
+            const isIlimitado = plano.includes('ilimitado')
+            
+            if (plano && !isIlimitado) {
+               // Verificar se tem excesso de profissionais (Proprietário + Funcionários)
+               const { data: ativos } = await supabase.from('funcionarios')
+                 .select('id')
+                 .eq('estabelecimento_id', profile.id)
+                 .eq('ativo', true)
+               
+               const totalAtivos = (ativos?.length || 0) + (profile.ativo !== false ? 1 : 0)
+               
+               if (totalAtivos > 2) {
+                 // RESET: Desativa todos os funcionários no banco
+                 await supabase.from('funcionarios')
+                   .update({ ativo: false })
+                   .eq('estabelecimento_id', profile.id)
+                 
+                 // Força recarga da lista local de funcionários
+                 appState.funcionariosLoaded = false
+                 
+                 // Mostra o aviso de redefinição de equipe
+                 appState.customAlert = {
+                   title: 'Redefinir Equipe',
+                   message: 'Seu plano atual tem o limite de 2 profissionais ativos e é necessário definir quem está ativo no momento.',
+                   color: 'var(--yellow)',
+                   icon: '⚠️',
+                   btnText: 'DEFINIR AGORA',
+                   onConfirm: () => {
+                     appState.screen = 'funcionarios';
+                     render();
+                   }
+                 }
+                 render()
+               }
+            }
+            return // Para o polling se já está pago
+          }
+
+          if (attempts < 8) {
             setTimeout(() => pollProfile(attempts + 1), 3000)
           }
         }
