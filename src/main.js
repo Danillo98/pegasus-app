@@ -377,7 +377,7 @@ async function syncAgendaData() {
   const { data } = await supabase.from('agendamentos')
     .select('*')
     .eq('estabelecimento_id', appState.user.id)
-    .neq('agendamento_status', 'Concluído')
+    .not('agendamento_status', 'in', '("Concluído","Cancelado")')
     .order('hora_agendamento', { ascending: true });
 
   if (data) {
@@ -779,6 +779,27 @@ function render() {
       const key = appState._pendingPlanKey
       appState.showModal = null; appState._pendingPlanKey = null; render()
       stripeCheckout(STRIPE_PRICE_IDS[key], key)
+    })
+  }
+
+  if (appState.showModal === 'staff-limit-alert') {
+    const moLimit = document.createElement('div')
+    moLimit.className = 'overlay'
+    moLimit.innerHTML = `
+      <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
+        <div style="width:70px; height:70px; background:#fef3c7; color:#f59e0b; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">👤</div>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">LIMITE DE PROFISSIONAIS</h2>
+        <p style="color:var(--text-secondary); margin-bottom:2rem; line-height:1.5;">Seu plano atual limita até <strong>2 profissionais ativos</strong>. Para ter profissionais ilimitados, é necessário migrar para o plano <strong>Mensal-Ilimitado</strong> ou <strong>Anual-Ilimitado</strong>.</p>
+        <div class="flex flex-col gap-sm">
+          <button id="btn-limit-entendi" style="width:100%; padding:1.1rem; border-radius:1rem; background:var(--primary); color:var(--on-primary); font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">ENTENDI</button>
+        </div>
+      </div>
+    `
+    root.appendChild(moLimit)
+    document.getElementById('btn-limit-entendi').addEventListener('click', () => {
+      appState.showModal = null
+      appState.screen = 'assinaturas'
+      render()
     })
   }
 
@@ -1388,6 +1409,7 @@ function render() {
 
     const btnOk = document.getElementById('btn-alert-ok');
     if (btnOk) btnOk.addEventListener('click', () => {
+      if (appState.customAlert.onConfirm) appState.customAlert.onConfirm();
       appState.customAlert = null;
       render();
     });
@@ -1565,6 +1587,7 @@ async function attachFinanceiroAuthEvents() {
 }
 
 function renderCustomAlert(alertData) {
+  const btnText = alertData.btnText || 'OK';
   return `
     <div class="card flex flex-col items-center gap-sm animate-fade-in" style="padding: 2.5rem 1.5rem; text-align: center; max-width: 400px; width: 90%;">
       <div style="width: 70px; height: 70px; background: ${alertData.color}; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;">
@@ -1573,7 +1596,7 @@ function renderCustomAlert(alertData) {
       <h3 style="font-size: 1.6rem; font-weight: 800; color: var(--text-main);">${alertData.title}</h3>
       <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 1.1rem; line-height: 1.5;">${alertData.message}</p>
       <button id="btn-alert-ok" class="w-full" style="background: var(--primary); color: var(--on-primary); padding: 1.25rem; border-radius: 10px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 15px var(--glow);">
-        OK
+        ${btnText}
       </button>
     </div>
   `
@@ -3407,7 +3430,7 @@ function attachConfiguracoesEvents() {
 
 function renderFuncionarios() {
   const f = appState.funcionariosAtivos;
-  const ownerId = `owner-${appState.user.id}`;
+  const ownerId = appState.user.id;
   
   // Create virtual owner employee
   const owner = {
@@ -3595,6 +3618,25 @@ function attachFuncionariosEvents() {
 
     if (!nome) return alert('Por favor, insira o nome do funcionário.')
 
+    // --- Trava de Limite de Profissionais ---
+    const plano = (appState.profile?.plano || '').toLowerCase()
+    const isIlimitado = plano.includes('ilimitado')
+    if (!isIlimitado) {
+      const activeStaffCount = (appState.funcionariosAtivos.filter(f => f.ativo).length) + (appState.profile?.ativo !== false ? 1 : 0)
+      if (activeStaffCount >= 2) {
+        appState.customAlert = {
+          title: 'Limite de Profissionais',
+          message: 'Seu plano atual limita até 2 profissionais ativos. Para ter profissionais ilimitados, é necessário migrar para o plano Mensal Ilimitado ou Anual Ilimitado.',
+          color: 'var(--yellow)',
+          icon: '⚠️',
+          btnText: 'ENTENDI',
+          onConfirm: () => { appState.screen = 'assinaturas'; render(); }
+        }
+        render()
+        return
+      }
+    }
+
     btnSave.textContent = 'CADASTRANDO...'
     btnSave.disabled = true
 
@@ -3642,7 +3684,7 @@ function attachFuncionariosEvents() {
       const cargo = document.getElementById(`edit-func-cargo-${id}`).value
       const telefone = document.getElementById(`edit-func-tel-${id}`).value
 
-      if (id.startsWith('owner-')) {
+      if (id === appState.user.id) {
         // Update establishment profile instead
         const { error } = await supabase.from('estabelecimentos')
           .update({ telefone: telefone })
@@ -3693,6 +3735,19 @@ function attachFuncionariosEvents() {
           render()
         }
         return
+      }
+
+      if (nextStatus === true) {
+        const plano = appState.profile?.plano?.toLowerCase() || ''
+        const isBasicPlan = plano === 'mensal' || plano === 'anual'
+        if (isBasicPlan) {
+          const activeStaffCount = (appState.funcionariosAtivos.filter(f => f.ativo).length) + (appState.profile?.ativo !== false ? 1 : 0)
+          if (activeStaffCount >= 2) {
+            appState.showModal = 'staff-limit-alert'
+            render()
+            return
+          }
+        }
       }
 
       const { error } = await supabase.from('funcionarios')
@@ -4459,7 +4514,7 @@ function attachAgendamentoModalEvents() {
     checkFormValidity()
   })
 
-  const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+  const owner = { id: appState.user.id, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
   const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
   attachStaffSearchSelect('modal-staff-search', 'modal-staff-list', allStaff, () => {
     checkFormValidity()
@@ -4713,32 +4768,33 @@ function attachConfirmCancelEvents() {
     close()
     
     if (itemSnapshot?.id) {
-       // 1. Atualiza agendamento para 'Cancelado'
-       const { error } = await supabase.from('agendamentos').update({ agendamento_status: 'Cancelado' }).eq('id', itemSnapshot.id)
+       // 1. Lança no financeiro se a taxa foi paga
+       const taxa = Number(itemSnapshot.taxa_reserva || 0)
+       const taxaPaga = itemSnapshot.pagamento_status === true || itemSnapshot.taxa_paga === true || String(itemSnapshot.status).toLowerCase() === 'pago' || itemSnapshot.taxa_pago === true
        
-       if (error) {
-         console.error('Error updating status:', error)
-         alert('Erro ao cancelar agendamento no banco: ' + error.message)
-       } else {
-         // 2. Se a taxa de reserva foi paga, lança no financeiro
-         const taxa = Number(itemSnapshot.taxa_reserva || 0)
-         const taxaPaga = itemSnapshot.pagamento_status === true || itemSnapshot.taxa_paga === true
-         
-         if (taxaPaga && taxa > 0) {
-           const finPayload = {
-             estabelecimento_id: appState.user.id,
-             descricao: `Taxa de cancelamento: ${itemSnapshot.client}`,
-             valor: taxa,
-             tipo: 'entrada',
-             categoria: 'Taxa de Cancelamento',
-             data_transacao: dayKey,
-             agendamento_id: itemSnapshot.id
-           }
-           const { error: finErr } = await supabase.from('transacoes_financeiras').insert([finPayload])
-           if (finErr) console.warn('Erro ao lançar taxa de cancelamento no caixa:', finErr.message)
+       if (taxaPaga && taxa > 0) {
+         const finPayload = {
+           estabelecimento_id: appState.user.id,
+           descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
+           valor: taxa,
+           tipo: 'entrada',
+           categoria: 'Taxa de Cancelamento',
+           data_transacao: dayKey,
+           agendamento_id: itemSnapshot.id
          }
-         
-         alert('Agendamento cancelado com sucesso!')
+         // Executa de forma síncrona antes do delete para garantir a gravação
+         const { error: finErr } = await supabase.from('transacoes_financeiras').insert([finPayload])
+         if (finErr) console.warn('Erro ao lançar taxa de cancelamento no caixa:', finErr.message)
+       }
+       
+       // 2. Agora EXCLUI o agendamento do banco
+       const { error: delError } = await supabase.from('agendamentos').delete().eq('id', itemSnapshot.id)
+       
+       if (delError) {
+         console.error('Error deleting booking:', delError)
+         alert('Erro ao excluir agendamento do banco: ' + delError.message)
+       } else {
+         alert('Agendamento excluído e taxa registrada no caixa!')
        }
     }
     render()
@@ -5484,7 +5540,7 @@ function attachServicosEvents() {
   attachGenericBack()
 
   // Staff Selection (Dropdown UI)
-  const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+  const owner = { id: appState.user.id, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
   const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
   
   attachStaffSearchSelect('input-staff-servico', 'list-staff-servico', allStaff, (selected) => {

@@ -596,8 +596,8 @@
               ? '<p style="color:var(--muted);text-align:center;padding:1rem 0">Nenhum serviço disponível.</p>'
               : state.servicos.map(s => {
                 // Check if service has at least 1 active professional
-                const ids = s.funcionarios_ids || [];
-                const hasActivePro = ids.length === 0 || ids.some(fid => state.staff.find(p => p.id === fid));
+                const ids = (s.funcionarios_ids || []).map(id => String(id).replace('owner-', ''));
+                const hasActivePro = ids.length === 0 || ids.some(fid => state.staff.find(p => String(p.id).replace('owner-', '') === fid));
                 const disabled = !hasActivePro;
                 
                 // If disabled, remove from selection
@@ -794,10 +794,11 @@
       
       // A professional is valid if they are included in ALL selected services' funcionarios_ids
       let filteredStaff = state.staff.filter(person => {
+        const personId = String(person.id).replace('owner-', '');
         return selectedServices.every(srv => {
-          // If the service has no specific staff mapped, assume everyone can do it (or handle as needed)
-          if (!srv.funcionarios_ids || srv.funcionarios_ids.length === 0) return true;
-          return srv.funcionarios_ids.includes(person.id);
+          const srvIds = (srv.funcionarios_ids || []).map(id => String(id).replace('owner-', ''));
+          if (srvIds.length === 0) return true;
+          return srvIds.includes(personId);
         });
       });
 
