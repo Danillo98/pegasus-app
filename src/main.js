@@ -403,13 +403,41 @@ async function syncAgendaData() {
   
   // 1) Load profile schedule settings
   const { data: prof } = await supabase.from('estabelecimentos')
-    .select('dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao, chave_pix')
+    .select('dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao, chave_pix, plano, ativo')
     .eq('id', appState.user.id).single();
     
   if (prof) {
     appState.profile = { ...(appState.profile || {}), ...prof };
     if (!prof.dias_funcionamento || prof.dias_funcionamento.length === 0) {
       appState.showModal = 'horario-funcionamento';
+    }
+
+    // --- VERIFICAÇÃO AUTOMÁTICA DE LIMITE DE PROFISSIONAIS (Facilita Testes) ---
+    const plano = (prof.plano || '').toLowerCase()
+    const isIlimitado = plano.includes('ilimitado')
+    if (plano && !isIlimitado) {
+       // Se o plano é limitado, checamos se o contingente atual é válido
+       // Buscamos funcionários ativos diretamente para garantir precisão
+       supabase.from('funcionarios').select('id').eq('estabelecimento_id', appState.user.id).eq('ativo', true)
+       .then(({ data: ativos }) => {
+         const totalAtivos = (ativos?.length || 0) + (prof.ativo !== false ? 1 : 0)
+         if (totalAtivos > 2 && !appState.customAlert) {
+            // Se houver excesso, desativa funcionários e avisa (Reset)
+            supabase.from('funcionarios').update({ ativo: false }).eq('estabelecimento_id', appState.user.id)
+            .then(() => {
+              appState.funcionariosLoaded = false
+              appState.customAlert = {
+                title: 'Limite de Plano',
+                message: 'Detectamos que seu plano atual é limitado a 2 profissionais ativos. Sua equipe foi redefinida. Por favor, selecione quem faz parte da sua equipe agora.',
+                color: 'var(--yellow)',
+                icon: '⚠️',
+                btnText: 'DEFINIR AGORA',
+                onConfirm: () => { appState.screen = 'funcionarios'; render(); }
+              }
+              render()
+            })
+         }
+       })
     }
   }
 
@@ -434,7 +462,10 @@ async function syncAgendaData() {
         service: dbItem.servico_nome,
         status: (dbItem.agendamento_status || 'Pendente').toLowerCase(),
         valor_total: dbItem.valor_total,
-        funcionario_id: dbItem.funcionario_id
+        funcionario_id: dbItem.funcionario_id,
+        taxa_reserva: dbItem.taxa_reserva,
+        taxa_paga: dbItem.taxa_paga,
+        pagamento_status: dbItem.pagamento_status
       });
     });
   }
@@ -2499,7 +2530,7 @@ function renderEditAgendamentoModal() {
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Profissional</label>
           ${(() => {
-            const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+            const owner = { id: appState.user.id, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
             const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
             const selected = item.funcionario_id ? [item.funcionario_id] : []
             return renderStaffSearchSelect('modal-staff-search', 'modal-staff-list', allStaff, selected, false)
@@ -2554,7 +2585,7 @@ function renderNewAgendamentoModal() {
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.75rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Profissional</label>
           ${(() => {
-            const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+            const owner = { id: appState.user.id, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
             const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
             const selected = appState.editingAgendamento?.funcionario_id ? [appState.editingAgendamento.funcionario_id] : []
             return renderStaffSearchSelect('modal-staff-search', 'modal-staff-list', allStaff, selected, false)
@@ -3167,7 +3198,7 @@ function renderServicos() {
           <div class="flex flex-col gap-xs" style="margin-top: 0.5rem;">
             <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Profissionais que realizam</label>
             ${(() => {
-              const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+              const owner = { id: appState.user.id, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
               const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
               return renderStaffSearchSelect('input-staff-servico', 'list-staff-servico', allStaff, appState.servicosForm.funcionarios_ids || [])
             })()}
@@ -3236,7 +3267,7 @@ function renderServicos() {
                 <div class="flex flex-col gap-xs" style="margin-top: 0.75rem; border-top: 1px solid var(--border); padding-top: 0.75rem;">
                   <label style="font-size: 0.75rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.5rem;">Profissionais que realizam</label>
                   ${(() => {
-                    const owner = { id: `owner-${appState.user.id}`, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
+                    const owner = { id: appState.user.id, nome: appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário' }
                     const allStaff = [owner, ...appState.funcionariosAtivos.filter(f => f.ativo !== false)]
                     const selected = ef.funcionarios_ids !== undefined ? ef.funcionarios_ids : (s.funcionarios_ids || [])
                     return renderStaffSearchSelect(`edit-staff-servico-${s.id}`, `edit-list-staff-servico-${s.id}`, allStaff, selected)
@@ -3666,7 +3697,7 @@ function attachFuncionariosEvents() {
       if (activeStaffCount >= 2) {
         appState.customAlert = {
           title: 'Limite de Profissionais',
-          message: 'Seu plano atual limita até 2 profissionais ativos. Para ter profissionais ilimitados, é necessário migrar para o plano Mensal Ilimitado ou Anual Ilimitado.',
+          message: 'Seu plano limita até 2 profissionais ativos. Para ter acesso ilimitado, migre para o plano Mensal Ilimitado ou Anual Ilimitado.',
           color: 'var(--yellow)',
           icon: '⚠️',
           btnText: 'ENTENDI',
@@ -4818,7 +4849,7 @@ function attachConfirmCancelEvents() {
            descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
            valor: taxa,
            tipo: 'entrada',
-           categoria: 'Taxa de Cancelamento',
+           categoria: itemSnapshot.service || 'Taxa de Cancelamento',
            data_transacao: dayKey,
            agendamento_id: itemSnapshot.id
          }
