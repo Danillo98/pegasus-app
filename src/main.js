@@ -76,13 +76,13 @@ async function handleMpCallback() {
           appState.profile = profile
           render()
           
-          // Se acabou de ser confirmado como PAGO
+          // Se confirmado como PAGO (seja nova assinatura ou troca de plano)
           if (profile.assinatura_status === 'PAGO') {
             const plano = (profile.plano || '').toLowerCase()
             const isIlimitado = plano.includes('ilimitado')
             
+            // Se o plano atual é limitado, precisamos garantir o limite de 2 profissionais
             if (plano && !isIlimitado) {
-               // Verificar se tem excesso de profissionais (Proprietário + Funcionários)
                const { data: ativos } = await supabase.from('funcionarios')
                  .select('id')
                  .eq('estabelecimento_id', profile.id)
@@ -91,18 +91,16 @@ async function handleMpCallback() {
                const totalAtivos = (ativos?.length || 0) + (profile.ativo !== false ? 1 : 0)
                
                if (totalAtivos > 2) {
-                 // RESET: Desativa todos os funcionários no banco
+                 // RESET: Desativa todos os funcionários para que o usuário escolha os 2 (ou 1 + proprietário)
                  await supabase.from('funcionarios')
                    .update({ ativo: false })
                    .eq('estabelecimento_id', profile.id)
                  
-                 // Força recarga da lista local de funcionários
                  appState.funcionariosLoaded = false
                  
-                 // Mostra o aviso de redefinição de equipe
                  appState.customAlert = {
-                   title: 'Redefinir Equipe',
-                   message: 'Seu plano atual tem o limite de 2 profissionais ativos e é necessário definir quem está ativo no momento.',
+                   title: 'Ajuste de Equipe',
+                   message: 'Detectamos uma mudança para um plano limitado. Seu limite agora é de 2 profissionais ativos. Por favor, defina quem faz parte da sua equipe atual.',
                    color: 'var(--yellow)',
                    icon: '⚠️',
                    btnText: 'DEFINIR AGORA',
@@ -114,7 +112,7 @@ async function handleMpCallback() {
                  render()
                }
             }
-            return // Para o polling se já está pago
+            return // Para o polling de sucesso
           }
 
           if (attempts < 8) {
