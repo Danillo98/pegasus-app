@@ -26,18 +26,19 @@ if (isRedirecting) throw new Error("Redirecting to reset page..."); // Trava exe
 
 function formatPhone(value) {
   if (!value) return ""
-  value = value.replace(/\D/g, '')
-  value = value.slice(0, 11)
-  if (value.length > 10) {
-    return value.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3")
-  } else if (value.length > 6) {
-    return value.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3")
-  } else if (value.length > 2) {
-    return value.replace(/(\d{2})(\d{0,5})/, "($1) $2")
-  } else if (value.length > 0) {
-    return value.replace(/(\d{0,2})/, "($1")
+  let val = value.replace(/\D/g, '')
+  if (val.length > 11) val = val.slice(0, 11)
+  
+  if (val.length > 10) {
+    return `(${val.slice(0, 2)}) ${val.slice(2, 7)}-${val.slice(7)}`
+  } else if (val.length > 6) {
+    return `(${val.slice(0, 2)}) ${val.slice(2, 6)}-${val.slice(6)}`
+  } else if (val.length > 2) {
+    return `(${val.slice(0, 2)}) ${val.slice(2)}`
+  } else if (val.length > 0) {
+    return `(${val}`
   }
-  return value
+  return val
 }
 
 function hasTimePassed(slotTime, selectedDate) {
@@ -3545,14 +3546,19 @@ function attachFuncionariosEvents() {
   const btnBack = document.getElementById('btn-back-dashboard')
   if (btnBack) btnBack.onclick = () => { appState.screen = 'dashboard'; render(); }
 
-  // Phone Mask Helper
+  // Phone Mask Helper - Corrigido para permitir delete
   const applyPhoneMask = (input) => {
     if (!input) return
     input.addEventListener('input', (e) => {
+      // Se for deleção, não forçar a máscara se terminar em símbolo
+      if (e.inputType === 'deleteContentBackward') return
+      
       let val = e.target.value.replace(/\D/g, '')
       if (val.length > 11) val = val.slice(0, 11)
-      if (val.length > 6) {
-        val = `(${val.slice(0, 2)}) ${val.slice(2, 3)} ${val.slice(3, 7)}-${val.slice(7)}`
+      if (val.length > 10) {
+        val = `(${val.slice(0, 2)}) ${val.slice(2, 7)}-${val.slice(7)}`
+      } else if (val.length > 6) {
+        val = `(${val.slice(0, 2)}) ${val.slice(2, 6)}-${val.slice(6)}`
       } else if (val.length > 2) {
         val = `(${val.slice(0, 2)}) ${val.slice(2)}`
       } else if (val.length > 0) {
@@ -4698,19 +4704,44 @@ function attachConfirmCancelEvents() {
   
   if (btnConfirm) btnConfirm.addEventListener('click', async () => {
     const dayKey = getAgendaDayKey(appState.selectedDate)
-    const idx = appState.agendaData[dayKey].indexOf(appState.activeAgendaItem)
+    const itemSnapshot = { ...appState.activeAgendaItem }
+    
+    // Optimistic Update: Remove da vista local (agendaData)
+    const idx = appState.agendaData[dayKey].findIndex(i => i.id === itemSnapshot.id)
     if (idx > -1) appState.agendaData[dayKey].splice(idx, 1)
     
-    if (appState.activeAgendaItem?.id) {
-       const { error } = await supabase.from('agendamentos').delete().eq('id', appState.activeAgendaItem.id)
+    close()
+    
+    if (itemSnapshot?.id) {
+       // 1. Atualiza agendamento para 'Cancelado'
+       const { error } = await supabase.from('agendamentos').update({ agendamento_status: 'Cancelado' }).eq('id', itemSnapshot.id)
+       
        if (error) {
-         console.error('Error deleting:', error)
-         alert('Erro ao cancelar: ' + error.message)
+         console.error('Error updating status:', error)
+         alert('Erro ao cancelar agendamento no banco: ' + error.message)
        } else {
+         // 2. Se a taxa de reserva foi paga, lança no financeiro
+         const taxa = Number(itemSnapshot.taxa_reserva || 0)
+         const taxaPaga = itemSnapshot.pagamento_status === true || itemSnapshot.taxa_paga === true
+         
+         if (taxaPaga && taxa > 0) {
+           const finPayload = {
+             estabelecimento_id: appState.user.id,
+             descricao: `Taxa de cancelamento: ${itemSnapshot.client}`,
+             valor: taxa,
+             tipo: 'entrada',
+             categoria: 'Taxa de Cancelamento',
+             data_transacao: dayKey,
+             agendamento_id: itemSnapshot.id
+           }
+           const { error: finErr } = await supabase.from('transacoes_financeiras').insert([finPayload])
+           if (finErr) console.warn('Erro ao lançar taxa de cancelamento no caixa:', finErr.message)
+         }
+         
          alert('Agendamento cancelado com sucesso!')
        }
     }
-    close()
+    render()
   })
 }
 
