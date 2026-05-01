@@ -686,7 +686,7 @@
         .from('agendamentos')
         .select('data_agendamento, hora_agendamento, agendamento_status, duracao_minutos, funcionario_id')
         .eq('estabelecimento_id', state.estabId)
-        .not('agendamento_status', 'in', '("Cancelado","Recusado","Excluído","Concluído")');
+        .not('agendamento_status', 'in', '("Cancelado","Recusado","Excluído","Excluido","Concluído","Concluido")');
 
       // Filter by selected staff if one is chosen
       if (state.selectedStaffId) {
@@ -754,7 +754,8 @@
           if (exc.tipo === 'fechado_dia_todo') return true;
           if (exc.tipo === 'fechado_resto_do_dia') {
             const es = toMinutes(exc.inicio);
-            if (es !== null && curMin >= es) return true;
+            // Se não tem horário de início, bloqueia o dia inteiro a partir da abertura
+            if (es === null || curMin >= es) return true;
           }
           if (exc.tipo === 'pausa') {
             const es = toMinutes(exc.inicio);
