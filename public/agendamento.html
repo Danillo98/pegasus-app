@@ -447,11 +447,10 @@
 
     /* ── Init ── */
     const params = new URLSearchParams(location.search);
-    let rawEstab = params.get('estab') || params.get('id') || '';
-    let urlEstab = rawEstab.trim().replace(/[^a-zA-Z0-9-]/g, ''); // Limpa caracteres estranhos
+    let urlEstab = params.get('estab')?.trim() || params.get('id')?.trim();
     
     // Recovery Logic: Use URL or fallback to last known EstabId
-    if (urlEstab && urlEstab.length > 20) {
+    if (urlEstab) {
       state.estabId = urlEstab;
       localStorage.setItem('pegasus_last_estab_id', urlEstab);
     } else {
@@ -479,14 +478,14 @@
       showLoading();
       try {
         const [estabRes, servicosRes, staffRes] = await Promise.all([
-          sb.from('estabelecimentos').select('nome_completo, tipo, chave_pix, dias_funcionamento, horario_abertura, horario_fechamento, pausas_padrao, ativo').eq('id', state.estabId).maybeSingle(),
+          sb.from('estabelecimentos').select('*').eq('id', state.estabId).maybeSingle(),
           sb.from('servicos').select('id, nome, preco, duracao_minutos, cobra_reserva, taxa_reserva, funcionarios_ids').eq('estabelecimento_id', state.estabId).order('nome'),
           sb.from('funcionarios').select('id, nome, ativo').eq('estabelecimento_id', state.estabId).eq('ativo', true).order('nome')
         ]);
         
         if (estabRes.error) throw estabRes.error;
         if (!estabRes.data) throw new Error('Estabelecimento não encontrado ou ID inválido.');
-        if (servicosRes.error) throw servicosRes.error;
+        if (servicosRes.error) console.warn('Erro ao carregar serviços:', servicosRes.error);
 
         state.estab = estabRes.data;
         state.servicos = servicosRes.data || [];
@@ -495,7 +494,7 @@
         const ownerActive = state.estab.ativo !== false;
         const staff = [];
         if (ownerActive) {
-          staff.push({ id: state.estabId, nome: state.estab.nome_completo || 'Proprietário' });
+          staff.push({ id: state.estabId, nome: state.estab.nome_completo || state.estab.nome_fantasia || 'Proprietário' });
         }
         const employees = (staffRes.data || []).map(f => ({ id: f.id, nome: f.nome }));
         state.staff = [...staff, ...employees];
@@ -506,7 +505,7 @@
            document.body.classList.add('theme-salao');
         }
 
-        document.getElementById('estab-name').textContent = state.estab.nome_completo;
+        document.getElementById('estab-name').textContent = state.estab.nome_completo || state.estab.nome_fantasia || 'Estabelecimento';
         document.getElementById('estab-type').textContent = state.estab.tipo || 'Estabelecimento';
 
         renderStep1();

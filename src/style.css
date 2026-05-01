@@ -510,18 +510,20 @@ select:focus {
 /* ── Print Styles (Relatórios) ── */
 @media print {
   @page {
-    margin: 0 !important;
-    size: auto !important;
+    margin: 0;
+    size: auto;
   }
   
   html, body {
-    width: 100vw !important;
+    width: 100% !important;
+    max-width: 100% !important;
     height: auto !important;
     margin: 0 !important;
     padding: 0 !important;
     overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    font-size: 12pt !important;
   }
 
   body * {
@@ -533,15 +535,22 @@ select:focus {
   }
 
   #printable-report {
-    position: absolute !important;
+    position: fixed !important;
     left: 0 !important;
     top: 0 !important;
-    width: 100vw !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
     margin: 0 !important;
-    padding: 1.5cm !important; /* Margem interna para o conteúdo não colar na borda */
+    padding: 1cm !important;
     border: none !important;
     box-shadow: none !important;
     background: white !important;
+    -webkit-transform: none !important;
+    transform: none !important;
+    overflow: visible !important;
+    float: none !important;
   }
   
   #printable-report h1, #printable-report h2, #printable-report h3, #printable-report p, #printable-report span {
@@ -550,6 +559,16 @@ select:focus {
 
   #printable-report button, #printable-report .no-print {
     display: none !important;
+  }
+
+  /* Force tables and content to fit */
+  #printable-report table {
+    width: 100% !important;
+    page-break-inside: auto !important;
+  }
+
+  #printable-report tr {
+    page-break-inside: avoid !important;
   }
 }
 

@@ -81,36 +81,9 @@ async function handleMpCallback() {
             const plano = (profile.plano || '').toLowerCase()
             const isIlimitado = plano.includes('ilimitado')
             
-            // Se o plano atual é limitado, precisamos garantir o limite de 2 profissionais
+           // Se o plano atual é limitado, precisamos garantir o limite de 2 profissionais
             if (plano && !isIlimitado) {
-               const { data: ativos } = await supabase.from('funcionarios')
-                 .select('id')
-                 .eq('estabelecimento_id', profile.id)
-                 .eq('ativo', true)
-               
-               const totalAtivos = (ativos?.length || 0) + (profile.ativo !== false ? 1 : 0)
-               
-               if (totalAtivos > 2) {
-                 // RESET: Desativa todos os funcionários para que o usuário escolha os 2 (ou 1 + proprietário)
-                 await supabase.from('funcionarios')
-                   .update({ ativo: false })
-                   .eq('estabelecimento_id', profile.id)
-                 
-                 appState.funcionariosLoaded = false
-                 
-                 appState.customAlert = {
-                   title: 'Ajuste de Equipe',
-                   message: 'Detectamos uma mudança para um plano limitado. Seu limite agora é de 2 profissionais ativos. Por favor, defina quem faz parte da sua equipe atual.',
-                   color: 'var(--yellow)',
-                   icon: '⚠️',
-                   btnText: 'DEFINIR AGORA',
-                   onConfirm: () => {
-                     appState.screen = 'funcionarios';
-                     render();
-                   }
-                 }
-                 render()
-               }
+               await checkStaffLimit(profile)
             }
             return // Para o polling de sucesso
           }
@@ -182,37 +155,10 @@ async function handleMpCallback() {
     }
   } catch (e) {
     console.error('MP callback error:', e)
+    appState.mpConnectError = String(e)
   }
 
   render()
-}
-
-async function checkPlanLimits() {
-  if (!appState.user) return
-  try {
-    const { data: profile } = await supabase.from('estabelecimentos').select('*').eq('id', appState.user.id).single()
-    if (!profile) return
-    appState.profile = profile
-    const plano = (profile.plano || '').toLowerCase()
-    const isIlimitado = plano.includes('ilimitado')
-    if (plano && !isIlimitado) {
-       const { data: ativos } = await supabase.from('funcionarios').select('id').eq('estabelecimento_id', profile.id).eq('ativo', true)
-       const totalAtivos = (ativos?.length || 0) + (profile.ativo !== false ? 1 : 0)
-       if (totalAtivos > 2) {
-         await supabase.from('funcionarios').update({ ativo: false }).eq('estabelecimento_id', profile.id)
-         appState.funcionariosLoaded = false
-         appState.customAlert = {
-           title: 'Ajuste de Equipe',
-           message: 'Seu plano atual limita até 2 profissionais ativos. Por favor, defina quem faz parte da sua equipe agora.',
-           color: 'var(--yellow)',
-           icon: '⚠️',
-           btnText: 'DEFINIR AGORA',
-           onConfirm: () => { appState.screen = 'funcionarios'; render(); }
-         }
-         render()
-       }
-    }
-  } catch(e) { console.warn('Plan check failed', e) }
 }
 // ---------------------------------------------
 
@@ -425,6 +371,40 @@ const icons = {
   funcionarios: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users-round"><path d="M18 21a8 8 0 0 0-16 0"/><circle cx="10" cy="7" r="4"/><path d="M22 21a8 8 0 0 0-2-15"/><circle cx="19" cy="11" r="2"/></svg>',
 }
 
+async function checkStaffLimit(profile) {
+  if (!profile || !appState.user) return
+  const plano = (profile.plano || '').toLowerCase()
+  const isIlimitado = plano.includes('ilimitado')
+  // Só verifica para planos limitados (mensal ou anual sem "ilimitado")
+  if (!plano || isIlimitado) return
+
+  const { data: ativos } = await supabase.from('funcionarios')
+    .select('id')
+    .eq('estabelecimento_id', appState.user.id)
+    .eq('ativo', true)
+
+  const totalAtivos = (ativos?.length || 0) + (profile.ativo !== false ? 1 : 0)
+
+  if (totalAtivos > 2) {
+    // Desativa todos os funcionários (proprietário permanece ativo via campo do estabelecimento)
+    await supabase.from('funcionarios')
+      .update({ ativo: false })
+      .eq('estabelecimento_id', appState.user.id)
+
+    appState.funcionariosLoaded = false
+
+    appState.customAlert = {
+      title: 'Ajuste de Equipe',
+      message: 'Seu plano atual é limitado a 2 profissionais ativos. Sua equipe foi redefinida. Por favor, defina quem faz parte da sua equipe agora.',
+      color: 'var(--yellow)',
+      icon: '⚠️',
+      btnText: 'DEFINIR AGORA',
+      onConfirm: () => { appState.screen = 'funcionarios'; render(); }
+    }
+    render()
+  }
+}
+
 async function syncAgendaData() {
   if (!appState.user) return;
   
@@ -438,8 +418,6 @@ async function syncAgendaData() {
     if (!prof.dias_funcionamento || prof.dias_funcionamento.length === 0) {
       appState.showModal = 'horario-funcionamento';
     }
-
-    // --- Verificação de limite movida para checkPlanLimits() ---
   }
 
   // 2) Load booked appointments
@@ -4840,35 +4818,40 @@ function attachConfirmCancelEvents() {
     close()
     
     if (itemSnapshot?.id) {
-        const taxa = Number(itemSnapshot.taxa_reserva || 0)
-        const taxaPaga = itemSnapshot.pagamento_status === true || itemSnapshot.taxa_paga === true || String(itemSnapshot.status).toLowerCase() === 'pago' || itemSnapshot.taxa_pago === true
-        
-        if (taxaPaga && taxa > 0) {
-          const finPayload = {
-            estabelecimento_id: appState.user.id,
-            descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
-            valor: taxa,
-            tipo: 'entrada',
-            categoria: itemSnapshot.service || 'Taxa de Cancelamento',
-            data_transacao: dayKey,
-            agendamento_id: itemSnapshot.id
-          }
-          // Garante o lançamento ANTES de deletar
-          const { error: finErr } = await supabase.from('transacoes_financeiras').insert([finPayload])
-          if (finErr) {
-             alert('Erro ao registrar taxa no caixa: ' + finErr.message + '. O cancelamento foi interrompido.')
-             return 
-          }
-        }
-        
-        const { error: delError } = await supabase.from('agendamentos').delete().eq('id', itemSnapshot.id)
-        
-        if (delError) {
-          console.error('Error deleting booking:', delError)
-          alert('Erro ao excluir agendamento: ' + delError.message)
-        } else {
-          alert('Cancelado com sucesso! ' + (taxa > 0 ? 'A taxa foi registrada no seu caixa.' : ''))
-        }
+       // 1. Lança no financeiro se a taxa foi paga
+       const taxa = Number(itemSnapshot.taxa_reserva || 0)
+       const taxaPaga = itemSnapshot.pagamento_status === true || itemSnapshot.taxa_paga === true || String(itemSnapshot.status).toLowerCase() === 'pago' || itemSnapshot.taxa_pago === true
+       
+       if (taxaPaga && taxa > 0) {
+         const finPayload = {
+           estabelecimento_id: appState.user.id,
+           descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
+           valor: taxa,
+           tipo: 'entrada',
+           categoria: itemSnapshot.service || 'Taxa de Cancelamento',
+           data_transacao: dayKey
+         }
+         const { data: finData, error: finErr } = await supabase.from('transacoes_financeiras').insert([finPayload]).select()
+         if (finErr) {
+           console.warn('Erro ao lançar taxa de cancelamento no caixa:', finErr.message)
+         } else if (finData?.[0]?.id) {
+           // Vincula agendamento_id silenciosamente (coluna pode não existir)
+           await supabase.from('transacoes_financeiras')
+             .update({ agendamento_id: itemSnapshot.id })
+             .eq('id', finData[0].id)
+             .then(({ error }) => { if (error) console.warn('agendamento_id não vinculado:', error.message) })
+         }
+       }
+       
+       // 2. Agora EXCLUI o agendamento do banco
+       const { error: delError } = await supabase.from('agendamentos').delete().eq('id', itemSnapshot.id)
+       
+       if (delError) {
+         console.error('Error deleting booking:', delError)
+         alert('Erro ao excluir agendamento do banco: ' + delError.message)
+       } else {
+         alert('Agendamento excluído e taxa registrada no caixa!')
+       }
     }
     render()
   })
@@ -6089,13 +6072,12 @@ handleMpCallback().then(async () => {
             appState.showModal = 'welcome'
           }
         }
+
+        // Verificação de limite de profissionais na splash screen
+        await checkStaffLimit(profile)
       }
     } catch(e) { console.warn('Could not restore theme from profile', e) }
   }
-
-  // Verificar limites uma vez no bootstrap
-  if (appState.user) checkPlanLimits();
-
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       appState.user = null;
