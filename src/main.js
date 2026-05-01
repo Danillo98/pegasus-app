@@ -4820,27 +4820,18 @@ function attachConfirmCancelEvents() {
     if (itemSnapshot?.id) {
        // 1. Lança no financeiro se a taxa foi paga
        const taxa = Number(itemSnapshot.taxa_reserva || 0)
-       const taxaPaga = itemSnapshot.pagamento_status === true || itemSnapshot.taxa_paga === true || String(itemSnapshot.status).toLowerCase() === 'pago' || itemSnapshot.taxa_pago === true
+       const taxaPaga = !!itemSnapshot.pagamento_status || !!itemSnapshot.taxa_paga || String(itemSnapshot.status).toLowerCase() === 'confirmado' || String(itemSnapshot.status).toLowerCase() === 'pago'
        
        if (taxaPaga && taxa > 0) {
-         const finPayload = {
+         const { error: finErr } = await supabase.from('transacoes_financeiras').insert([{
            estabelecimento_id: appState.user.id,
            descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
            valor: taxa,
            tipo: 'entrada',
            categoria: itemSnapshot.service || 'Taxa de Cancelamento',
            data_transacao: dayKey
-         }
-         const { data: finData, error: finErr } = await supabase.from('transacoes_financeiras').insert([finPayload]).select()
-         if (finErr) {
-           console.warn('Erro ao lançar taxa de cancelamento no caixa:', finErr.message)
-         } else if (finData?.[0]?.id) {
-           // Vincula agendamento_id silenciosamente (coluna pode não existir)
-           await supabase.from('transacoes_financeiras')
-             .update({ agendamento_id: itemSnapshot.id })
-             .eq('id', finData[0].id)
-             .then(({ error }) => { if (error) console.warn('agendamento_id não vinculado:', error.message) })
-         }
+         }])
+         if (finErr) console.warn('Erro ao lançar taxa no caixa:', finErr.message)
        }
        
        // 2. Agora EXCLUI o agendamento do banco
@@ -4850,7 +4841,7 @@ function attachConfirmCancelEvents() {
          console.error('Error deleting booking:', delError)
          alert('Erro ao excluir agendamento do banco: ' + delError.message)
        } else {
-         alert('Agendamento excluído e taxa registrada no caixa!')
+         alert(taxaPaga && taxa > 0 ? 'Agendamento excluído e taxa registrada no caixa!' : 'Agendamento excluído com sucesso!')
        }
     }
     render()
