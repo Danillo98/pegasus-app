@@ -488,7 +488,11 @@
         if (servicosRes.error) console.warn('Erro ao carregar serviços:', servicosRes.error);
 
         state.estab = estabRes.data;
-        state.servicos = servicosRes.data || [];
+        state.servicos = (servicosRes.data || []).map(s => ({
+          ...s,
+          // Normaliza IDs de profissionais removendo prefixo 'owner-' de dados legados
+          funcionarios_ids: (s.funcionarios_ids || []).map(id => String(id).replace('owner-', ''))
+        }));
 
         // Build staff list: owner first (only if active), then active employees
         const ownerActive = state.estab.ativo !== false;
@@ -596,8 +600,8 @@
               ? '<p style="color:var(--muted);text-align:center;padding:1rem 0">Nenhum serviço disponível.</p>'
               : state.servicos.map(s => {
                 // Check if service has at least 1 active professional
-                const ids = (s.funcionarios_ids || []).map(id => String(id).replace('owner-', ''));
-                const hasActivePro = ids.length === 0 || ids.some(fid => state.staff.find(p => String(p.id).replace('owner-', '') === fid));
+                const ids = s.funcionarios_ids || [];
+                const hasActivePro = ids.length === 0 || ids.some(fid => state.staff.find(p => p.id === fid));
                 const disabled = !hasActivePro;
                 
                 // If disabled, remove from selection
@@ -794,11 +798,10 @@
       
       // A professional is valid if they are included in ALL selected services' funcionarios_ids
       let filteredStaff = state.staff.filter(person => {
-        const personId = String(person.id).replace('owner-', '');
         return selectedServices.every(srv => {
-          const srvIds = (srv.funcionarios_ids || []).map(id => String(id).replace('owner-', ''));
+          const srvIds = srv.funcionarios_ids || [];
           if (srvIds.length === 0) return true;
-          return srvIds.includes(personId);
+          return srvIds.includes(person.id);
         });
       });
 
