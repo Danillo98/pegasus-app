@@ -447,10 +447,11 @@
 
     /* ── Init ── */
     const params = new URLSearchParams(location.search);
-    let urlEstab = params.get('estab')?.trim() || params.get('id')?.trim();
+    let rawEstab = params.get('estab') || params.get('id') || '';
+    let urlEstab = rawEstab.trim().replace(/[^a-zA-Z0-9-]/g, ''); // Limpa caracteres estranhos
     
     // Recovery Logic: Use URL or fallback to last known EstabId
-    if (urlEstab) {
+    if (urlEstab && urlEstab.length > 20) {
       state.estabId = urlEstab;
       localStorage.setItem('pegasus_last_estab_id', urlEstab);
     } else {

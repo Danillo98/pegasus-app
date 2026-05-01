@@ -182,10 +182,35 @@ async function handleMpCallback() {
     }
   } catch (e) {
     console.error('MP callback error:', e)
-    appState.mpConnectError = String(e)
-  }
-
   render()
+}
+
+async function checkPlanLimits() {
+  if (!appState.user) return
+  try {
+    const { data: profile } = await supabase.from('estabelecimentos').select('*').eq('id', appState.user.id).single()
+    if (!profile) return
+    appState.profile = profile
+    const plano = (profile.plano || '').toLowerCase()
+    const isIlimitado = plano.includes('ilimitado')
+    if (plano && !isIlimitado) {
+       const { data: ativos } = await supabase.from('funcionarios').select('id').eq('estabelecimento_id', profile.id).eq('ativo', true)
+       const totalAtivos = (ativos?.length || 0) + (profile.ativo !== false ? 1 : 0)
+       if (totalAtivos > 2) {
+         await supabase.from('funcionarios').update({ ativo: false }).eq('estabelecimento_id', profile.id)
+         appState.funcionariosLoaded = false
+         appState.customAlert = {
+           title: 'Ajuste de Equipe',
+           message: 'Seu plano atual limita até 2 profissionais ativos. Por favor, defina quem faz parte da sua equipe agora.',
+           color: 'var(--yellow)',
+           icon: '⚠️',
+           btnText: 'DEFINIR AGORA',
+           onConfirm: () => { appState.screen = 'funcionarios'; render(); }
+         }
+         render()
+       }
+    }
+  } catch(e) { console.warn('Plan check failed', e) }
 }
 // ---------------------------------------------
 
@@ -412,33 +437,7 @@ async function syncAgendaData() {
       appState.showModal = 'horario-funcionamento';
     }
 
-    // --- VERIFICAÇÃO AUTOMÁTICA DE LIMITE DE PROFISSIONAIS (Facilita Testes) ---
-    const plano = (prof.plano || '').toLowerCase()
-    const isIlimitado = plano.includes('ilimitado')
-    if (plano && !isIlimitado) {
-       // Se o plano é limitado, checamos se o contingente atual é válido
-       // Buscamos funcionários ativos diretamente para garantir precisão
-       supabase.from('funcionarios').select('id').eq('estabelecimento_id', appState.user.id).eq('ativo', true)
-       .then(({ data: ativos }) => {
-         const totalAtivos = (ativos?.length || 0) + (prof.ativo !== false ? 1 : 0)
-         if (totalAtivos > 2 && !appState.customAlert) {
-            // Se houver excesso, desativa funcionários e avisa (Reset)
-            supabase.from('funcionarios').update({ ativo: false }).eq('estabelecimento_id', appState.user.id)
-            .then(() => {
-              appState.funcionariosLoaded = false
-              appState.customAlert = {
-                title: 'Limite de Plano',
-                message: 'Detectamos que seu plano atual é limitado a 2 profissionais ativos. Sua equipe foi redefinida. Por favor, selecione quem faz parte da sua equipe agora.',
-                color: 'var(--yellow)',
-                icon: '⚠️',
-                btnText: 'DEFINIR AGORA',
-                onConfirm: () => { appState.screen = 'funcionarios'; render(); }
-              }
-              render()
-            })
-         }
-       })
-    }
+    // --- Verificação de limite movida para checkPlanLimits() ---
   }
 
   // 2) Load booked appointments
@@ -4839,34 +4838,35 @@ function attachConfirmCancelEvents() {
     close()
     
     if (itemSnapshot?.id) {
-       // 1. Lança no financeiro se a taxa foi paga
-       const taxa = Number(itemSnapshot.taxa_reserva || 0)
-       const taxaPaga = itemSnapshot.pagamento_status === true || itemSnapshot.taxa_paga === true || String(itemSnapshot.status).toLowerCase() === 'pago' || itemSnapshot.taxa_pago === true
-       
-       if (taxaPaga && taxa > 0) {
-         const finPayload = {
-           estabelecimento_id: appState.user.id,
-           descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
-           valor: taxa,
-           tipo: 'entrada',
-           categoria: itemSnapshot.service || 'Taxa de Cancelamento',
-           data_transacao: dayKey,
-           agendamento_id: itemSnapshot.id
-         }
-         // Executa de forma síncrona antes do delete para garantir a gravação
-         const { error: finErr } = await supabase.from('transacoes_financeiras').insert([finPayload])
-         if (finErr) console.warn('Erro ao lançar taxa de cancelamento no caixa:', finErr.message)
-       }
-       
-       // 2. Agora EXCLUI o agendamento do banco
-       const { error: delError } = await supabase.from('agendamentos').delete().eq('id', itemSnapshot.id)
-       
-       if (delError) {
-         console.error('Error deleting booking:', delError)
-         alert('Erro ao excluir agendamento do banco: ' + delError.message)
-       } else {
-         alert('Agendamento excluído e taxa registrada no caixa!')
-       }
+        const taxa = Number(itemSnapshot.taxa_reserva || 0)
+        const taxaPaga = itemSnapshot.pagamento_status === true || itemSnapshot.taxa_paga === true || String(itemSnapshot.status).toLowerCase() === 'pago' || itemSnapshot.taxa_pago === true
+        
+        if (taxaPaga && taxa > 0) {
+          const finPayload = {
+            estabelecimento_id: appState.user.id,
+            descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
+            valor: taxa,
+            tipo: 'entrada',
+            categoria: itemSnapshot.service || 'Taxa de Cancelamento',
+            data_transacao: dayKey,
+            agendamento_id: itemSnapshot.id
+          }
+          // Garante o lançamento ANTES de deletar
+          const { error: finErr } = await supabase.from('transacoes_financeiras').insert([finPayload])
+          if (finErr) {
+             alert('Erro ao registrar taxa no caixa: ' + finErr.message + '. O cancelamento foi interrompido.')
+             return 
+          }
+        }
+        
+        const { error: delError } = await supabase.from('agendamentos').delete().eq('id', itemSnapshot.id)
+        
+        if (delError) {
+          console.error('Error deleting booking:', delError)
+          alert('Erro ao excluir agendamento: ' + delError.message)
+        } else {
+          alert('Cancelado com sucesso! ' + (taxa > 0 ? 'A taxa foi registrada no seu caixa.' : ''))
+        }
     }
     render()
   })
@@ -6090,6 +6090,10 @@ handleMpCallback().then(async () => {
       }
     } catch(e) { console.warn('Could not restore theme from profile', e) }
   }
+
+  // Verificar limites uma vez no bootstrap
+  if (appState.user) checkPlanLimits();
+
   supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_OUT') {
       appState.user = null;
