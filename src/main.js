@@ -3673,10 +3673,12 @@ function attachFuncionariosEvents() {
 
     if (!nome) return alert('Por favor, insira o nome do funcionário.')
 
-    // --- Trava de Limite de Profissionais ---
+    // --- Trava de Limite de Profissionais (não aplica no Trial) ---
+    const subStatus = (appState.profile?.assinatura_status || 'Trial').toLowerCase()
+    const isTrial = subStatus === 'trial' || subStatus === ''
     const plano = (appState.profile?.plano || '').toLowerCase()
     const isIlimitado = plano.includes('ilimitado')
-    if (!isIlimitado) {
+    if (!isTrial && !isIlimitado) {
       const activeStaffCount = (appState.funcionariosAtivos.filter(f => f.ativo).length) + (appState.profile?.ativo !== false ? 1 : 0)
       if (activeStaffCount >= 2) {
         appState.customAlert = {
@@ -3793,14 +3795,18 @@ function attachFuncionariosEvents() {
       }
 
       if (nextStatus === true) {
-        const plano = appState.profile?.plano?.toLowerCase() || ''
-        const isBasicPlan = plano === 'mensal' || plano === 'anual'
-        if (isBasicPlan) {
-          const activeStaffCount = (appState.funcionariosAtivos.filter(f => f.ativo).length) + (appState.profile?.ativo !== false ? 1 : 0)
-          if (activeStaffCount >= 2) {
-            appState.showModal = 'staff-limit-alert'
-            render()
-            return
+        const subSt = (appState.profile?.assinatura_status || 'Trial').toLowerCase()
+        const isTrialToggle = subSt === 'trial' || subSt === ''
+        if (!isTrialToggle) {
+          const plano = appState.profile?.plano?.toLowerCase() || ''
+          const isBasicPlan = plano && !plano.includes('ilimitado')
+          if (isBasicPlan) {
+            const activeStaffCount = (appState.funcionariosAtivos.filter(f => f.ativo).length) + (appState.profile?.ativo !== false ? 1 : 0)
+            if (activeStaffCount >= 2) {
+              appState.showModal = 'staff-limit-alert'
+              render()
+              return
+            }
           }
         }
       }
