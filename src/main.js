@@ -182,6 +182,8 @@ async function handleMpCallback() {
     }
   } catch (e) {
     console.error('MP callback error:', e)
+  }
+
   render()
 }
 
