@@ -373,6 +373,11 @@ const icons = {
 
 async function checkStaffLimit(profile) {
   if (!profile || !appState.user) return
+  
+  // Não verifica durante período gratuito (Trial)
+  const status = (profile.assinatura_status || 'Trial').toLowerCase()
+  if (status === 'trial' || status === '') return
+  
   const plano = (profile.plano || '').toLowerCase()
   const isIlimitado = plano.includes('ilimitado')
   // Só verifica para planos limitados (mensal ou anual sem "ilimitado")
