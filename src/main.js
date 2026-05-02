@@ -465,6 +465,24 @@ async function syncAgendaData() {
   window._lastAgendaSync = Date.now();
 }
 
+async function syncFinancasData() {
+  if (!appState.user) return;
+  appState.isFetchingFinancas = true;
+  
+  const { data, error } = await supabase.from('transacoes_financeiras')
+    .select('*')
+    .eq('estabelecimento_id', appState.user.id)
+    .order('data_transacao', { ascending: false });
+
+  if (!error && data) {
+    appState.financasData.transactions = data.map(dbTransToLocal);
+    appState.financasData.loaded = true;
+  }
+  
+  appState.isFetchingFinancas = false;
+  window._lastFinancasSync = Date.now();
+}
+
 let _ptr = { active: false, startY: 0, threshold: 80 };
 
 function attachAgendaEvents() {
@@ -695,14 +713,7 @@ function render() {
 
   // Auto-fetch financas
   if (appState.screen === 'financas' && !appState.financasData.loaded && appState.user && !appState.isFetchingFinancas) {
-    appState.isFetchingFinancas = true;
-    supabase.from('transacoes_financeiras').select('*').eq('estabelecimento_id', appState.user.id).order('data_transacao', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) appState.financasData.transactions = data.map(dbTransToLocal);
-        appState.financasData.loaded = true;
-        appState.isFetchingFinancas = false;
-        render();
-      })
+    syncFinancasData().then(render);
   }
 
   // Auto-fetch funcionarios (Global)
@@ -1630,6 +1641,9 @@ async function attachFinanceiroAuthEvents() {
         appState.financeiroAuth = true // Mantemos apenas por compatibilidade de estado se necessário, mas dashboard ignorará
         appState.showModal = null
         appState.screen = 'financas'
+        
+        // Carrega os dados financeiros IMEDIATAMENTE após a senha
+        await syncFinancasData();
         render()
       }
     } catch (e) {
@@ -5269,11 +5283,8 @@ function attachFinancasEvents() {
       } else {
         appState.financasData.month -= 1
       }
-      // Reload all transactions from DB (we keep the full array and filter by month in render)
-      if (appState.user) {
-        const { data } = await supabase.from('transacoes_financeiras').select('*').eq('estabelecimento_id', appState.user.id).order('data_transacao', { ascending: false })
-        if (data) appState.financasData.transactions = data.map(dbTransToLocal)
-      }
+      // Reload all transactions from DB
+      await syncFinancasData();
       render()
     })
   }
@@ -5286,10 +5297,7 @@ function attachFinancasEvents() {
       } else {
         appState.financasData.month += 1
       }
-      if (appState.user) {
-        const { data } = await supabase.from('transacoes_financeiras').select('*').eq('estabelecimento_id', appState.user.id).order('data_transacao', { ascending: false })
-        if (data) appState.financasData.transactions = data.map(dbTransToLocal)
-      }
+      await syncFinancasData();
       render()
     })
   }
