@@ -241,7 +241,10 @@ let appState = {
     activeTransaction: null,
     tempDate: new Date().toISOString().split('T')[0],
     transactions: [],
-    loaded: false
+    loaded: false,
+    tempDesc: '',
+    tempVal: '',
+    tempType: 'in'
   },
   servicosAtivos: [],
   servicosLoaded: false,
@@ -1988,21 +1991,20 @@ function renderAgenda() {
             <!-- Professional Divider & Name -->
             ${(() => {
               const fid = item.funcionario_id
-              if (!fid) return ''
               let name = ''
-              if (fid.startsWith('owner-')) {
+              if (!fid || fid === appState.user?.id || fid.startsWith('owner-')) {
                 name = appState.user?.user_metadata?.nome_completo || appState.profile?.nome_fantasia || appState.registrationData.nome || 'Proprietário'
               } else {
                 const f = appState.funcionariosAtivos.find(x => x.id === fid)
                 name = f ? f.nome : ''
               }
-              return name ? `
+              return `
                 <div style="border-top: 1px solid var(--border); padding: 8px 12px; text-align:center; background:rgba(0,0,0,0.01);">
                   <p style="color:#000000; font-size:0.75rem; font-weight:900; margin:0; text-transform:uppercase; letter-spacing:0.8px;">
                     PROFISSIONAL: ${name}
                   </p>
                 </div>
-              ` : ''
+              `
             })()}
           </div>
 
@@ -2683,6 +2685,9 @@ function dbTransToLocal(row) {
     finalDesc = finalDesc.replace(refMatch[0], '');
   }
 
+  // Para despesas fixas, extrair o dia de vencimento do data_transacao original
+  const vencimentoDay = (row.categoria === 'Fixo') ? dp[2] : null;
+
   return {
     id: row.id,
     desc: finalDesc,
@@ -2695,7 +2700,8 @@ function dbTransToLocal(row) {
     agendamentoId: row.agendamento_id,
     isFixed: row.categoria === 'Fixo',
     fixedCompetence,
-    isTemplate
+    isTemplate,
+    vencimentoDay
   };
 }
 
@@ -2748,15 +2754,20 @@ function getMonthlyTransactions(month, year, allTransactions) {
     })
     // Deduplicate by name (only one per month)
     .filter((t, i, arr) => arr.findIndex(x => x.desc.toLowerCase() === t.desc.toLowerCase()) === i)
-    .map(t => ({
-      ...t,
-      id: `virtual-${t.id}`,
-      fullDate: `${year}-${String(month + 1).padStart(2,'0')}-01`,
-      date: `01/${String(month + 1).padStart(2,'0')}`,
-      originalIndex: -1,
-      isVirtual: true,
-      ignoreInTotals: true
-    }));
+    .map(t => {
+      // Extrair o dia de vencimento da transação template original
+      const origDay = t.vencimentoDay || (t.fullDate ? t.fullDate.split('-')[2] : '01');
+      return {
+        ...t,
+        id: `virtual-${t.id}`,
+        fullDate: `${year}-${String(month + 1).padStart(2,'0')}-${origDay}`,
+        date: `${origDay}/${String(month + 1).padStart(2,'0')}`,
+        vencimentoDay: origDay,
+        originalIndex: -1,
+        isVirtual: true,
+        ignoreInTotals: true
+      };
+    });
 
   const monthlyTransactions = [...realThisMonth, ...virtualFixed];
   
@@ -2864,7 +2875,7 @@ function renderFinancas() {
           <div style="position:relative; margin-top:16px; border: 1.5px solid #d1d5db; border-radius:16px; background:#fff; overflow:visible;">
             <!-- Date Header floating center -->
             <div style="position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:#fff; padding:0 12px; font-size:0.72rem; font-weight:700; color:#6b7280; white-space:nowrap; letter-spacing:0.3px;">
-              ${t.date}
+              ${t.cat === 'Fixo' && t.vencimentoDay ? `Vencimento - ${t.vencimentoDay}/${String(month + 1).padStart(2,'0')}` : t.date}
             </div>
             <!-- Row: [content left] [icons right] -->
             <div style="display:flex; flex-direction:row; align-items:flex-start; padding:18px 12px 16px 16px; gap:12px;">
@@ -2891,7 +2902,7 @@ function renderFinancas() {
                 ` : ''}
               </div>
               <!-- Right: Actions column -->
-              <div style="flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:8px;" class="no-print">
+              <div style="flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:8px;" class="no-print">
                 ${t.isVirtual ? `
                   <button class="btn-pay-fixed ripple" data-desc="${t.desc}" data-val="${t.val}" data-full-date="${t.fullDate}" style="background:#dc2626; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:0.65rem; font-weight:900; letter-spacing:0.5px;">PAGAR AGORA</button>
                   <button class="btn-edit-trans" data-dbid="${t.id.replace('virtual-','')}" title="Editar Todas" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">✏️</button>
@@ -3133,13 +3144,13 @@ function renderNewTransactionModal() {
       <div class="flex flex-col gap-md">
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">DESCRIÇÃO</label>
-          <input type="text" id="trans-desc" placeholder="Ex: Pagamento Fornecedor" autocapitalize="words" style="padding: 14px; border-radius: 12px; text-transform: capitalize;">
+          <input type="text" id="trans-desc" placeholder="Ex: Pagamento Fornecedor" autocapitalize="words" value="${appState.financasData.tempDesc}" style="padding: 14px; border-radius: 12px; text-transform: capitalize;">
         </div>
         
         <div class="modal-grid">
            <div class="flex flex-col gap-xs">
             <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">VALOR (R$)</label>
-            <input type="text" id="trans-val" placeholder="R$ 0,00" style="padding: 14px 10px; border-radius: 12px; width: 100%; font-weight: 700;">
+            <input type="text" id="trans-val" placeholder="R$ 0,00" value="${appState.financasData.tempVal}" style="padding: 14px 10px; border-radius: 12px; width: 100%; font-weight: 700;">
           </div>
           <div class="flex flex-col gap-xs">
             <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">DATA</label>
@@ -3152,10 +3163,10 @@ function renderNewTransactionModal() {
 
         <div class="flex flex-col gap-xs">
           <label style="font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);">TIPO / CATEGORIA</label>
-          <select id="trans-type" style="padding: 14px; border-radius: 12px; width: 100%; border: 1px solid var(--border); background: var(--background); font-weight: 700; color: #16a34a;">
-            <option value="in" style="color: #16a34a; font-weight: 800;">Entrada (+)</option>
-            <option value="out-fixo" style="color: #dc2626; font-weight: 800;">Saída Fixa (-)</option>
-            <option value="out-variavel" style="color: #dc2626; font-weight: 800;">Saída Variável (-)</option>
+          <select id="trans-type" style="padding: 14px; border-radius: 12px; width: 100%; border: 1px solid var(--border); background: var(--background); font-weight: 700; color: ${appState.financasData.tempType === 'in' ? '#16a34a' : '#dc2626'};">
+            <option value="in" ${appState.financasData.tempType === 'in' ? 'selected' : ''} style="color: #16a34a; font-weight: 800;">Entrada (+)</option>
+            <option value="out-fixo" ${appState.financasData.tempType === 'out-fixo' ? 'selected' : ''} style="color: #dc2626; font-weight: 800;">Saída Fixa (-)</option>
+            <option value="out-variavel" ${appState.financasData.tempType === 'out-variavel' ? 'selected' : ''} style="color: #dc2626; font-weight: 800;">Saída Variável (-)</option>
           </select>
         </div>
         
@@ -3579,7 +3590,7 @@ function renderFuncionarios() {
                 
                 <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
                   <span style="font-size: 0.8rem; font-weight: 700; color: var(--text-main);">Está trabalhando hoje?</span>
-                  <div class="btn-toggle-funcionario-status" data-id="${func.id}" data-status="${isAtivo}" style="display: flex; background: var(--surface-hover); padding: 3px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); min-width: 90px; justify-content: space-between; transition: all 0.3s ease;">
+                  <div class="btn-toggle-funcionario-status" data-id="${isOwner ? 'owner-' + func.id : func.id}" data-status="${isAtivo}" style="display: flex; background: var(--surface-hover); padding: 3px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); min-width: 90px; justify-content: space-between; transition: all 0.3s ease;">
                     <span style="flex: 1; text-align: center; font-size: 0.65rem; font-weight: 900; padding: 5px 0; border-radius: 14px; transition: all 0.3s; ${!isAtivo ? 'background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm);' : 'color: var(--text-secondary);'}">NÃO</span>
                     <span style="flex: 1; text-align: center; font-size: 0.65rem; font-weight: 900; padding: 5px 0; border-radius: 14px; transition: all 0.3s; ${isAtivo ? 'background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm);' : 'color: var(--text-secondary);'}">SIM</span>
                   </div>
@@ -4836,40 +4847,53 @@ function attachConfirmCancelEvents() {
     const dayKey = getAgendaDayKey(appState.selectedDate)
     const itemSnapshot = { ...appState.activeAgendaItem }
     
-    // Optimistic Update: Remove da vista local (agendaData)
-    const idx = appState.agendaData[dayKey].findIndex(i => i.id === itemSnapshot.id)
+    if (!itemSnapshot?.id) return
+
+    // 1. Detecta taxa ANTES de fechar
+    const taxa = Number(itemSnapshot.taxa_reserva || 0)
+    const taxaPaga = !!itemSnapshot.pagamento_status || !!itemSnapshot.taxa_paga || String(itemSnapshot.status).toLowerCase() === 'confirmado' || String(itemSnapshot.status).toLowerCase() === 'pago'
+    const temTaxa = taxaPaga && taxa > 0
+
+    // 2. Optimistic Update: Remove da vista local
+    const idx = appState.agendaData[dayKey]?.findIndex(i => i.id === itemSnapshot.id)
     if (idx > -1) appState.agendaData[dayKey].splice(idx, 1)
     
-    close()
-    
-    if (itemSnapshot?.id) {
-       // 1. Lança no financeiro se a taxa foi paga
-       const taxa = Number(itemSnapshot.taxa_reserva || 0)
-       const taxaPaga = !!itemSnapshot.pagamento_status || !!itemSnapshot.taxa_paga || String(itemSnapshot.status).toLowerCase() === 'confirmado' || String(itemSnapshot.status).toLowerCase() === 'pago'
-       
-       if (taxaPaga && taxa > 0) {
-         const { error: finErr } = await supabase.from('transacoes_financeiras').insert([{
-           estabelecimento_id: appState.user.id,
-           descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
-           valor: taxa,
-           tipo: 'entrada',
-           categoria: itemSnapshot.service || 'Taxa de Cancelamento',
-           data_transacao: dayKey
-         }])
-         if (finErr) console.warn('Erro ao lançar taxa no caixa:', finErr.message)
-       }
-       
-       // 2. Agora EXCLUI o agendamento do banco
-       const { error: delError } = await supabase.from('agendamentos').delete().eq('id', itemSnapshot.id)
-       
-       if (delError) {
-         console.error('Error deleting booking:', delError)
-         alert('Erro ao excluir agendamento do banco: ' + delError.message)
-       } else {
-         alert(taxaPaga && taxa > 0 ? 'Agendamento excluído e taxa registrada no caixa!' : 'Agendamento excluído com sucesso!')
-       }
+    // 3. Fecha modal e mostra popup INSTANTANEAMENTE
+    appState.showModal = null
+    appState.activeAgendaItem = null
+    if (temTaxa) {
+      appState.customAlert = {
+        title: 'Taxa Registrada!',
+        message: `O agendamento de ${itemSnapshot.client || 'Cliente'} foi cancelado e a taxa de R$ ${taxa.toFixed(2).replace('.',',')} foi enviada para o caixa.`,
+        color: '#16a34a',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+      }
+    } else {
+      appState.customAlert = {
+        title: 'Excluído!',
+        message: 'Agendamento excluído com sucesso.',
+        color: '#3b82f6',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+      }
     }
     render()
+
+    // 4. Background DB work (não bloqueia a UI)
+    if (temTaxa) {
+      supabase.from('transacoes_financeiras').insert([{
+        estabelecimento_id: appState.user.id,
+        descricao: `Taxa de cancelamento: ${itemSnapshot.client || 'Cliente'}`,
+        valor: taxa,
+        tipo: 'entrada',
+        categoria: itemSnapshot.service || 'Taxa de Cancelamento',
+        data_transacao: dayKey
+      }]).then(({ error }) => {
+        if (error) console.warn('Erro ao lançar taxa no caixa:', error.message)
+      })
+    }
+    supabase.from('agendamentos').delete().eq('id', itemSnapshot.id).then(({ error }) => {
+      if (error) console.error('Erro ao excluir agendamento:', error.message)
+    })
   })
 }
 
@@ -5212,7 +5236,11 @@ function attachQuickBookEvents() {
     }
     appState.agendaData[dayKey].sort((a,b) => a.time.localeCompare(b.time))
 
-    const { data: dbData, error } = await supabase.from('agendamentos').insert([{
+    // Fechar modal INSTANTANEAMENTE (otimista)
+    close()
+
+    // Background DB sync
+    supabase.from('agendamentos').insert([{
       estabelecimento_id: appState.user?.id,
       cliente_nome: name,
       cliente_telefone: phone,
@@ -5224,15 +5252,17 @@ function attachQuickBookEvents() {
       pagamento_status: !cobraReserva,
       taxa_reserva: taxaTotalReserva,
       valor_total: valorTotal
-    }]).select().single()
-
-    if (error) {
-      console.error('Erro no quick book:', error)
-    } else if (dbData) {
-      newEntry.id = dbData.id
-    }
-
-    close()
+    }]).select().single().then(({ data: dbData, error }) => {
+      if (error) {
+        console.error('Erro no quick book:', error)
+      } else if (dbData) {
+        // Atualiza com o ID real do banco
+        const dayItems = appState.agendaData[dayKey] || []
+        const match = dayItems.find(i => i.time === item.time && i.client === name)
+        if (match) match.id = dbData.id
+        render()
+      }
+    })
   })
 }
 
@@ -5429,12 +5459,40 @@ function attachNewTransactionEvents() {
 
   const btnDate = document.getElementById('btn-new-trans-date')
 
+  const clearTemps = () => {
+    appState.financasData.tempDesc = ''
+    appState.financasData.tempVal = ''
+    appState.financasData.tempType = 'in'
+  }
+
   const close = () => { appState.showModal = null; render() }
 
-  if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) close() })
-  if (btnClose) btnClose.addEventListener('click', close)
+  if (overlay) overlay.addEventListener('click', (e) => { 
+    if (e.target === overlay) {
+      clearTemps()
+      close()
+    }
+  })
+  if (btnClose) btnClose.addEventListener('click', () => {
+    clearTemps()
+    close()
+  })
+  
+  const btnCancel = document.getElementById('btn-close-trans')
+  if (btnCancel) btnCancel.addEventListener('click', () => {
+    clearTemps()
+    close()
+  })
 
   if (btnDate) btnDate.addEventListener('click', () => {
+    // Salvar valores atuais dos inputs ANTES de abrir o calendário
+    const descEl = document.getElementById('trans-desc')
+    const valEl = document.getElementById('trans-val')
+    const typeEl = document.getElementById('trans-type')
+    if (descEl) appState.financasData.tempDesc = descEl.value
+    if (valEl) appState.financasData.tempVal = valEl.value
+    if (typeEl) appState.financasData.tempType = typeEl.value
+
     const d = new Date(appState.financasData.tempDate + 'T00:00:00')
     appState.viewingDate = new Date(d.getFullYear(), d.getMonth(), 1)
     appState.showModal = 'calendar'
@@ -5444,6 +5502,7 @@ function attachNewTransactionEvents() {
 
   if (selectType) selectType.addEventListener('change', () => {
     selectType.style.color = selectType.value === 'in' ? '#16a34a' : '#dc2626'
+    appState.financasData.tempType = selectType.value
   })
 
   // Currency mask for value input
@@ -5453,6 +5512,7 @@ function attachNewTransactionEvents() {
       let v = valInput.value.replace(/\D/g, '')
       v = (Number(v) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
       valInput.value = v
+      appState.financasData.tempVal = v
     })
   }
 
@@ -5463,6 +5523,7 @@ function attachNewTransactionEvents() {
       const pos = descInput.selectionStart
       descInput.value = descInput.value.replace(/(?:^|\\s)\\S/g, c => c.toUpperCase())
       descInput.setSelectionRange(pos, pos)
+      appState.financasData.tempDesc = descInput.value
     })
   }
 
@@ -5482,6 +5543,12 @@ function attachNewTransactionEvents() {
 
     // Optimistic Save
     appState.financasData.transactions.unshift(dbTransToLocal(payload)) // Use payload as temporary visual data
+    
+    // Clear temps on success
+    appState.financasData.tempDesc = ''
+    appState.financasData.tempVal = ''
+    appState.financasData.tempType = 'in'
+
     close()
     alert('Transação lançada com sucesso!')
 
