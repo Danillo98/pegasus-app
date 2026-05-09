@@ -967,7 +967,7 @@ function render() {
     modalOverlay.innerHTML = `
       <div class="card animate-fade-in" style="max-width:400px; width:92%; padding:2.5rem; text-align:center; border-radius:1.5rem;">
         <div style="width:70px; height:70px; background:#fee2e2; color:#dc2626; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 1.5rem; font-size:2rem; font-weight:900;">⚠️</div>
-        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">EXCLUIR FUNCIONÁRIO?</h2>
+        <h2 style="font-family:var(--font-alt); font-size:1.2rem; font-weight:900; margin-bottom:1rem;">EXCLUIR PROFISSIONAL?</h2>
         <p style="color:var(--text-secondary); margin-bottom:2rem; line-height:1.5;">Deseja realmente excluir <b>${func?.nome || 'este funcionário'}</b>? Esta ação não pode ser desfeita.</p>
         <div class="flex flex-col gap-sm">
           <button id="btn-do-delete-funcionario" style="width:100%; padding:1.1rem; border-radius:1rem; background:#dc2626; color:white; font-weight:900; letter-spacing:0.5px; border:none; cursor:pointer;">SIM, EXCLUIR</button>
@@ -1507,7 +1507,7 @@ function render() {
         <div class="custom-scroll welcome-content" style="overflow-y:auto; padding:2rem 1.5rem; flex:1;">
           <div style="display:flex; flex-direction:column; gap:1.5rem;">
             ${[
-              { n: '1', text: '\u00c9 necess\u00e1rio primeiramente cadastrar os <strong>FUNCION\u00c1RIOS</strong>, caso n\u00e3o tenha pode ignorar esta etapa.' },
+              { n: '1', text: '\u00c9 necess\u00e1rio primeiramente cadastrar os <strong>PROFISSIONAIS</strong>, caso n\u00e3o tenha pode ignorar esta etapa.' },
               { n: '2', text: 'Cadastre os <strong>SERVI\u00c7OS</strong> que iremos oferecer aos clientes.' },
               { n: '3', text: 'V\u00e1 em <strong>CONFIGURA\u00c7\u00d5ES</strong> e configure os dias e hor\u00e1rios de funcionamento do estabelecimento. N\u00e3o esque\u00e7a de baixar e configurar o <strong>WhatsApp Business</strong> para automatizarmos o envio do link para agendamentos autom\u00e1ticos.' },
               { n: '4', text: 'Fique atento pois a qualquer momento poder\u00e1 chegar reservas em sua agenda. Em casos de reservas com taxas, \u00e9 necess\u00e1rio que voc\u00ea <strong>confirme o pagamento</strong>.' },
@@ -1843,7 +1843,7 @@ function renderDashboard() {
               </div>
               <div class="card" id="card-funcionarios">
                 <div class="icon-container" style="transform: scale(1.2);">${icons.funcionarios}</div>
-                <h3 style="margin-top: 1rem; font-size: 1.1rem;">Funcionários</h3>
+                <h3 style="margin-top: 1rem; font-size: 1.1rem;">Profissionais</h3>
               </div>
               <div class="card" id="card-assinaturas">
                 <div class="icon-container" style="transform: scale(1.2);">${icons.assinaturas}</div>
@@ -2902,7 +2902,7 @@ function renderFinancas() {
                 ` : ''}
               </div>
               <!-- Right: Actions column -->
-              <div style="flex-shrink:0; display:flex; flex-direction:column; align-items:flex-end; gap:8px;" class="no-print">
+              <div style="flex-shrink:0; display:flex; flex-direction:column; align-items:end; gap:8px;" class="no-print">
                 ${t.isVirtual ? `
                   <button class="btn-pay-fixed ripple" data-desc="${t.desc}" data-val="${t.val}" data-full-date="${t.fullDate}" style="background:#dc2626; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:0.65rem; font-weight:900; letter-spacing:0.5px;">PAGAR AGORA</button>
                   <button class="btn-edit-trans" data-dbid="${t.id.replace('virtual-','')}" title="Editar Todas" style="background:none;border:none;cursor:pointer;padding:2px;font-size:1.1rem;line-height:1;">✏️</button>
@@ -3215,7 +3215,7 @@ function renderServicos() {
 
           <div class="flex flex-col" style="gap: 1rem; margin-top: 0.5rem; border-top: 1px solid var(--border); padding-top: 1.5rem;">
             <div class="flex items-center justify-between" style="gap: 1rem;">
-              <span style="font-weight: 600; font-size: 0.95rem; text-align: left; color: var(--text-secondary);">Deseja cobrar uma taxa para reservas?</span>
+              <span style="font-weight: 600; font-size: 0.95rem; text-align: left; color: var(--text-secondary);">Deseja cobrar uma taxa de cancelamento se não avisar com antecedência?</span>
               <div id="toggle-reserva" style="display: flex; background: var(--surface-hover); padding: 4px; border-radius: 20px; cursor: pointer; border: 1px solid var(--border); min-width: 120px; justify-content: space-between;">
                 <span style="flex: 1; text-align: center; font-size: 0.7rem; font-weight: 900; padding: 6px 0; border-radius: 16px; transition: all 0.3s; 
                   ${!appState.servicosForm.chargeReserva ? 'background: var(--on-primary); color: var(--primary); box-shadow: var(--shadow-sm);' : 'color: var(--text-secondary);'}">NÃO</span>
@@ -3229,7 +3229,7 @@ function renderServicos() {
                 <input type="text" id="input-taxa-reserva" placeholder="R$ 0,00" value="${appState.servicosForm.reservaValue}" 
                   style="padding: 1rem; border-radius: 0.75rem; border: 1px solid var(--border); width: 100%; font-weight: 800; font-size: 1.2rem; color: var(--primary); background: var(--surface);">
                 <p style="font-size: 0.75rem; color: var(--text-secondary); line-height: 1.5; font-weight: 500; text-align: left;">
-                  Esse valor será cobrado do cliente via PIX para realizar a reserva. Caso o usuário não compareça no horário marcado essa taxa serve para não deixar o estabelecimento no prejuízo.
+                  Esse valor será solicitado ao cliente caso ele cancele ou não compareça fora da política de tempo do seu estabelecimento.
                 </p>
                 <div style="display:flex; flex-direction:column; gap:0.25rem;">
                   <label style="font-size:0.75rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Sua Chave PIX</label>
@@ -3284,7 +3284,7 @@ function renderServicos() {
                 </div>
                 <div style="border-top:1px solid var(--border); padding-top:0.75rem;">
                   <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
-                    <span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Cobrar taxa de reserva?</span>
+                    <span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary);">Taxa de cancelamento?</span>
                     <div id="edit-toggle-reserva-${s.id}" style="display:flex; background:var(--surface-hover); padding:3px; border-radius:20px; cursor:pointer; border:1px solid var(--border); min-width:100px; justify-content:space-between;">
                       <span style="flex:1; text-align:center; font-size:0.65rem; font-weight:900; padding:5px 0; border-radius:14px; transition:all 0.3s; ${!cobraReserva ? 'background:var(--on-primary); color:var(--primary); box-shadow:var(--shadow-sm);' : 'color:var(--text-secondary);'}">NÃO</span>
                       <span style="flex:1; text-align:center; font-size:0.65rem; font-weight:900; padding:5px 0; border-radius:14px; transition:all 0.3s; ${cobraReserva ? 'background:var(--primary); color:var(--on-primary); box-shadow:var(--shadow-sm);' : 'color:var(--text-secondary);'}">SIM</span>
@@ -3294,7 +3294,7 @@ function renderServicos() {
 
                   ${cobraReserva ? `
                     <div style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.75rem;">
-                      <label style="font-size:0.65rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Taxa de Reserva</label>
+                      <label style="font-size:0.65rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">Taxa</label>
                       <input id="edit-taxa-${s.id}" type="text" placeholder="R$ 0,00" value="${ef.taxa_str || (s.taxa_reserva ? 'R$ ' + Number(s.taxa_reserva).toFixed(2).replace('.', ',') : '')}" style="padding:0.7rem; border-radius:0.5rem; border:1px solid var(--border); width:100%; font-weight:700; color:var(--primary);">
                       
                       <label style="font-size:0.65rem; font-weight:700; color:var(--text-secondary); text-transform:uppercase; margin-top:0.25rem;">Chave PIX</label>
@@ -3525,10 +3525,10 @@ function renderFuncionarios() {
   const allList = [owner, ...f];
   const activeCount = allList.filter(func => func.ativo !== false).length;
   
-  return renderTabHeader('Funcionários', `
+  return renderTabHeader('Profissionais', `
     <div class="funcionarios-content p-lg" style="max-width: 60rem; margin: 0 auto; padding: 1.25rem;">
       <div class="card" style="padding: 2.5rem; margin-bottom: 2.5rem; align-items: stretch; border-top: 6px solid var(--primary);">
-        <h3 style="margin-bottom: 1.8rem; text-align: left; font-size: 1.2rem; font-weight: 900; letter-spacing: 0.5px;">CADASTRAR NOVO FUNCIONÁRIO</h3>
+        <h3 style="margin-bottom: 1.8rem; text-align: left; font-size: 1.2rem; font-weight: 900; letter-spacing: 0.5px;">CADASTRAR NOVO PROFISSIONAL</h3>
         <div class="flex flex-col gap-md">
           <div class="flex flex-col gap-xs">
             <label style="font-size:0.7rem; font-weight:800; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px;">Nome Completo</label>
@@ -3546,7 +3546,7 @@ function renderFuncionarios() {
           </div>
 
           <button id="btn-salvar-funcionario" style="background: var(--primary); color: var(--on-primary); padding: 1.25rem; border-radius: 1.25rem; font-weight: 900; margin-top: 1.25rem; font-size: 1.1rem; letter-spacing: 1.5px; box-shadow: var(--shadow-md); border:none; cursor:pointer;">
-            SALVAR FUNCIONÁRIO
+            SALVAR PROFISSIONAL
           </button>
         </div>
       </div>
@@ -4851,7 +4851,7 @@ function attachConfirmCancelEvents() {
 
     // 1. Detecta taxa ANTES de fechar
     const taxa = Number(itemSnapshot.taxa_reserva || 0)
-    const taxaPaga = !!itemSnapshot.pagamento_status || !!itemSnapshot.taxa_paga || String(itemSnapshot.status).toLowerCase() === 'confirmado' || String(itemSnapshot.status).toLowerCase() === 'pago'
+    const taxaPaga = itemSnapshot.pagamento_status === true
     const temTaxa = taxaPaga && taxa > 0
 
     // 2. Optimistic Update: Remove da vista local
