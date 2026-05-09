@@ -5558,8 +5558,8 @@ function attachNewTransactionEvents() {
         alert('Erro ao sincronizar transação: ' + error.message)
         console.error('Sync Error:', error)
       } else if (dbData) {
-        // Replace temp with real db data if needed for IDs
-        const idx = appState.financasData.transactions.findIndex(t => t.desc === payload.descricao && t.val === payload.valor)
+        // Replace temp with real db data if needed for IDs (match only the temp entry with no DB id)
+        const idx = appState.financasData.transactions.findIndex(t => !t.id && t.desc === payload.descricao && t.val === payload.valor)
         if (idx > -1) appState.financasData.transactions[idx] = dbTransToLocal(dbData[0])
       }
     })
