@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pegasus-v1';
+const CACHE_NAME = 'pegasus-v2';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
